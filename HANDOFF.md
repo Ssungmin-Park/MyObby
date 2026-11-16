@@ -11,9 +11,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** (모델: Claude Opus 5.5) |
+| 마지막 작업 AI | **OpenAI Codex** |
 | 작업 시점 | 2026-11-16 |
-| 다음 작업 AI | OpenAI Codex (사용자 계획) |
+| 다음 작업 AI | Codex 또는 Claude Code. 먼저 진행 저장 계획 승인 여부를 확인한다 |
 | 게임 이름 | 마이오비 (Studio place 이름) / 콘셉트명 "실험실 탈출" |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -22,7 +22,7 @@
 | Studio 모드 | 인수인계 시점에 **Edit 모드** (Play 테스트는 종료함) |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 수정 | 인수인계 문서 보강(AGENTS.md, HANDOFF.md, CLAUDE.md). **게임(Studio) 내용은 이번에 바꾸지 않았다.** 마지막 Studio 변경은 체크포인트 10 라벨 "FINISH" → "10" |
+| 마지막 수정 | Codex에서 MCP 연결, Studio 구조, 스크립트 일치 여부, 그레이박스 회귀 테스트를 확인했다. 게임 스크립트와 객체 변경은 없다. 마지막 Studio 변경은 체크포인트 10 라벨 "FINISH" → "10" |
 | Studio 저장 상태 | place는 클라우드 저장 place(`persistedToCloud = true`)다. 하지만 **마지막 변경 후 사용자가 저장(Ctrl+S)했는지는 AI가 확인할 수 없다** → 미확인. AI는 저장·Publish를 하지 않았다 |
 | 백업 상태 | 스크립트: `src/`(Git, GitHub)에 6개 모두 있고 Studio와 내용이 같다(체크섬 일치). 맵(파트·모델): **Git에 백업 없음**, Studio 클라우드에만 있다. 옛 버전은 `ServerStorage`에 백업 |
 | 게임 공개 상태 | 확인하지 않았고 바꾸지 않았다. AI는 Publish하지 않는다 (AGENTS.md §8 규칙 9) |
@@ -60,7 +60,7 @@
 
 ## B. 현재 구현된 기능
 
-모든 스크립트는 `--!strict`이며, 로컬 `src/`에 같은 내용의 거울이 있다.
+활성 스크립트 6개는 `--!strict`이며, 로컬 `src/`와 바이트 크기 및 체크섬이 일치한다.
 
 ### B-1. 리더보드 — `ServerScriptService/Leaderstats` (Script, 792 B)
 - 플레이어가 들어오면 `player.leaderstats`(Folder)와 `Stage`(IntValue, 초기값 0)를 만든다.
@@ -122,16 +122,15 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 | `Workspace/Baseplate` | 템플릿 기본 바닥 (Y=-8) |
 | `Lighting` | 템플릿 기본 효과 Sky, Atmosphere, Bloom, SunRays, DepthOfField |
 | `StarterGui`, `StarterPack`, `ReplicatedFirst`, `SoundService`, `Teams` | 비어 있음 |
-| `ServerStorage/ObbyServer_backup` | 옛 단일 스크립트 (Disabled, 2622 B). **백업. 승인 없이 삭제 금지** |
+| `ServerStorage/ObbyServer_backup` | 옛 단일 스크립트 (Disabled, 2622 B, `--!strict` 없음). **백업. 승인 없이 삭제 금지** |
 | `ServerStorage/StagesBackup/Stage04~10` | 장애물을 넣기 전 스테이지. **백업. 승인 없이 삭제 금지** |
 
 ---
 
 ## C. 진행 중인 개발
 
-- **진행 중인 게임 기능: 없음.** 중단된 기능 작업이 없다.
-- **가장 최근 작업:** AI 인수인계 체계 구축과 보강 (문서만 수정).
-  - 이번에 Studio 실제 상태를 다시 조사했다. 스크립트 6개가 `src/`와 바이트 단위로 같고(체크섬 일치), 탈출 메시지가 클라이언트에 표시되는 것을 확인했다.
+- **진행 중인 작업:** 진행 저장 설계. 사용자 승인 대기 중이며 구현은 시작하지 않았다.
+- **가장 최근 작업:** Codex MCP 연결과 실제 게임 상태 확인. 스크립트 6개의 바이트 크기·체크섬이 `src/`와 일치했다. 기존 코스를 다시 테스트하고 Edit 모드로 돌아왔다.
 - **마지막 게임 수정:** 체크포인트 10의 SurfaceGui 라벨 "FINISH" → "10" (커밋 `e4a1a8b` 무렵).
 - **미완성 부분:** 2단계 시스템 전체(진행 저장, 스테이지 스킵 상품, 보상형 광고)와 3단계 비주얼. 아직 계획 승인도 받지 않았다.
 
@@ -169,7 +168,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 | 5 | 체크포인트 1~10에 옛 속성 `Stage`(숫자)가 남아 있음 | 이전 단일 스크립트의 흔적. 현재 스크립트는 이름으로 판정하므로 무해 | — | 정리 선택 사항 (삭제 전 승인) |
 | 6 | `ServerStorage` 백업 2개 남아 있음 | 의도된 백업 | — | 삭제 여부는 사용자 결정 |
 | 7 | Claude Code GitHub 플러그인 커넥터 연결 실패 | 토큰 환경 변수 없음 | gh CLI로 대체 | 의도적 미사용 |
-| 8 | Codex에 Roblox Studio MCP가 연결되어 있는지 미확인 | 연결이 없으면 Codex는 Studio를 수정할 수 없음 | — | **Codex 첫 작업 때 확인** |
+| 8 | Codex의 Roblox Studio MCP 연결 | 현재 인스턴스의 Place ID와 Universe ID를 대조했다 | 구조 확인과 Play 테스트 | 확인 완료. 새 세션마다 인스턴스 다시 조회 |
 | 9 | Lighting에 템플릿 기본 효과(Bloom, DepthOfField 등)가 켜져 있음 | 템플릿 기본값 | — | 3단계 비주얼 때 결정 |
 
 해결됨: 이전 문서의 "최신 테스트에서 탈출 메시지 미확인" → 2026-11-16 재테스트에서 **클라이언트 표시 확인**(F 참고). 이전 테스트에서는 확인 시점이 4초 표시 시간을 넘겼던 것으로 본다.
@@ -208,6 +207,8 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 **③ 사용자 직접 플레이:** 처음부터 끝까지 플레이, 난이도 적당 (2026-11-16, 기기 미기록).
 
+**④ 2026-11-16 Codex 회귀 테스트:** 초기 Stage 0, 체크포인트 순서·건너뛰기·역행 판정, 레이저 사망, Stage 2 리스폰(수평 오차 1스터드 미만), KillZone 사망, Mover 이동, Spinner 회전, 보안문 교대, Stage 11과 클라이언트 탈출 메시지를 확인했다. `RespawnTime`은 1초였고, 출력에는 골인 로그만 있었다. 메시지는 첫 조회에서 검출되지 않아 클라이언트 감시를 먼저 시작한 뒤 EXIT를 다시 밟아 확인했다. 테스트를 종료하고 Edit 모드로 돌아왔다.
+
 ### 실패한 테스트
 - 없음.
 
@@ -227,22 +228,20 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
   2. `git status`, `git log --oneline -5`를 확인한다.
   3. **Codex라면 Roblox Studio MCP 연결부터 확인한다** (E-8). 없으면 사용자에게 알리고 Studio 작업은 하지 않는다 (AGENTS.md §6 "Studio MCP를 쓸 수 없을 때").
   4. `list_roblox_studios`로 인스턴스 ID를 새로 받고 placeId `77293997616106`을 확인한다.
-  5. 사용자에게 Studio를 저장(Ctrl+S)했는지 묻는다 (E-1).
+  5. Studio에는 체크포인트 10 라벨이 올바르게 표시된다. 마지막 클라우드 저장 여부는 사용자에게 확인한다 (E-1).
   6. 스크립트 6개 크기(또는 체크섬)가 `src/`와 같은지 확인한다.
 - **완료 조건:** 위 항목에서 이상이 없거나, 이상한 점을 사용자에게 보고함.
 
 ### 1순위 — 진행 저장 (DataStore)
 - **목표:** 재접속해도 마지막 Stage에서 이어서 시작.
-- **대상 스크립트:** 새 Script `ServerScriptService/ProgressSave` (기존 `Leaderstats`는 최소 수정 또는 수정하지 않음).
-- **구현 방향 (계획을 먼저 사용자에게 보여 주고 승인받을 것):**
-  - DataStore 이름·키 형식을 정해 문서에 기록. 예: DataStore `"Progress_v1"`, 키 `"Player_<UserId>"`, 값 `{ Stage = number }`.
-  - 입장 시 `GetAsync`로 불러와 `leaderstats.Stage`에 설정. `pcall` + 재시도(예: 3회).
-  - **불러오기에 실패한 플레이어는 저장하지 않는다** (빈 값으로 덮어쓰기 방지).
-  - 퇴장 시, 주기적으로(예: 60초), `game:BindToClose`에서 저장.
-  - 불러온 Stage가 1~11 범위인지 검증.
-  - `Respawn`은 첫 스폰 때 `leaderstats`를 최대 5초 기다린 뒤 Stage를 읽는다. 저장값 로딩이 늦으면 시작 발판에서 출발할 수 있으므로, 불러온 뒤 캐릭터를 다시 옮기거나 로딩 완료 후 `LoadCharacter`하는 방식을 검토.
-  - Studio에서 테스트하려면 사용자가 Game Settings → Security → "Enable Studio Access to API Services"를 켜야 한다 (사용자가 직접 설정).
-- **완료 조건:** Studio에서 Stage 진행 → 나갔다 다시 Play → 같은 Stage 체크포인트에서 시작. 로딩 실패를 흉내 냈을 때 데이터를 덮어쓰지 않음. 회귀 테스트 12항목 통과. `src/`·README·HANDOFF 갱신.
+- **상태:** 아래는 승인 대기 중인 설계안이다. 승인 후 구현한다.
+- **대상:** 새 서버 전용 ModuleScript `ServerScriptService/ProgressSave`와 기존 `Leaderstats`, `Respawn`, `Finish`의 초기화 부분. `Leaderstats`가 리더보드 생성을 계속 맡고 `ProgressSave`는 불러오기·저장을 맡는다.
+- **저장 형식 제안:** `Progress_v1`, 키 `Player_<UserId>`, 값 `{ Stage = number }`. 0~11 정수만 허용한다.
+- **불러오기:** `GetAsync`를 `pcall`로 감싸고 실패 시 최대 3회 시도한다. 조회 결과가 비어 있으면 새 플레이어를 Stage 0으로 시작시킨다. 오류 또는 잘못된 형식이면 현재 세션의 플레이는 가능하게 하되 저장을 건너뛴다.
+- **리스폰과 골인:** 불러온 값을 넣은 뒤 리더보드를 공개하고, 첫 리스폰 위치 판정은 초기화가 끝날 때까지 기다리게 한다. Stage 11 복원 자체는 골인 메시지를 띄우지 않는다. 로딩 중 퇴장하거나 캐릭터가 교체되는 경우도 확인한다.
+- **저장:** 진행이 바뀐 플레이어만 약 60초마다, 퇴장 시, 서버 종료 시 저장한다. `UpdateAsync`에서 유효한 기존 값과 현재 값 중 큰 값을 유지해 늦게 종료되는 서버가 진행을 낮추지 못하게 한다. 저장 요청의 중복과 실패 재시도를 처리한다.
+- **검증:** 먼저 모의 저장소로 재접속, 읽기 실패, 저장 재시도, 동시 저장, Stage 11 복원을 테스트한다. 실제 DataStore 재접속 검증은 분리된 테스트 환경에서 한다. Roblox는 Studio가 같은 경험의 운영 저장소에 접근할 수 있다고 안내한다. [Roblox DataStore 문서](https://create.roblox.com/docs/cloud-services/data-stores#enable-studio-access)
+- **완료 조건:** 재접속하면 저장된 체크포인트에서 시작하고, 로딩 실패 시 기존 데이터를 보존한다. 기존 회귀 테스트 12항목을 다시 확인하고 `src/`, README, HANDOFF를 갱신한다.
 
 ### 2순위 — 스테이지 스킵 Developer Product
 - **목표:** 막힌 플레이어가 Robux로 다음 스테이지로 넘어감 (수익화 1차).
