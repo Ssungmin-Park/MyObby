@@ -74,3 +74,9 @@ ReplicatedStorage/Remotes/Escaped  서버 → 클라이언트 탈출 알림
 
 Roblox Studio를 MCP로 연결한 [Claude Code](https://claude.com/claude-code)와 함께 개발합니다.
 기획·검증·플레이테스트 결과는 날짜별로 [NOTES.md](NOTES.md)에 기록합니다.
+
+Claude Code와 OpenAI Codex를 번갈아 사용합니다. 두 AI가 이전 대화 없이도 이어서 작업할 수 있도록 문서를 나눠 둡니다.
+
+- [AGENTS.md](AGENTS.md): 공통 개발 지침
+- [HANDOFF.md](HANDOFF.md): 현재 상태 인수인계
+- 커밋 메시지 앞의 `[Claude]` / `[Codex]`: 작업한 AI 표시

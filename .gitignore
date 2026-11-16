@@ -7,6 +7,17 @@
 Thumbs.db
 desktop.ini
 
-# 개인 로컬 설정
+# 개인 로컬 설정 (AI 도구 포함)
 .claude/settings.local.json
+.codex/
+.vscode/
+
+# 민감 정보 — 공개 저장소이므로 절대 커밋 금지
 .env
+.env.*
+*.pem
+*.key
+*.pfx
+*credentials*
+*secret*
+*.cookie

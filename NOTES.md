@@ -8,3 +8,4 @@
 - 스크립트를 추가했다: `Hazards`(태그 KillPart·Spinner·Mover·TimedDoor), `Finish`, `Remotes/Escaped`, `StarterPlayerScripts/EscapeMessage`. 플레이테스트에서 장애물 동작, 레이저 사망, 발판 탑승, Stage 11 골인, "탈출 성공!" 표시를 확인했고 에러는 없었다.
 - 직접 플레이해 보고 난이도가 적당하다고 확인했다. 스크립트를 `src/`로 내보내고 README를 썼다. git과 GitHub CLI로 공개 저장소 연동을 시작했다.
 - README에 구간별 그레이박스 스크린샷 5장을 넣었다(`docs/screenshots/`). 체크포인트 10에 이전 라벨 "FINISH"가 남아 있어 "10"으로 고쳤다.
+- Claude Code와 Codex가 번갈아 작업할 수 있도록 인수인계 체계를 만들었다. 공통 규칙은 `AGENTS.md`로 모으고 `CLAUDE.md`는 Claude 전용 설정만 남겼다. 현재 상태는 `HANDOFF.md`에 적었다. 회귀 테스트 11개 항목은 통과했다(클라이언트 메시지 표시는 미확인).
