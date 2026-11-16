@@ -6,7 +6,8 @@
 --   DataStore 이름 : "Junkyard_v1"   (오비 Progress_v1, 작업장 RobotLab_v1과 별개)
 --   키            : "Player_<UserId>"
 --   값            : { version = 1, data = Data, lastSeen = os.time(), lock = { job = 서버ID, at = os.time() } 또는 없음 }
---   Data          : { money = 정수, catalog = { [로봇 id] = true }, pads = { ["받침대 번호"] = 로봇 id } }
+--   Data          : { money = 정수, catalog = { [로봇 id] = true }, pads = { ["받침대 번호"] = 로봇 id },
+--                     upgrades = { [업그레이드 id] = 단계 } }   ← upgrades는 3-1에서 추가 (옛 데이터는 모두 0단계로 읽힘)
 --
 -- 안전 원칙
 --   1. 세션 잠금: 데이터를 쓰는 서버가 lock을 남긴다. 다른 서버의 lock이 살아 있으면 기다리고,
@@ -33,6 +34,7 @@ export type Data = {
 	money: number,
 	catalog: { [string]: boolean },
 	pads: { [string]: string }, -- 받침대 번호(문자열) → 로봇 id
+	upgrades: { [string]: number }, -- 업그레이드 id → 단계 (0 = 기본)
 }
 export type LoadStatus = "new" | "ok" | "failed" | "locked"
 export type SaveStatus = "ok" | "failed" | "lostLock"
@@ -64,13 +66,21 @@ function JunkyardSave.keyFor(userId: number): string
 	return "Player_" .. tostring(userId)
 end
 
+local function defaultUpgrades(): { [string]: number }
+	local upgrades = {}
+	for _, id in Config.UpgradeOrder do
+		upgrades[id] = 0
+	end
+	return upgrades
+end
+
 function JunkyardSave.newData(): Data
-	return { money = Config.StartMoney, catalog = {}, pads = {} }
+	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades() }
 end
 
 -- 저장소에서 읽은 값을 허용 범위로 정리해서 항상 올바른 Data를 돌려준다.
 function JunkyardSave.sanitize(raw: any): Data
-	local data: Data = { money = 0, catalog = {}, pads = {} }
+	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades() }
 	if typeof(raw) ~= "table" then
 		return JunkyardSave.newData()
 	end
@@ -88,10 +98,18 @@ function JunkyardSave.sanitize(raw: any): Data
 	if typeof(raw.pads) == "table" then
 		for key, robotId in raw.pads do
 			local index = tonumber(key)
-			if index and index == math.floor(index) and index >= 1 and index <= Config.PadsPerBase
+			if index and index == math.floor(index) and index >= 1 and index <= Config.MaxPads
 				and typeof(robotId) == "string" and Config.getRobot(robotId) then
 				data.pads[tostring(index)] = robotId
 				data.catalog[robotId] = true -- 받침대에 있는 로봇은 도감에도 있어야 한다
+			end
+		end
+	end
+	if typeof(raw.upgrades) == "table" then
+		for _, id in Config.UpgradeOrder do
+			local level = raw.upgrades[id]
+			if typeof(level) == "number" and level == level then
+				data.upgrades[id] = math.floor(math.clamp(level, 0, #Config.Upgrades[id].costs))
 			end
 		end
 	end
@@ -100,7 +118,12 @@ end
 
 -- 저장용 사본
 local function snapshot(data: Data): Data
-	return { money = math.floor(data.money), catalog = table.clone(data.catalog), pads = table.clone(data.pads) }
+	return {
+		money = math.floor(data.money),
+		catalog = table.clone(data.catalog),
+		pads = table.clone(data.pads),
+		upgrades = table.clone(data.upgrades),
+	}
 end
 
 local function lockIsForeign(record: any, now: number): boolean

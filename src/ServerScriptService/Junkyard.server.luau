@@ -11,6 +11,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
+local Debris = game:GetService("Debris")
 
 local Config = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("JunkyardConfig"))
 local Belt = require(script.Parent:WaitForChild("JunkyardBelt"))
@@ -38,6 +39,8 @@ type Base = {
 	vault: number,
 	lockedUntil: number, -- 서버 시간(GetServerTimeNow) 기준
 	lockCooldownUntil: number,
+	intruders: { [Player]: boolean }, -- 지금 기지 안에 있는 다른 사람 (경보기·울타리용)
+	alarmAt: { [Player]: number }, -- 침입자별 마지막 경보 시각
 }
 type Carry = {
 	robotId: string,
@@ -57,6 +60,12 @@ type State = {
 	lastFullNotice: number,
 	lastAction: number,
 	loading: boolean, -- 저장된 데이터를 불러오는 중 (구매·훔치기 잠시 막음)
+	upgrades: { [string]: number }, -- 영구 업그레이드 단계 (저장됨)
+	stunnedUntil: number, -- EMP에 맞아 못 움직이는 시각까지 (서버 시간)
+	slowedUntil: number, -- 레이저 울타리로 느려진 시각까지
+	glovesUntil: number, -- 도둑 장갑 효과 끝나는 시각
+	empReadyAt: number, -- EMP 다시 쓸 수 있는 시각
+	holdStart: { [ProximityPrompt]: number }, -- 받침대 버튼을 누르기 시작한 시각 (누르는 시간 검증)
 }
 
 local bases: { Base } = {}
@@ -150,6 +159,56 @@ local function makeRobotModel(robotId: string, anchored: boolean): Model
 	label.Text = if robot and rarity then ("%s [%s]\n초당 %s"):format(robot.name, rarity.name, Config.formatMoney(rarity.income)) else robotId
 	label.Parent = billboard
 	return model
+end
+
+-- 업그레이드·속도 ----------------------------------------------------------------
+local function upgradeValue(state: State, id: string): number
+	return Config.upgradeValue(id, state.upgrades[id] or 0)
+end
+
+-- 이 기지에서 쓸 수 있는 받침대 수 (주인의 "받침대 추가" 단계)
+local function padLimit(base: Base): number
+	local owner = base.owner
+	local state = owner and states[owner]
+	return if state then upgradeValue(state, "Pads") else Config.PadsPerBase
+end
+
+-- 아직 열리지 않은 받침대는 어둡고 반투명하게
+local function setPadLocks(base: Base)
+	local limit = padLimit(base)
+	for index, pad in base.pads do
+		local locked = index > limit
+		pad.Transparency = if locked then 0.7 else 0
+		pad.Color = if locked then Color3.fromRGB(40, 44, 50) else Color3.fromRGB(70, 78, 88)
+	end
+end
+
+-- 걷기 속도·점프: 기절(EMP) > 느려짐(울타리) > 운반 중 > 터보 신발
+local function applySpeed(state: State)
+	local character = state.player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	local t = workspace:GetServerTimeNow()
+	local speed = upgradeValue(state, "Shoes")
+	if t < state.stunnedUntil then
+		speed = 0
+	elseif t < state.slowedUntil then
+		speed = Config.FenceSpeed
+	elseif state.carry then
+		speed = Config.CarrySpeed + (speed - 16) * 0.5 -- 신발 효과는 운반 중에 절반만
+	end
+	humanoid.WalkSpeed = speed
+	humanoid.JumpHeight = if t < state.stunnedUntil then 0 else 7.2
+end
+
+-- 클라이언트 표시용 속성
+local function syncUpgradeAttributes(state: State)
+	state.player:SetAttribute("Upgrades", HttpService:JSONEncode(state.upgrades))
+	state.player:SetAttribute("GlovesUntil", state.glovesUntil)
+	state.player:SetAttribute("EmpReadyAt", state.empReadyAt)
+	state.player:SetAttribute("StunnedUntil", state.stunnedUntil)
 end
 
 -- 돈·수입 ---------------------------------------------------------------------
@@ -269,7 +328,7 @@ local function setPadRobot(base: Base, padIndex: number, robotId: string?)
 end
 
 local function freePad(base: Base): number?
-	for index = 1, #base.pads do
+	for index = 1, math.min(#base.pads, padLimit(base)) do
 		if not base.robots[index] and not base.reserved[index] then
 			return index
 		end
@@ -296,10 +355,7 @@ local function attachCarryModel(state: State)
 	weld.Parent = model.PrimaryPart
 	model.Parent = state.player.Character
 	carry.model = model
-	local humanoid = (state.player.Character :: Model):FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		humanoid.WalkSpeed = Config.CarrySpeed
-	end
+	applySpeed(state)
 end
 
 local function syncCarryAttributes(state: State)
@@ -320,11 +376,7 @@ local function endCarry(state: State)
 		carry.model:Destroy()
 	end
 	state.carry = nil
-	local character = state.player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		humanoid.WalkSpeed = 16
-	end
+	applySpeed(state)
 	syncCarryAttributes(state)
 end
 
@@ -368,6 +420,7 @@ local function assignBase(state: State): Base?
 			setSign(base, state.player.DisplayName .. "의 기지")
 			state.base = base
 			state.player:SetAttribute("BaseIndex", base.index)
+			setPadLocks(base)
 			return base
 		end
 	end
@@ -395,7 +448,10 @@ local function releaseBase(base: Base)
 	base.model:SetAttribute("OwnerName", "")
 	base.model:SetAttribute("Vault", 0)
 	base.model:SetAttribute("LockedUntil", 0)
+	base.intruders = {}
+	base.alarmAt = {}
 	setSign(base, "빈 기지")
+	setPadLocks(base)
 end
 
 local function spawnCFrame(base: Base): CFrame
@@ -433,7 +489,7 @@ local function snapshot(state: State): JunkyardSave.Data
 			money += if rarity then rarity.price else 0
 		end
 	end
-	return { money = money, catalog = table.clone(state.catalog), pads = pads }
+	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades) }
 end
 
 -- 행동 ----------------------------------------------------------------------------
@@ -493,14 +549,15 @@ local function lockBase(state: State)
 		notify(state.player, "Alert", ("방어막 충전 중이에요. %d초 뒤에 다시 쓸 수 있어요."):format(math.ceil(base.lockCooldownUntil - t)))
 		return
 	end
-	base.lockedUntil = t + Config.LockDuration
+	local duration = upgradeValue(state, "ShieldTime") -- 방어막 강화 단계에 따라 60~150초
+	base.lockedUntil = t + duration
 	base.lockCooldownUntil = base.lockedUntil + Config.LockCooldown
 	base.model:SetAttribute("LockedUntil", base.lockedUntil)
 	state.player:SetAttribute("LockedUntil", base.lockedUntil)
 	state.player:SetAttribute("LockCooldownUntil", base.lockCooldownUntil)
 	local shield = base.model:FindFirstChild("Shield") :: BasePart
 	shield.Transparency = 0.5
-	notify(state.player, "Info", ("방어막 작동! %d초 동안 아무도 훔칠 수 없어요."):format(Config.LockDuration))
+	notify(state.player, "Info", ("방어막 작동! %d초 동안 아무도 훔칠 수 없어요."):format(duration))
 end
 
 local function sell(state: State, base: Base, padIndex: number)
@@ -541,6 +598,100 @@ local function steal(state: State, base: Base, padIndex: number)
 	end
 	notify(state.player, "Info", ("%s을(를) 훔쳤어요! 주인에게 잡히기 전에 내 기지로!"):format(robotLabel(robotId)))
 	notify(base.owner, "Alert", ("⚠ %s님이 내 %s을(를) 훔쳐 가요! 쫓아가서 붙잡으세요!"):format(state.player.DisplayName, robotLabel(robotId)))
+end
+
+-- 상점 ------------------------------------------------------------------------
+local function buyUpgrade(state: State, id: string)
+	local upgrade = Config.Upgrades[id]
+	if not upgrade or state.loading then
+		return
+	end
+	local level = state.upgrades[id] or 0
+	local cost = Config.upgradeCost(id, level)
+	if not cost then
+		notify(state.player, "Info", upgrade.name .. "은(는) 최고 단계예요.")
+		return
+	end
+	if state.money < cost then
+		notify(state.player, "Alert", ("%s: 돈이 %s 부족해요."):format(upgrade.name, Config.formatMoney(cost - state.money)))
+		return
+	end
+	setMoney(state, state.money - cost)
+	state.upgrades[id] = level + 1
+	syncUpgradeAttributes(state)
+	if id == "Pads" and state.base then
+		setPadLocks(state.base)
+	elseif id == "Shoes" then
+		applySpeed(state)
+	end
+	notify(state.player, "Info", ("%s %d단계 완료!"):format(upgrade.name, level + 1))
+end
+
+-- EMP가 터지는 모습 (잠깐 보이는 빛나는 구)
+local function empBurst(position: Vector3)
+	local sphere = Instance.new("Part")
+	sphere.Shape = Enum.PartType.Ball
+	sphere.Size = Vector3.one * (Config.EmpRange * 2)
+	sphere.Position = position
+	sphere.Anchored = true
+	sphere.CanCollide = false
+	sphere.CanQuery = false
+	sphere.CanTouch = false
+	sphere.Material = Enum.Material.Neon
+	sphere.Color = Color3.fromRGB(120, 200, 255)
+	sphere.Transparency = 0.6
+	sphere.Parent = workspace
+	Debris:AddItem(sphere, 0.4)
+end
+
+local function useItem(state: State, id: string)
+	local item = Config.Items[id]
+	if not item or state.loading or state.player:GetAttribute("Mode") ~= "Junkyard" then
+		return
+	end
+	local t = now()
+	if id == "EMP" and t < state.empReadyAt then
+		notify(state.player, "Alert", ("EMP 충전 중이에요. %d초 남았어요."):format(math.ceil(state.empReadyAt - t)))
+		return
+	end
+	if id == "Gloves" and t < state.glovesUntil then
+		notify(state.player, "Info", "이미 도둑 장갑을 끼고 있어요.")
+		return
+	end
+	local root = rootOf(state.player)
+	if not root then
+		return
+	end
+	local price = Config.itemPrice(id, (state.player:GetAttribute("Income") or 0) :: number)
+	if state.money < price then
+		notify(state.player, "Alert", ("%s: 돈이 %s 부족해요."):format(item.name, Config.formatMoney(price - state.money)))
+		return
+	end
+	setMoney(state, state.money - price)
+	if id == "EMP" then
+		state.empReadyAt = t + Config.EmpCooldown
+		empBurst(root.Position)
+		local hit = 0
+		for other, otherState in states do
+			local otherRoot = rootOf(other)
+			if other ~= state.player and otherRoot and other:GetAttribute("Mode") == "Junkyard"
+				and (otherRoot.Position - root.Position).Magnitude <= Config.EmpRange then
+				hit += 1
+				otherState.stunnedUntil = t + Config.EmpStun
+				applySpeed(otherState)
+				syncUpgradeAttributes(otherState)
+				if otherState.carry and otherState.carry.fromBase then
+					returnStolen(otherState, "EMP에 맞음")
+				end
+				notify(other, "Alert", ("⚡ %s님의 EMP에 맞았어요! %d초 동안 못 움직여요."):format(state.player.DisplayName, Config.EmpStun))
+			end
+		end
+		notify(state.player, "Info", ("⚡ EMP 발사! %d명을 멈췄어요."):format(hit))
+	else
+		state.glovesUntil = t + Config.GlovesDuration
+		notify(state.player, "Info", ("🧤 도둑 장갑 착용! %d분 동안 훔치기가 빨라져요."):format(Config.GlovesDuration // 60))
+	end
+	syncUpgradeAttributes(state)
 end
 
 -- 들고 있는 로봇이 내 기지 안에 들어오면 빈 받침대에 놓는다
@@ -626,16 +777,31 @@ for _, model in basesFolder:GetChildren() do
 		vault = 0,
 		lockedUntil = 0,
 		lockCooldownUntil = 0,
+		intruders = {},
+		alarmAt = {},
 	}
 	bases[base.index] = base
 
 	for padIndex, pad in pads do
 		local prompt = pad:FindFirstChild("RobotPrompt") :: ProximityPrompt
 		prompt.HoldDuration = Config.StealHold
+		prompt.PromptButtonHoldBegan:Connect(function(player: Player)
+			local state = states[player]
+			if state then
+				state.holdStart[prompt] = os.clock()
+			end
+		end)
 		prompt.Triggered:Connect(function(player: Player)
 			local state = states[player]
 			local root = rootOf(player)
 			if not state or not root or (root.Position - pad.Position).Magnitude > prompt.MaxActivationDistance + 3 then
+				return
+			end
+			-- 실제로 누르고 있었는지 확인 (도둑 장갑이면 짧게). 누르지 않고 바로 보낸 요청은 무시
+			local began = state.holdStart[prompt]
+			state.holdStart[prompt] = nil
+			local required = if base.owner ~= player and now() < state.glovesUntil then Config.GlovesHold else Config.StealHold
+			if not began or os.clock() - began < required - 0.25 then
 				return
 			end
 			if base.owner == player then
@@ -695,6 +861,10 @@ actionRemote.OnServerEvent:Connect(function(player: Player, action: unknown, arg
 		buy(state, arg)
 	elseif action == "Lock" then
 		lockBase(state)
+	elseif action == "Upgrade" and typeof(arg) == "string" then
+		buyUpgrade(state, arg)
+	elseif action == "Item" and typeof(arg) == "string" then
+		useItem(state, arg)
 	end
 end)
 
@@ -730,6 +900,10 @@ local function loadPlayer(state: State)
 	if data then
 		setMoney(state, data.money)
 		setCatalog(state, data.catalog)
+		state.upgrades = data.upgrades
+		syncUpgradeAttributes(state)
+		setPadLocks(base)
+		applySpeed(state)
 		for key, robotId in data.pads do
 			local index = tonumber(key)
 			if index and base.pads[index] then
@@ -770,6 +944,7 @@ local function onCharacterAdded(state: State, character: Model)
 	if state.carry then
 		attachCarryModel(state) -- 산 로봇은 다시 태어나도 계속 들고 있다
 	end
+	applySpeed(state)
 	character:WaitForChild("Head", 5)
 	applyTitle(state)
 end
@@ -787,8 +962,18 @@ local function onPlayerAdded(player: Player)
 		lastFullNotice = 0,
 		lastAction = 0,
 		loading = true,
+		upgrades = {},
+		stunnedUntil = 0,
+		slowedUntil = 0,
+		glovesUntil = 0,
+		empReadyAt = 0,
+		holdStart = {},
 	}
+	for _, id in Config.UpgradeOrder do
+		state.upgrades[id] = 0
+	end
 	states[player] = state
+	syncUpgradeAttributes(state)
 	player:SetAttribute("Mode", "Junkyard") -- 들어오면 고물상에서 시작 (Respawn 스크립트가 이 값을 본다)
 	player:SetAttribute("Catalog", "[]")
 	player:SetAttribute("Multiplier", 1)
@@ -855,6 +1040,10 @@ Players.PlayerRemoving:Connect(function(player)
 	if state.base then
 		releaseBase(state.base)
 	end
+	for _, base in bases do
+		base.intruders[player] = nil
+		base.alarmAt[player] = nil
+	end
 	states[player] = nil
 end)
 
@@ -894,6 +1083,44 @@ task.spawn(function()
 			elseif shield.Transparency < 1 then
 				shield.Transparency = 1
 				base.model:SetAttribute("LockedUntil", 0)
+			end
+		end
+		-- 기절·느려짐이 끝나면 속도를 되돌린다
+		for _, state in states do
+			if (state.stunnedUntil > 0 and t >= state.stunnedUntil) or (state.slowedUntil > 0 and t >= state.slowedUntil) then
+				if t >= state.stunnedUntil then
+					state.stunnedUntil = 0
+				end
+				if t >= state.slowedUntil then
+					state.slowedUntil = 0
+				end
+				applySpeed(state)
+				syncUpgradeAttributes(state)
+			end
+		end
+		-- 경보기·레이저 울타리: 다른 사람이 기지에 "새로" 들어온 순간
+		for _, base in bases do
+			local owner = base.owner
+			local ownerState = owner and states[owner]
+			if owner and ownerState then
+				for player, state in states do
+					if player ~= owner then
+						local root = rootOf(player)
+						local inside = root ~= nil and player:GetAttribute("Mode") == "Junkyard" and insideBase(base, root.Position)
+						if inside and not base.intruders[player] then
+							if upgradeValue(ownerState, "Fence") > 0 then
+								state.slowedUntil = t + Config.FenceSlow
+								applySpeed(state)
+								notify(player, "Alert", "⚡ 레이저 울타리에 걸려 느려졌어요!")
+							end
+							if upgradeValue(ownerState, "Alarm") > 0 and t - (base.alarmAt[player] or 0) >= Config.AlarmCooldown then
+								base.alarmAt[player] = t
+								notifyRemote:FireClient(owner, "Alarm", ("🚨 %s님이 내 기지에 들어왔어요!"):format(player.DisplayName), player.UserId)
+							end
+						end
+						base.intruders[player] = if inside then true else nil
+					end
+				end
 			end
 		end
 		incomeTimer += dt

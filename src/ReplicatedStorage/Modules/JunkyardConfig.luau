@@ -68,6 +68,56 @@ Config.LockCooldown = 60 -- 잠금이 끝난 뒤 다시 잠글 수 있기까지(
 Config.OfflineRate = 0.5 -- 평소 수입의 50%
 Config.OfflineMaxHours = 3 -- 최대 3시간치
 
+-- 상점 (3-1) ------------------------------------------------------------------
+-- 영구 업그레이드: level 0 = 기본(values[1]). 다음 단계 비용 = costs[level + 1]. 저장된다.
+export type Upgrade = { name: string, desc: string, category: string, costs: { number }, values: { number } }
+Config.MaxPads = 14 -- 받침대 업그레이드 최대 (기본 PadsPerBase 10, 맵에는 받침대 14개가 있다)
+Config.UpgradeOrder = { "Pads", "Shoes", "ShieldTime", "Alarm", "Fence" }
+Config.Upgrades = {
+	Pads = { name = "받침대 추가", desc = "받침대가 2칸 늘어요", category = "Help", costs = { 5000, 50000 }, values = { 10, 12, 14 } },
+	Shoes = { name = "터보 신발", desc = "걷기 속도가 빨라져요", category = "Help", costs = { 3000, 30000 }, values = { 16, 19, 22 } },
+	ShieldTime = { name = "방어막 강화", desc = "방어막이 더 오래 가요(초)", category = "Defense", costs = { 1000, 10000, 100000 }, values = { 60, 90, 120, 150 } },
+	Alarm = { name = "경보기", desc = "누가 내 기지에 들어오면 알리고 그 사람을 빨갛게 표시해요", category = "Defense", costs = { 5000 }, values = { 0, 1 } },
+	Fence = { name = "레이저 울타리", desc = "내 기지에 들어온 사람이 3초 동안 느려져요", category = "Defense", costs = { 20000 }, values = { 0, 1 } },
+} :: { [string]: Upgrade }
+
+-- 소모 아이템: 가격 = max(minPrice, 내 초당 수입 × incomeSeconds). 부자일수록 비싸진다. 저장되지 않는다.
+export type Item = { name: string, desc: string, category: string, minPrice: number, incomeSeconds: number }
+Config.ItemOrder = { "EMP", "Gloves" }
+Config.Items = {
+	EMP = { name = "EMP", desc = "주변 10스터드의 다른 사람을 3초 동안 멈추고, 훔쳐 가던 로봇을 떨어뜨리게 해요", category = "Attack", minPrice = 500, incomeSeconds = 60 },
+	Gloves = { name = "도둑 장갑", desc = "5분 동안 훔치기가 1.5초 → 0.6초로 빨라져요", category = "Attack", minPrice = 1000, incomeSeconds = 90 },
+} :: { [string]: Item }
+Config.EmpRange = 10
+Config.EmpStun = 3 -- 초
+Config.EmpCooldown = 30
+Config.GlovesDuration = 300
+Config.GlovesHold = 0.6
+Config.FenceSlow = 3 -- 초
+Config.FenceSpeed = 8
+Config.AlarmCooldown = 10 -- 같은 침입자 알림 간격(초)
+
+-- 희귀 로봇 열차: TrainEvery초마다 TrainDuration초 동안 희귀 이상만, TrainInterval초 간격으로 나온다
+Config.TrainEvery = 600
+Config.TrainDuration = 30
+Config.TrainInterval = 1
+Config.TrainRarities = { Rare = true, Epic = true, Legendary = true, Mythic = true }
+
+function Config.upgradeValue(id: string, level: number): number
+	local upgrade = Config.Upgrades[id]
+	return upgrade.values[math.clamp(level + 1, 1, #upgrade.values)]
+end
+
+-- 다음 단계 비용 (최고 단계면 nil)
+function Config.upgradeCost(id: string, level: number): number?
+	return Config.Upgrades[id].costs[level + 1]
+end
+
+function Config.itemPrice(id: string, incomePerSecond: number): number
+	local item = Config.Items[id]
+	return math.max(item.minPrice, math.floor(incomePerSecond * item.incomeSeconds))
+end
+
 local robotById: { [string]: Robot } = {}
 for _, robot in Config.Robots do
 	robotById[robot.id] = robot

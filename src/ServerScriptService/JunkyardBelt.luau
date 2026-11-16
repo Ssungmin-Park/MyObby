@@ -51,18 +51,37 @@ local function snapshot(): { Item }
 	return list
 end
 
+-- 희귀 로봇 열차 (JunkyardEvents가 켠다): 이 시각까지 희귀 이상만, 더 자주 나온다
+local trainUntil = 0
+
+function Belt.startTrain(duration: number)
+	trainUntil = workspace:GetServerTimeNow() + duration
+end
+
+function Belt.trainActive(): boolean
+	return workspace:GetServerTimeNow() < trainUntil
+end
+
 local function rollRobot(): string
+	local train = Belt.trainActive()
+	local function allowed(id: string): boolean
+		return not train or Config.TrainRarities[id] == true
+	end
 	local total = 0
 	for _, id in Config.RarityOrder do
-		total += Config.Rarities[id].weight
+		if allowed(id) then
+			total += Config.Rarities[id].weight
+		end
 	end
 	local roll = math.random() * total
-	local rarity = Config.RarityOrder[1]
+	local rarity = if train then "Rare" else Config.RarityOrder[1]
 	for _, id in Config.RarityOrder do
-		roll -= Config.Rarities[id].weight
-		if roll <= 0 then
-			rarity = id
-			break
+		if allowed(id) then
+			roll -= Config.Rarities[id].weight
+			if roll <= 0 then
+				rarity = id
+				break
+			end
 		end
 	end
 	local candidates = {}
@@ -110,7 +129,7 @@ function Belt.start(beltRemote: RemoteEvent, announce: (robotId: string) -> ())
 			if robot and Config.AnnounceRarities[robot.rarity] then
 				announce(item.robotId)
 			end
-			task.wait(Config.BeltInterval)
+			task.wait(if Belt.trainActive() then Config.TrainInterval else Config.BeltInterval)
 		end
 	end)
 end

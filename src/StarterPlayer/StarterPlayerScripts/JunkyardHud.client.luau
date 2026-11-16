@@ -66,7 +66,7 @@ end
 
 local panel = Instance.new("Frame")
 panel.Position = UDim2.fromOffset(12, 10)
-panel.Size = UDim2.fromOffset(250, 132)
+panel.Size = UDim2.fromOffset(250, 150)
 panel.BackgroundColor3 = dark
 panel.BackgroundTransparency = 0.12
 panel.Parent = gui
@@ -75,8 +75,10 @@ corner(panel, 10)
 local moneyLabel = label(panel, UDim2.fromOffset(12, 6), UDim2.new(1, -24, 0, 30), 24, Color3.fromRGB(255, 220, 100))
 local incomeLabel = label(panel, UDim2.fromOffset(12, 36), UDim2.new(1, -24, 0, 18), 13, white)
 local carryLabel = label(panel, UDim2.fromOffset(12, 56), UDim2.new(1, -24, 0, 30), 12, muted)
-local lockButton = button(panel, "방어막", UDim2.fromOffset(12, 92), UDim2.fromOffset(110, 32), Color3.fromRGB(60, 120, 170))
-local catalogButton = button(panel, "도감", UDim2.fromOffset(128, 92), UDim2.fromOffset(110, 32), Color3.fromRGB(70, 82, 96))
+local lockButton = button(panel, "방어막", UDim2.fromOffset(12, 92), UDim2.fromOffset(90, 32), Color3.fromRGB(60, 120, 170))
+local shopButton = button(panel, "🛒 상점", UDim2.fromOffset(106, 92), UDim2.fromOffset(68, 32), Color3.fromRGB(170, 120, 40))
+local catalogButton = button(panel, "도감", UDim2.fromOffset(178, 92), UDim2.fromOffset(60, 32), Color3.fromRGB(70, 82, 96))
+local trainLabel = label(panel, UDim2.fromOffset(12, 128), UDim2.new(1, -24, 0, 18), 12, Color3.fromRGB(255, 210, 120))
 -- 저장 상태 (오른쪽 위 작은 글씨): 불러오는 중 / 저장 안 됨
 local saveLabel = label(panel, UDim2.new(1, -112, 0, 6), UDim2.fromOffset(100, 18), 12, Color3.fromRGB(255, 150, 150))
 saveLabel.TextXAlignment = Enum.TextXAlignment.Right
@@ -112,6 +114,158 @@ end)
 lockButton.Activated:Connect(function()
 	actionRemote:FireServer("Lock")
 end)
+
+-- 상점 창 (탭: 방해 / 방어 / 도움) --------------------------------------------------
+local shop = Instance.new("Frame")
+shop.AnchorPoint = Vector2.new(0.5, 0.5)
+shop.Position = UDim2.fromScale(0.5, 0.5)
+shop.Size = UDim2.new(0.92, 0, 0, 400)
+shop.BackgroundColor3 = dark
+shop.BackgroundTransparency = 0.05
+shop.Visible = false
+shop.Parent = gui
+corner(shop, 12)
+local shopMax = Instance.new("UISizeConstraint")
+shopMax.MaxSize = Vector2.new(440, 400)
+shopMax.Parent = shop
+label(shop, UDim2.fromOffset(14, 8), UDim2.new(1, -70, 0, 26), 18, white).Text = "🛒 상점"
+local shopClose = button(shop, "X", UDim2.new(1, -46, 0, 8), UDim2.fromOffset(36, 30), Color3.fromRGB(120, 60, 60))
+
+type ShopEntry = { kind: string, id: string, category: string, row: Frame, info: TextLabel, buy: TextButton }
+local shopEntries: { ShopEntry } = {}
+local shopTab = "Attack"
+local tabs = { { id = "Attack", text = "⚡ 방해" }, { id = "Defense", text = "🛡 방어" }, { id = "Help", text = "💪 도움" } }
+local tabButtons: { [string]: TextButton } = {}
+for i, tab in tabs do
+	local tabButton = button(shop, tab.text, UDim2.new((i - 1) / 3, 10, 0, 42), UDim2.new(1 / 3, -14, 0, 32), Color3.fromRGB(52, 64, 76))
+	tabButtons[tab.id] = tabButton
+	tabButton.Activated:Connect(function()
+		shopTab = tab.id
+	end)
+end
+local list = Instance.new("ScrollingFrame")
+list.Position = UDim2.fromOffset(10, 82)
+list.Size = UDim2.new(1, -20, 1, -92)
+list.BackgroundTransparency = 1
+list.BorderSizePixel = 0
+list.ScrollBarThickness = 6
+list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+list.CanvasSize = UDim2.new()
+list.Parent = shop
+local listLayout = Instance.new("UIListLayout")
+listLayout.Padding = UDim.new(0, 6)
+listLayout.Parent = list
+
+local function addEntry(kind: string, id: string, category: string, name: string, desc: string)
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, -8, 0, 70)
+	row.BackgroundColor3 = Color3.fromRGB(36, 44, 54)
+	row.Parent = list
+	corner(row, 8)
+	label(row, UDim2.fromOffset(10, 4), UDim2.new(1, -130, 0, 20), 15, white).Text = name
+	local descLabel = label(row, UDim2.fromOffset(10, 24), UDim2.new(1, -130, 0, 28), 11, muted)
+	descLabel.Text = desc
+	local info = label(row, UDim2.fromOffset(10, 50), UDim2.new(1, -130, 0, 16), 11, Color3.fromRGB(150, 230, 255))
+	local buy = button(row, "", UDim2.new(1, -114, 0.5, -20), UDim2.fromOffset(106, 40), Color3.fromRGB(60, 140, 80))
+	buy.Activated:Connect(function()
+		actionRemote:FireServer(if kind == "Item" then "Item" else "Upgrade", id)
+	end)
+	table.insert(shopEntries, { kind = kind, id = id, category = category, row = row, info = info, buy = buy })
+end
+for _, id in Config.ItemOrder do
+	local item = Config.Items[id]
+	addEntry("Item", id, item.category, item.name, item.desc)
+end
+for _, id in Config.UpgradeOrder do
+	local upgrade = Config.Upgrades[id]
+	addEntry("Upgrade", id, upgrade.category, upgrade.name, upgrade.desc)
+end
+shopButton.Activated:Connect(function()
+	shop.Visible = not shop.Visible
+	catalog.Visible = false
+end)
+shopClose.Activated:Connect(function()
+	shop.Visible = false
+end)
+
+local function decodeUpgrades(): { [string]: number }
+	local ok, value = pcall(function()
+		return HttpService:JSONDecode((player:GetAttribute("Upgrades") or "{}") :: string)
+	end)
+	return if ok and typeof(value) == "table" then value else {}
+end
+
+local function renderShop()
+	if not shop.Visible then
+		return
+	end
+	local t = workspace:GetServerTimeNow()
+	local money = (player:GetAttribute("Money") or 0) :: number
+	local income = (player:GetAttribute("Income") or 0) :: number
+	local upgrades = decodeUpgrades()
+	for id, tabButton in tabButtons do
+		tabButton.BackgroundColor3 = if id == shopTab then Color3.fromRGB(90, 110, 130) else Color3.fromRGB(52, 64, 76)
+	end
+	for _, entry in shopEntries do
+		entry.row.Visible = entry.category == shopTab
+		local price: number? = nil
+		if entry.kind == "Item" then
+			price = Config.itemPrice(entry.id, income)
+			if entry.id == "EMP" then
+				local ready = ((player:GetAttribute("EmpReadyAt") or 0) :: number) - t
+				entry.info.Text = if ready > 0 then ("충전 중 %d초"):format(math.ceil(ready)) else "사면 바로 터져요 · 가격은 내 수입에 따라 올라요"
+				if ready > 0 then
+					price = nil
+				end
+			else
+				local left = ((player:GetAttribute("GlovesUntil") or 0) :: number) - t
+				entry.info.Text = if left > 0 then ("착용 중 %d:%02d"):format(left // 60, math.floor(left) % 60) else "가격은 내 수입에 따라 올라요"
+				if left > 0 then
+					price = nil
+				end
+			end
+		else
+			local level = upgrades[entry.id] or 0
+			local current = Config.upgradeValue(entry.id, level)
+			price = Config.upgradeCost(entry.id, level)
+			local isToggle = #Config.Upgrades[entry.id].values == 2 and Config.Upgrades[entry.id].values[1] == 0
+			if isToggle then
+				entry.info.Text = if current > 0 then "보유 중" else "아직 없음"
+			else
+				entry.info.Text = if price
+					then ("현재 %s → 다음 %s"):format(tostring(current), tostring(Config.upgradeValue(entry.id, level + 1)))
+					else ("최고 단계 (%s)"):format(tostring(current))
+			end
+		end
+		if price then
+			entry.buy.Text = "💰 " .. Config.formatMoney(price)
+			entry.buy.BackgroundColor3 = if money >= price then Color3.fromRGB(60, 140, 80) else Color3.fromRGB(90, 70, 70)
+			entry.buy.Active = true
+		else
+			entry.buy.Text = if entry.kind == "Item" then "사용 중" else "완료"
+			entry.buy.BackgroundColor3 = Color3.fromRGB(70, 82, 96)
+			entry.buy.Active = false
+		end
+	end
+end
+
+-- 경보기: 침입자를 잠깐 빨갛게 표시한다
+local function highlightIntruder(userId: number)
+	local intruder = Players:GetPlayerByUserId(userId)
+	local character = intruder and intruder.Character
+	if not character then
+		return
+	end
+	local highlight = Instance.new("Highlight")
+	highlight.FillColor = Color3.fromRGB(255, 60, 60)
+	highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+	highlight.FillTransparency = 0.4
+	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop -- 벽 너머로도 보이게
+	highlight.Parent = character
+	task.delay(6, function()
+		highlight:Destroy()
+	end)
+end
 
 -- 알림 (위쪽 가운데에 잠깐 떴다 사라짐)
 local toastArea = Instance.new("Frame")
@@ -170,9 +324,12 @@ local function toast(kind: string, text: string)
 		end
 	end)
 end
-notifyRemote.OnClientEvent:Connect(function(kind: unknown, text: unknown)
+notifyRemote.OnClientEvent:Connect(function(kind: unknown, text: unknown, userId: unknown)
 	if typeof(kind) == "string" and typeof(text) == "string" then
-		toast(kind, text)
+		toast(if kind == "Alarm" then "Alert" else kind, text)
+		if kind == "Alarm" and typeof(userId) == "number" then
+			highlightIntruder(userId)
+		end
 	end
 end)
 
@@ -305,6 +462,9 @@ local function syncPadPrompts()
 					else
 						prompt.ActionText = "훔치기"
 					end
+					-- 도둑 장갑을 끼면 남의 받침대를 짧게 눌러도 된다 (서버도 같은 시간으로 확인)
+					local gloves = workspace:GetServerTimeNow() < ((player:GetAttribute("GlovesUntil") or 0) :: number)
+					prompt.HoldDuration = if not mine and gloves then Config.GlovesHold else Config.StealHold
 				end
 			end
 		end
@@ -324,7 +484,11 @@ local function render()
 		else ""
 
 	local carrying = player:GetAttribute("Carrying")
-	if typeof(carrying) == "string" and carrying ~= "" then
+	local stunned = ((player:GetAttribute("StunnedUntil") or 0) :: number) - workspace:GetServerTimeNow()
+	if stunned > 0 then
+		carryLabel.Text = ("⚡ EMP에 맞아 멈춤! %d초"):format(math.ceil(stunned))
+		carryLabel.TextColor3 = Color3.fromRGB(150, 220, 255)
+	elseif typeof(carrying) == "string" and carrying ~= "" then
 		local robot = Config.getRobot(carrying)
 		local stolen = player:GetAttribute("CarryStolen") == true
 		carryLabel.Text = ("%s %s 운반 중 → 내 기지의 빈 받침대로"):format(if stolen then "🦹 훔친" else "📦", if robot then robot.name else carrying)
@@ -335,6 +499,16 @@ local function render()
 	end
 
 	local t = workspace:GetServerTimeNow()
+	local trainUntil = (workspace:GetAttribute("TrainUntil") or 0) :: number
+	local nextTrain = (workspace:GetAttribute("NextTrainAt") or 0) :: number
+	if t < trainUntil then
+		trainLabel.Text = ("🚂 희귀 로봇 열차 운행 중! %d초"):format(math.ceil(trainUntil - t))
+	elseif nextTrain > t then
+		local left = math.ceil(nextTrain - t)
+		trainLabel.Text = ("🚂 다음 희귀 로봇 열차 %d:%02d"):format(left // 60, left % 60)
+	else
+		trainLabel.Text = ""
+	end
 	local lockedUntil = (player:GetAttribute("LockedUntil") or 0) :: number
 	local cooldownUntil = (player:GetAttribute("LockCooldownUntil") or 0) :: number
 	if t < lockedUntil then
@@ -433,6 +607,7 @@ RunService.Heartbeat:Connect(function(dt)
 	acc = 0
 	render()
 	syncShieldTimers()
+	renderShop()
 end)
 task.spawn(function()
 	while true do

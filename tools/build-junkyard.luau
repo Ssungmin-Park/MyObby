@@ -129,6 +129,15 @@ local function buildJunkyard(): Model
 				robotPrompt.Enabled = false
 			end
 		end
+		-- 받침대 11~14: "받침대 추가" 업그레이드로 열리는 자리 (입구 쪽 셋째 줄)
+		for _, dx in { -12, -4, 4, 12 } do
+			padIndex += 1
+			local pad = part(pads, "Pad" .. padIndex, Vector3.new(bx + dx, 41.1, bz + front * 5), Vector3.new(5, 0.4, 5), Color3.fromRGB(70, 78, 88))
+			pad:SetAttribute("PadIndex", padIndex)
+			local robotPrompt = prompt(pad, "로봇", "훔치기", 1.5, 8)
+			robotPrompt.Name = "RobotPrompt"
+			robotPrompt.Enabled = false
+		end
 
 		local vault = part(base, "Vault", Vector3.new(bx - 16, 41.5, bz + front * 10), Vector3.new(4, 1.2, 4), Color3.fromRGB(240, 200, 80))
 		billboard(vault, "Amount", "금고 0", 3, 60)
