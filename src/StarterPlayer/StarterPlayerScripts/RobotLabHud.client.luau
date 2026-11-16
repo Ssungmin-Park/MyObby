@@ -303,6 +303,16 @@ local function render()
 		objective.Text = "수거함에서 도우미 로봇이 모은 부품을 받으세요."
 	else
 		objective.Text = "부품을 모아 업그레이드하거나 새 구역을 여세요."
+		-- 다음 구역을 열 부품이 모였으면 알려 준다
+		for _, zoneId in Config.ZoneOrder do
+			local zone = Config.Zones[zoneId]
+			if not (state.zones and state.zones[zoneId]) then
+				if state.parts >= zone.unlockCost then
+					objective.Text = ("부품이 모였어요! %s 입구에서 구역을 열어 보세요."):format(zone.name)
+				end
+				break
+			end
+		end
 	end
 
 	-- 탐지기: 신호까지 거리
@@ -337,6 +347,152 @@ local function render()
 	end
 end
 
+-- 연구실 전시대: 수리한 로봇이 서 있는 모습으로 성장이 눈에 보이게 한다 (이 플레이어 화면에만) ------
+-- 아직 없는 로봇은 반투명 "???"로 보여서 모을 목표가 된다. 자리는 연구실 뒤쪽 빈 공간(2줄 × 6칸).
+local DISPLAY_X = { 126, 132, 138, 144, 150, 156 }
+local DISPLAY_Z = { 18, 24 }
+type DisplaySlot = { parts: { BasePart }, label: TextLabel }
+local displaySlots: { DisplaySlot } = {}
+do
+	local displayFolder = Instance.new("Folder")
+	displayFolder.Name = "Display"
+	displayFolder.Parent = localFolder
+	local function localPart(name: string, position: Vector3, size: Vector3, color: Color3): Part
+		local part = Instance.new("Part")
+		part.Name = name
+		part.Size = size
+		part.Position = position
+		part.Color = color
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.Parent = displayFolder
+		return part
+	end
+	for i in Config.Robots do
+		local x = DISPLAY_X[(i - 1) % #DISPLAY_X + 1]
+		local z = DISPLAY_Z[(i - 1) // #DISPLAY_X + 1]
+		localPart("Pedestal", Vector3.new(x, 40.7, z), Vector3.new(3, 0.4, 3), Color3.fromRGB(52, 60, 70))
+		local body = localPart("Body", Vector3.new(x, 41.9, z), Vector3.new(2.2, 2, 1.7), muted)
+		local head = localPart("Head", Vector3.new(x, 43.65, z), Vector3.new(2.4, 1.5, 1.9), muted)
+		local eyes = {}
+		for _, dx in { -0.5, 0.5 } do -- 연구실 입구(−Z) 쪽을 바라본다
+			table.insert(eyes, localPart("Eye", Vector3.new(x + dx, 43.75, z - 0.98), Vector3.new(0.3, 0.3, 0.08), dark))
+		end
+		local billboard = Instance.new("BillboardGui")
+		billboard.Size = UDim2.fromOffset(120, 22)
+		billboard.StudsOffsetWorldSpace = Vector3.new(0, 1.8, 0)
+		billboard.MaxDistance = 35
+		billboard.Parent = head
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(1, 1)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.GothamBold
+		label.TextSize = 13
+		label.TextStrokeTransparency = 0.4
+		label.Parent = billboard
+		displaySlots[i] = { parts = { body, head, eyes[1], eyes[2] }, label = label }
+	end
+end
+
+local function syncDisplay()
+	for i, robot in Config.Robots do
+		local slot = displaySlots[i]
+		local rarity = Config.Rarities[robot.rarity]
+		local level = state.robots and state.robots[robot.id]
+		for index, part in slot.parts do
+			part.Transparency = if level then 0 else 0.8
+			if index <= 2 then -- 몸통과 머리만 등급 색 (눈은 그대로)
+				part.Color = if level then rarity.color else muted
+			end
+		end
+		slot.label.Text = if level then ("%s Lv.%d"):format(robot.name, level) else ("??? · %s"):format(rarity.name)
+		slot.label.TextColor3 = if level then rarity.color else muted
+	end
+end
+
+-- 안내선: 지금 가야 할 곳까지 빛나는 선을 그린다 (이 플레이어 화면에만) ---------------------------
+-- 운반 중이면 수리대, 가방이 차면 수거함, 탐지기 범위 안의 신호면 로봇. 자유 탐색 중에는 그리지 않는다.
+local guideTarget = Instance.new("Part")
+guideTarget.Name = "GuideTarget"
+guideTarget.Size = Vector3.new(0.2, 0.2, 0.2)
+guideTarget.Transparency = 1
+guideTarget.Anchored = true
+guideTarget.CanCollide = false
+guideTarget.CanQuery = false
+guideTarget.CanTouch = false
+guideTarget.Parent = localFolder
+local guideEnd = Instance.new("Attachment")
+guideEnd.Parent = guideTarget
+local guideBeam = Instance.new("Beam")
+guideBeam.Attachment1 = guideEnd
+guideBeam.Width0 = 0.35
+guideBeam.Width1 = 0.35
+guideBeam.FaceCamera = true
+guideBeam.LightEmission = 1
+guideBeam.Color = ColorSequence.new(accent)
+guideBeam.Transparency = NumberSequence.new(0.35)
+guideBeam.Enabled = false
+guideBeam.Parent = guideTarget
+
+local function stationPosition(name: string): Vector3?
+	local station = interactions:FindFirstChild(name)
+	return if station and station:IsA("BasePart") then station.Position else nil
+end
+
+local function nearestPile(from: Vector3): Vector3?
+	local best: Vector3? = nil
+	local bestDistance = math.huge
+	for _, part in pileParts do
+		local distance = (part.Position - from).Magnitude
+		if distance < bestDistance then
+			best = part.Position
+			bestDistance = distance
+		end
+	end
+	return best
+end
+
+local function guideDestination(root: BasePart): Vector3?
+	local carryCost = state.carryCost or 0
+	if state.carrying and state.parts >= carryCost then
+		return stationPosition("Repair")
+	end
+	if state.bag >= state.bagMax then
+		return stationPosition("Deposit")
+	end
+	if state.carrying then
+		-- 수리비가 모자라면: 가방 부품으로 충분하면 수거함, 아니면 가까운 부품 더미
+		return if state.parts + state.bag >= carryCost then stationPosition("Deposit") else nearestPile(root.Position)
+	end
+	local signal = state.signal
+	if signal and (not state.tutorialDone or (root.Position - signal.position).Magnitude <= state.detector) then
+		return signal.position
+	end
+	return nil
+end
+
+local function updateGuide()
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local destination = if state.active and root and root:IsA("BasePart") then guideDestination(root) else nil
+	if not destination or not root or not root:IsA("BasePart") or (root.Position - destination).Magnitude < 5 then
+		guideBeam.Enabled = false
+		return
+	end
+	local start = root:FindFirstChild("RobotLabGuide")
+	if not start then
+		start = Instance.new("Attachment")
+		start.Name = "RobotLabGuide"
+		start.Position = Vector3.new(0, -1.5, 0) -- 발 근처에서 시작
+		start.Parent = root
+	end
+	guideBeam.Attachment0 = start :: Attachment
+	guideTarget.Position = destination + Vector3.new(0, 1, 0)
+	guideBeam.Enabled = true
+end
+
 stateRemote.OnClientEvent:Connect(function(newState: any)
 	if typeof(newState) ~= "table" then
 		return
@@ -346,6 +502,7 @@ stateRemote.OnClientEvent:Connect(function(newState: any)
 	syncPiles()
 	syncSignal()
 	syncPromptTexts()
+	syncDisplay()
 	render()
 end)
 
@@ -375,5 +532,6 @@ RunService.Heartbeat:Connect(function(dt)
 			end
 		end
 	end
+	updateGuide()
 	render()
 end)

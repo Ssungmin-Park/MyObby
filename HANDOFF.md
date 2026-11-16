@@ -11,9 +11,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — 로봇 작업장 1단계(핵심 루프) + 2단계(저장·오프라인 수입). 그 전: Codex (연구소 첫 버전) |
+| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — 로봇 작업장 1단계(핵심 루프), 2단계(저장·오프라인 수입), 3단계 일부(전시대·안내선·밸런스). 그 전: Codex (연구소 첫 버전) |
 | 작업 시점 | 2026-11-17 |
-| 다음 작업 AI | Codex 또는 Claude Code. ① Studio API 접근이 풀리면 실제 저장 재접속 테스트(오비·작업장) ② G의 "3단계 — 실제 플레이 확인과 다듬기" |
+| 다음 작업 AI | Codex 또는 Claude Code. ① 사용자 직접 플레이(PC·모바일) 피드백 반영 ② Studio API 접근이 풀리면 실제 저장 재접속 테스트(오비·작업장) |
 | 게임 이름 | 마이오비 (Studio place 이름) / 실험실 탈출 오비와 꼬마 로봇 연구소 |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -22,7 +22,7 @@
 | Studio 모드 | 작업 종료 시 **Edit 모드** (Play 테스트 종료함) |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-17 Claude Code: **저장 추가** — `ServerScriptService/RobotLabSave`(신규 ModuleScript), `RobotLab`(불러오기·저장 연결), `RobotLabHud`("저장 안 됨" 표시), `RobotLabConfig`(보관함 상한 4시간, 수입 함수 공용화). 그 전: 로봇 작업장 확장. `ReplicatedStorage/Modules/RobotLabConfig`(신규), `Remotes/RobotLabState`·`RobotLabAction`(신규), `ServerScriptService/RobotLab`·`RobotLabHud` 교체, `Workspace/RobotLab`에 폐품 처리장·`SpawnPoints`·장치 7개 추가. v1 스크립트와 고정 로봇·상점 장치는 `ServerStorage/RobotLabV1Backup`으로 옮김(삭제 없음). 모두 ChangeHistoryService 기록(Ctrl+Z 가능) |
+| 마지막 게임 수정 | 2026-11-17 Claude Code: **3단계 일부** — `RobotLabHud`에 연구실 전시대·안내선·구역 열기 안내, `RobotLabConfig` 온실 60→40·레벨업 수리비 배수(`LevelCostStep`), `RobotLab` `repairCost` 레벨 반영. 그 전: **저장 추가** — `ServerScriptService/RobotLabSave`(신규 ModuleScript), `RobotLab`(불러오기·저장 연결), `RobotLabHud`("저장 안 됨" 표시), `RobotLabConfig`(보관함 상한 4시간, 수입 함수 공용화). 그 전: 로봇 작업장 확장. `ReplicatedStorage/Modules/RobotLabConfig`(신규), `Remotes/RobotLabState`·`RobotLabAction`(신규), `ServerScriptService/RobotLab`·`RobotLabHud` 교체, `Workspace/RobotLab`에 폐품 처리장·`SpawnPoints`·장치 7개 추가. v1 스크립트와 고정 로봇·상점 장치는 `ServerStorage/RobotLabV1Backup`으로 옮김(삭제 없음). 모두 ChangeHistoryService 기록(Ctrl+Z 가능) |
 | Studio 저장 상태 | `persistedToCloud = true`인 클라우드 place다. **로봇 작업장 확장·저장 추가의 클라우드 저장(Ctrl+S) 여부는 미확인** — 사용자에게 저장을 요청했다 |
 | Studio API 접근 | 마지막 Play 테스트에서 `Progress_v1` 읽기가 Error code 7 (`Studio access to APIs is not allowed`)로 거부됐다. 전환 점검은 Edit 구조 확인으로 진행했다. Security 탭에서 API 접근 설정의 실제 저장 여부를 확인해야 한다 |
 | 백업 상태 | 스크립트 11개는 `src/`에서 관리하고 Studio와 체크섬 일치. 연구소 맵은 `tools/build-robot-lab.luau`(v1) → `tools/expand-robot-lab.luau`(확장) 순서로 다시 만들 수 있다. 연구소 v1은 `ServerStorage/RobotLabV1Backup`, 오비 옛 버전은 `ServerStorage`에 있다 |
@@ -147,7 +147,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 |---|---|---|
 | 연구실 (Lab) | −10~28 | 도착점 `Arrival`, 수리대 `Repair`, 수거함 `Deposit`, 업그레이드 4종(`Upgrade_Bag/Detector/RepairSlots/RepairSpeed`, 안내 범위 4.5), 오비 출구 `Return` |
 | 부품 창고 (Warehouse) | 28~60 | 처음부터 열림. 출구 쪽에 `Unlock_Greenhouse` |
-| 실험 온실 (Greenhouse) | 60~92 | 부품 60개로 열기. 안쪽에 `Unlock_Scrapyard` |
+| 실험 온실 (Greenhouse) | 60~92 | 부품 40개로 열기. 안쪽에 `Unlock_Scrapyard` |
 | 폐품 처리장 (Scrapyard) | 92~126 | 부품 250개로 열기 (이번에 추가) |
 - `SpawnPoints/<구역>/PointN`: 부품 더미·로봇 신호가 나타나는 보이지 않는 표식(Lab 1, 나머지 구역 각 10).
 - 입장: 오비 시작 발판의 `Enter`, EXIT의 `EnterAtExit`. 구역 잠금은 "부품·로봇이 안 나옴" 방식(벽으로 막지 않음).
@@ -165,6 +165,11 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 - `RobotLabState`로 받은 상태로 HUD(부품·가방·보관함, 도감 수·분당 수입, 수리 현황 카운트다운, 지금 할 일, 탐지기 거리, 메시지)와 도감 창(버튼)을 그린다.
 - 부품 더미·고장 난 로봇은 **이 플레이어 화면에만** 만든다(`workspace.RobotLabLocal`). 더미에서 수평 4.5스터드 안에 들어가면 자동 줍기 요청(0.3초마다 재시도). 로봇은 프롬프트로 줍는다. 탐지기 범위 안이면 로봇 위에 신호 표시.
 - 업그레이드·구역·수리대 프롬프트 문구에 이 플레이어의 비용을 표시(클라이언트에서만 바뀜).
+
+- **연구실 전시대 (3단계):** 연구실 뒤쪽(X 126~156, Z 18·24)에 12칸. 수리한 로봇은 등급 색과 "이름 Lv.N", 아직 없는 로봇은 반투명 "??? · 등급". 이 플레이어 화면에만 만든다.
+- **안내선 (3단계):** 발밑에서 목표까지 빛나는 Beam. 운반 중+부품 충분 → 수리대 / 가방 가득 → 수거함 / 운반 중+부품 부족 → 가방으로 충분하면 수거함, 아니면 가장 가까운 부품 더미 / 튜토리얼 로봇 / 탐지기 범위 안의 신호. 자유 탐색 중과 목표 5스터드 안에서는 끈다.
+- 남은 구역을 열 부품이 모이면 목표 문구로 알려 준다.
+- **레벨업 수리비:** 이미 가진 로봇을 또 수리하면 `기본 수리비 × (1 + 현재 레벨 × LevelCostStep)` (일반 8 → 16 → 24 → 32 → 40). 최고 레벨이면 기본 수리비(환급액과 같음).
 
 **Remote**: `ReplicatedStorage/Remotes/RobotLabState`(서버→클라이언트), `RobotLabAction`(클라이언트→서버, 서버에서 검증).
 **저장 `ServerScriptService/RobotLabSave`** (ModuleScript, 2026-11-17)
@@ -318,6 +323,11 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 **아직 안 한 것:** 실제 DataStore로 저장 → 재접속 복원, 두 서버 사이 이동, 실제 오프라인 시간 경과.
 
+**⑬ 2026-11-17 로봇 작업장 3단계 일부 (Claude Code)**
+- 밸런스 시뮬레이션(파이썬, 1분 주기 근사): 원래 값은 일반 로봇 중복 수리가 싸서 30분 만에 분당 수입 ~30, 온실은 40~48분에야 열림 → 레벨업 수리비 배수 추가, 온실 60→40. 조정 후 30분에 도감 5~7종·분당 11~17, 온실 18~30분, 2시간에 도감 9~10종. 근사 모델이라 실제 플레이로 다시 확인해야 한다.
+- Play 테스트: 입장 시 전시대 12칸(0/12)과 튜토리얼 로봇으로 안내선 / 삐삐 운반 중 → 수리대로 안내선 / 수리 완료 → 전시대 "삐삐 Lv.1" / 다음 로봇 운반 중 부품 0 → 가장 가까운 부품 더미로 안내선, 수리대 안내 "볼트 맡기기 (부품 8개)" / 오비 복귀 시 전시대·안내선 숨김 / 클라이언트 에러 0. 레벨업 수리비는 무작위 신호라 실행으로 확인하지 못했고 코드 검토만 했다.
+- Studio ↔ `src/` 스크립트 11개 체크섬 일치.
+
 검증 한계: 이동은 순간이동과 `Humanoid:MoveTo`로 했다. 에픽·전설 로봇(20분·90분 수리), 온실·처리장 열기 성공, 레벨업·최고 레벨 환급, 여러 플레이어 동시 접속은 아직 직접 확인하지 않았다.
 
 ### 아직 테스트하지 않은 항목
@@ -343,7 +353,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 - 수리: `finishAt`이 os.time 기준이라 저장만 하면 오프라인 중에도 완료된다.
 - 테스트: Studio API 접근이 거부 중이므로 `ProgressSave`처럼 가짜 저장소 주입 테스트를 먼저 한다.
 
-**B. 3단계 — 실제 플레이 확인과 다듬기**
+**B. 3단계 — 실제 플레이 확인과 다듬기 (일부 완료: 전시대·안내선·밸런스 1차, ⑬)**
 - 사용자가 PC·모바일에서 직접 걸어서 튜토리얼 → 첫 일반 로봇 → 온실 열기까지 해 보고 막히는 곳 확인.
 - 수리한 로봇을 연구실에 세워 두기(눈에 보이는 성장), 효과음·알림, 밸런스(첫 30분 동안 무엇을 할 수 있는지) 조정.
 - 연구소와 오비의 관계 정리: 오비 완주 보상(예: 부품)을 줄지 사용자와 결정.

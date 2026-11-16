@@ -156,7 +156,13 @@ local function repairCost(session: Session, robotId: string): number
 		return 0 -- 첫 로봇은 무료
 	end
 	local robot = Config.getRobot(robotId)
-	return if robot then Config.Rarities[robot.rarity].repairCost else 0
+	if not robot then
+		return 0
+	end
+	-- 이미 가진 로봇(레벨업)은 레벨이 높을수록 비싸다. 최고 레벨이면 기본 수리비(환급과 같은 값)
+	local level = session.data.robots[robotId] or 0
+	local multiplier = if level >= Config.MaxRobotLevel then 1 else 1 + level * Config.LevelCostStep
+	return Config.Rarities[robot.rarity].repairCost * multiplier
 end
 
 local function repairDuration(session: Session, robotId: string): number

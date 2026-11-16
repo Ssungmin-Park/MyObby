@@ -52,6 +52,9 @@ Config.TutorialRobot = "Pippi" -- 처음 입장하면 연구실에 나타나는 
 Config.TutorialRepairTime = 15
 Config.MaxRobotLevel = 5 -- 같은 로봇을 또 수리하면 레벨이 오른다
 Config.LevelIncomeBonus = 0.5 -- 레벨당 수입 +50%
+-- 이미 가진 로봇을 또 수리(레벨업)할 때 수리비 배수 = 1 + 현재 레벨 × 이 값.
+-- 예: 일반(8) 레벨 1→2는 16, 4→5는 40. 싼 로봇 중복 수리로 수입이 너무 빨리 오르는 것을 막는다.
+Config.LevelCostStep = 1
 
 Config.ZoneOrder = { "Warehouse", "Greenhouse", "Scrapyard" }
 Config.Zones = {
@@ -60,7 +63,7 @@ Config.Zones = {
 		rarityWeights = { Common = 80, Rare = 20 },
 	},
 	Greenhouse = {
-		id = "Greenhouse", name = "실험 온실", unlockCost = 60, pileCount = 6, pileValue = 2,
+		id = "Greenhouse", name = "실험 온실", unlockCost = 40, pileCount = 6, pileValue = 2,
 		rarityWeights = { Common = 55, Rare = 35, Epic = 10 },
 	},
 	Scrapyard = {
