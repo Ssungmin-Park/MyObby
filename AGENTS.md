@@ -76,7 +76,10 @@ Workspace/
   Baseplate                     기본 바닥 (Y=-8)
 ServerScriptService/            서버 Script 5개 + ModuleScript ProgressSave (위 src/와 1:1)
 ReplicatedStorage/Remotes/Escaped   RemoteEvent (서버 → 클라이언트 전용)
-ReplicatedStorage/Modules/      공용 ModuleScript 자리 (현재 비어 있음, 폴더 없음)
+ReplicatedStorage/Modules/RobotLabConfig   로봇 작업장 밸런스 데이터 (서버·클라이언트 공용)
+ReplicatedStorage/Remotes/RobotLabState, RobotLabAction   로봇 작업장 상태(서버→클라)·요청(클라→서버, 서버 검증)
+Workspace/RobotLab/             로봇 작업장 맵 (Interactions = 장치, SpawnPoints = 부품·로봇 출현 지점)
+ServerStorage/RobotLabV1Backup  연구소 v1 스크립트·장치 백업 — 승인 없이 삭제 금지
 StarterPlayer/StarterPlayerScripts/EscapeMessage   LocalScript
 StarterGui, StarterPack, ReplicatedFirst, SoundService, Teams   비어 있음
 Lighting/                       템플릿 기본 효과(Sky, Atmosphere, Bloom, SunRays, DepthOfField)만 있음
@@ -108,7 +111,7 @@ ServerStorage/
 
 **구현 후 검증 대기:** 진행 저장(DataStore)은 구현했다. 실제 저장소를 이용한 재접속 검증은 Studio API 접근 문제 해결 후 진행한다.
 
-**꼬마 로봇 연구소:** 시작 발판과 EXIT에서 입장하는 비점프형 모드. Studio 경로는 `Workspace/RobotLab`, `ServerScriptService/RobotLab`, `StarterPlayer/StarterPlayerScripts/RobotLabHud`다. 도감, 부품 보상, 부품 상점 2종을 서버에서 판정한다. 연구소 재접속 저장과 Robux 상품은 미구현이다.
+**로봇 작업장 (꼬마 로봇 연구소 확장, 장시간 플레이용 주력 콘텐츠):** 시작 발판과 EXIT에서 입장하는 비점프형 모드. 부품 줍기 → 로봇 수리(실제 시간) → 도우미 수입 → 업그레이드·구역 열기 루프. Studio 경로는 `Workspace/RobotLab`, `ServerScriptService/RobotLab`, `StarterPlayer/StarterPlayerScripts/RobotLabHud`, `ReplicatedStorage/Modules/RobotLabConfig`. 밸런스는 Config 숫자만 바꿔 조정한다. 로봇·업그레이드·구역 id는 저장 데이터 키가 될 예정이므로 바꾸지 않는다. 재접속 저장과 Robux 상품은 미구현이다. 상세는 HANDOFF B-10.
 
 ## 5. 코드 작성 규칙과 아키텍처 원칙
 
