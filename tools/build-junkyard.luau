@@ -97,16 +97,18 @@ local function buildJunkyard(): Model
 		base.Parent = bases
 
 		part(base, "Floor", Vector3.new(bx, 40.7, bz), Vector3.new(44, 0.4, 34), Color3.fromRGB(150, 156, 162))
-		local back = part(base, "Wall", Vector3.new(bx, 43.7, bz - front * 17), Vector3.new(44, 6, 1), wall)
+		-- 벽 높이 12: 기본 점프(약 7.2)로 넘을 수 없어 입구로만 드나든다
+		local back = part(base, "Wall", Vector3.new(bx, 46.7, bz - front * 17), Vector3.new(44, 12, 1), wall)
 		for _, dx in { -22, 22 } do
-			part(base, "Wall", Vector3.new(bx + dx, 43.7, bz), Vector3.new(1, 6, 34), wall)
+			part(base, "Wall", Vector3.new(bx + dx, 46.7, bz), Vector3.new(1, 12, 34), wall)
 		end
 		for _, dx in { -14, 14 } do
-			part(base, "Wall", Vector3.new(bx + dx, 43.7, bz + front * 17), Vector3.new(16, 6, 1), wall)
+			part(base, "Wall", Vector3.new(bx + dx, 46.7, bz + front * 17), Vector3.new(16, 12, 1), wall)
 		end
-		billboard(back, "Sign", "빈 기지", 5, 150)
+		billboard(back, "Sign", "빈 기지", 8, 150)
 
-		local shield = part(base, "Shield", Vector3.new(bx, 43.7, bz + front * 17), Vector3.new(12, 6, 0.5), Color3.fromRGB(90, 200, 255))
+		-- 방어막: 기지 전체를 덮는 상자. 평소엔 투명, 잠기면 반투명 ForceField로 멀리서도 보인다
+		local shield = part(base, "Shield", Vector3.new(bx, 46.7, bz), Vector3.new(44.6, 12.2, 34.6), Color3.fromRGB(90, 200, 255))
 		shield.Transparency = 1
 		shield.CanCollide = false
 		shield.CanQuery = false

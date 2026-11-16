@@ -380,6 +380,44 @@ local function render()
 	bonusLabel.Text = table.concat(lines, "   ")
 end
 
+-- 방어막 남은 시간: 모든 기지 위에 크게 띄운다 (누구 기지가 잠겼는지 멀리서도 보이게)
+local shieldLabels: { [Instance]: TextLabel } = {}
+local function syncShieldTimers()
+	local t = workspace:GetServerTimeNow()
+	for _, base in basesFolder:GetChildren() do
+		local floor = base:FindFirstChild("Floor")
+		if floor and floor:IsA("BasePart") then
+			local text = shieldLabels[base]
+			if not text then
+				local board = Instance.new("BillboardGui")
+				board.Name = "ShieldTimer"
+				board.Size = UDim2.fromOffset(240, 44)
+				board.StudsOffsetWorldSpace = Vector3.new(0, 15, 0)
+				board.AlwaysOnTop = true
+				board.MaxDistance = 300
+				board.Parent = floor
+				local newText = Instance.new("TextLabel")
+				newText.Size = UDim2.fromScale(1, 1)
+				newText.BackgroundColor3 = Color3.fromRGB(20, 60, 90)
+				newText.BackgroundTransparency = 0.2
+				newText.TextColor3 = Color3.fromRGB(150, 230, 255)
+				newText.Font = Enum.Font.GothamBold
+				newText.TextSize = 24
+				newText.Parent = board
+				corner(newText, 8)
+				shieldLabels[base] = newText
+				text = newText
+			end
+			local remaining = ((base:GetAttribute("LockedUntil") or 0) :: number) - t
+			local label = text :: TextLabel
+			label.Visible = remaining > 0
+			if remaining > 0 then
+				label.Text = ("🛡 방어막 %d초"):format(math.ceil(remaining))
+			end
+		end
+	end
+end
+
 local acc = 0
 RunService.Heartbeat:Connect(function(dt)
 	acc += dt
@@ -388,6 +426,7 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 	acc = 0
 	render()
+	syncShieldTimers()
 end)
 task.spawn(function()
 	while true do

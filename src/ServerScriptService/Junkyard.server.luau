@@ -413,7 +413,11 @@ local function buy(state: State, itemId: number)
 	end
 	local item = Belt.get(itemId)
 	local root = rootOf(state.player)
-	if not item or not root then
+	if not item then
+		notify(state.player, "Alert", "놓쳤어요! 이미 팔렸거나 벨트에서 사라졌어요.")
+		return
+	end
+	if not root then
 		return
 	end
 	if (Belt.position(item, now()) - root.Position).Magnitude > Config.BeltBuyRange then
@@ -428,7 +432,8 @@ local function buy(state: State, itemId: number)
 		return
 	end
 	if not Belt.take(itemId) then
-		return -- 다른 사람이 먼저 샀다
+		notify(state.player, "Alert", "아쉬워요! 다른 사람이 먼저 샀어요.")
+		return
 	end
 	setMoney(state, state.money - rarity.price)
 	startCarry(state, item.robotId, nil, nil)
