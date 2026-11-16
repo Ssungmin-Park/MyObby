@@ -13,7 +13,7 @@
 |---|---|
 | 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — 로봇 작업장 1단계(핵심 루프), 2단계(저장·오프라인 수입), 3단계 일부(전시대·안내선·밸런스). 그 전: Codex (연구소 첫 버전) |
 | 작업 시점 | 2026-11-17 |
-| 다음 작업 AI | Codex 또는 Claude Code. ① 사용자 직접 플레이(PC·모바일) 피드백 반영 ② Studio API 접근이 풀리면 실제 저장 재접속 테스트(오비·작업장) |
+| 다음 작업 AI | Codex 또는 Claude Code. 사용자 직접 플레이(PC·모바일) 피드백을 받아 3단계 다듬기. 실제 저장 재접속 검증은 끝났다(F ⑭) |
 | 게임 이름 | 마이오비 (Studio place 이름) / 실험실 탈출 오비와 꼬마 로봇 연구소 |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -24,7 +24,8 @@
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
 | 마지막 게임 수정 | 2026-11-17 Claude Code: **3단계 일부** — `RobotLabHud`에 연구실 전시대·안내선·구역 열기 안내, `RobotLabConfig` 온실 60→40·레벨업 수리비 배수(`LevelCostStep`), `RobotLab` `repairCost` 레벨 반영. 그 전: **저장 추가** — `ServerScriptService/RobotLabSave`(신규 ModuleScript), `RobotLab`(불러오기·저장 연결), `RobotLabHud`("저장 안 됨" 표시), `RobotLabConfig`(보관함 상한 4시간, 수입 함수 공용화). 그 전: 로봇 작업장 확장. `ReplicatedStorage/Modules/RobotLabConfig`(신규), `Remotes/RobotLabState`·`RobotLabAction`(신규), `ServerScriptService/RobotLab`·`RobotLabHud` 교체, `Workspace/RobotLab`에 폐품 처리장·`SpawnPoints`·장치 7개 추가. v1 스크립트와 고정 로봇·상점 장치는 `ServerStorage/RobotLabV1Backup`으로 옮김(삭제 없음). 모두 ChangeHistoryService 기록(Ctrl+Z 가능) |
 | Studio 저장 상태 | `persistedToCloud = true`인 클라우드 place다. **로봇 작업장 확장·저장 추가의 클라우드 저장(Ctrl+S) 여부는 미확인** — 사용자에게 저장을 요청했다 |
-| Studio API 접근 | 마지막 Play 테스트에서 `Progress_v1` 읽기가 Error code 7 (`Studio access to APIs is not allowed`)로 거부됐다. 전환 점검은 Edit 구조 확인으로 진행했다. Security 탭에서 API 접근 설정의 실제 저장 여부를 확인해야 한다 |
+| Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
+| 실제 저장 데이터 | 테스트로 **사용자 본인 키**에 값이 남아 있다: `Progress_v1/Player_12007797600` = Stage 11, `RobotLab_v1/Player_12007797600` = 부품 10·삐삐 Lv.1·튜토리얼 완료. 지우려면(RemoveAsync) 사용자 승인 필요 |
 | 백업 상태 | 스크립트 11개는 `src/`에서 관리하고 Studio와 체크섬 일치. 연구소 맵은 `tools/build-robot-lab.luau`(v1) → `tools/expand-robot-lab.luau`(확장) 순서로 다시 만들 수 있다. 연구소 v1은 `ServerStorage/RobotLabV1Backup`, 오비 옛 버전은 `ServerStorage`에 있다 |
 | 게임 공개 상태 | 확인하지 않았고 바꾸지 않았다. AI는 Publish하지 않는다 (AGENTS.md §8 규칙 9) |
 
@@ -186,7 +187,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 ## C. 진행 중인 개발
 
-- **로봇 작업장:** 1단계(핵심 루프·업그레이드, F ⑪)와 2단계(저장·오프라인 수입, F ⑫) 구현·자동 테스트 완료. **남은 것: 실제 DataStore 재접속 검증(Studio API 접근 필요), 실제 걷기·모바일 확인, 밸런스·연출(3단계).**
+- **로봇 작업장:** 1단계(핵심 루프·업그레이드, F ⑪)와 2단계(저장·오프라인 수입, F ⑫) 구현·자동 테스트 완료. 실제 DataStore 재접속 검증 완료(F ⑭). **남은 것: 실제 걷기·모바일 확인, 밸런스·연출(3단계).**
 - **기존 오비:** `ProgressSave` 구현 및 모의 저장소 검증 완료(`0eceb0d`). 실제 저장·재접속 검증은 Studio API 접근 거부로 중단돼 있다.
 - **보류:** 오비 스테이지 스킵, Robux 상품·보상형 광고, 출시용 비주얼과 사운드.
 
@@ -219,7 +220,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 |---|---|---|---|---|
 | 1 | 연구소의 클라우드 저장 여부 미확인 | MCP에서 현재 Edit 모델과 클라우드 place 연결 확인 | Ctrl+S 후 저장 완료 표시 확인 | **사용자 확인 필요** |
 | 2 | 실제 모바일 기기·터치 조작 미검증 | 자동 테스트는 순간이동 방식 | — | 미검증 |
-| 3 | 진행 저장의 실제 DataStore 동작 미검증 | Studio API 접근이 꺼져 있어 실제 저장소 호출이 거부됨 (`StudioAccessToApisNotAllowed`) | 가짜 저장소로 로직 테스트, 실패 경로 확인. 사용자가 설정을 켰다고 한 뒤 3번 재시도(Studio 재시작 포함) → 모두 거부 | **설정 확인 필요** (스크린샷 요청 중) |
+| 3 | ~~진행 저장의 실제 DataStore 동작 미검증~~ | 원인: 사용자가 설정 위치를 못 찾음(새 Studio는 파일 → 체험 설정 → 보안) | 2026-11-17 설정을 켠 뒤 실제 재접속 테스트 통과(F ⑭) | **해결** |
 | 3b | Studio API 접근이 꺼져 있으면 Play 시작 때 불러오기를 3번 시도하느라 약 3초 동안 경고 로그가 나오고 시작 발판에 머문다 | 의도된 재시도 | — | 정상 동작. 실제 서버에서는 해당 없음 |
 | 4 | 오비 전체 맵(파트·모델)은 Git에 백업이 없음 | Rojo 미사용, 스크립트는 `src/`에서 관리 | 연구소 맵은 `tools/build-robot-lab.luau`로 재생성 가능 | 오비 맵은 Studio 버전 기록과 `ServerStorage`의 일부 백업 참고 |
 | 5 | 체크포인트 1~10에 옛 속성 `Stage`(숫자)가 남아 있음 | 이전 단일 스크립트의 흔적. 현재 스크립트는 이름으로 판정하므로 무해 | — | 정리 선택 사항 (삭제 전 승인) |
@@ -323,6 +324,18 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 **아직 안 한 것:** 실제 DataStore로 저장 → 재접속 복원, 두 서버 사이 이동, 실제 오프라인 시간 경과.
 
+**⑭ 2026-11-17 실제 DataStore 재접속 테스트 (Claude Code, 사용자가 API 접근을 켠 뒤)**
+
+| 항목 | 결과 |
+|---|---|
+| Play 시작 시 `Progress_v1`, `RobotLab_v1` 읽기 | 성공 (불러오기 2초, 경고 없음). 오비는 기존 값 없음 → Stage 0, 작업장은 새 레코드 + 이 서버 lock 생성 |
+| 1차 접속: 오비 Stage 3, 작업장 튜토리얼(삐삐 수리)·부품 10 → Play 종료 | 저장됨: `RobotLab_v1` = 부품 10, 삐삐 Lv.1, tutorialDone, lastSeen. 이전 lock은 해제돼 다음 접속이 기다리지 않음 |
+| 2차 접속 | 오비 Stage 3, 체크포인트 3 위에서 시작(거리 0.00) / 작업장 부품 10·도감 1/12·전시대 "삐삐 Lv.1"·튜토리얼 대신 창고 신호 | 
+| Stage 11까지 진행 → 종료 → 3차 접속 | Stage 11, EXIT 위(거리 0.01), "탈출 성공!" **다시 뜨지 않음** |
+| 출력 로그 | 경고·에러 없음 |
+
+참고: 운반 중이던 희귀 로봇(스프링)은 설계대로 저장되지 않았다.
+
 **⑬ 2026-11-17 로봇 작업장 3단계 일부 (Claude Code)**
 - 밸런스 시뮬레이션(파이썬, 1분 주기 근사): 원래 값은 일반 로봇 중복 수리가 싸서 30분 만에 분당 수입 ~30, 온실은 40~48분에야 열림 → 레벨업 수리비 배수 추가, 온실 60→40. 조정 후 30분에 도감 5~7종·분당 11~17, 온실 18~30분, 2시간에 도감 9~10종. 근사 모델이라 실제 플레이로 다시 확인해야 한다.
 - Play 테스트: 입장 시 전시대 12칸(0/12)과 튜토리얼 로봇으로 안내선 / 삐삐 운반 중 → 수리대로 안내선 / 수리 완료 → 전시대 "삐삐 Lv.1" / 다음 로봇 운반 중 부품 0 → 가장 가까운 부품 더미로 안내선, 수리대 안내 "볼트 맡기기 (부품 8개)" / 오비 복귀 시 전시대·안내선 숨김 / 클라이언트 에러 0. 레벨업 수리비는 무작위 신호라 실행으로 확인하지 못했고 코드 검토만 했다.
@@ -332,9 +345,9 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 ### 아직 테스트하지 않은 항목
 - 실제 모바일 기기 터치 조작, 저사양 기기 성능
-- 로봇 작업장 실제 DataStore 저장·재접속·서버 이동(세션 잠금), 실제 오프라인 수입
+- 로봇 작업장: 실제 서버 두 곳 사이 이동(세션 잠금 대기), 몇 분 이상의 실제 오프라인 수입, 접속 중 수리가 오프라인에 끝나는 경우 (모두 가짜 저장소 테스트는 통과)
 - 로봇 작업장: 실제 플레이어의 걷기 동선과 안내 이해도, 장시간 밸런스(업그레이드·구역 비용), 에픽·전설 수리, 구역 열기 성공, 레벨업, 여러 명 동시 접속
-- 오비 실제 DataStore 저장과 재접속 복원, Stage 11 복원 시 메시지 재표시 여부, 60초 자동 저장
+- 60초 자동 저장(실제 저장소에서 시간 경과로 확인한 적 없음)
 - 여러 플레이어가 동시에 접속했을 때 (Mover 발판 동시 탑승, 리더보드)
 - 실제 서버(공개 게임)에서의 네트워크 지연 상황
 
@@ -369,7 +382,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
   6. 스크립트 11개 크기(또는 체크섬)가 `src/`와 같은지 확인한다 (`ReplicatedStorage/Modules/RobotLabConfig` 포함).
 - **완료 조건:** 위 항목에서 이상이 없거나, 이상한 점을 사용자에게 보고함.
 
-### 1순위 — 진행 저장 실제 검증 (구현은 완료, B-1b)
+### ✅ 1순위 — 진행 저장 실제 검증 (2026-11-17 완료, F ⑭). 아래는 당시 계획 기록
 - **목표:** 실제 DataStore로 "저장 → 재접속 → 이어하기"를 확인하고 진행 저장을 완료로 기록.
 - **먼저 할 일:** 사용자와 함께 API 접근 설정을 확인한다. 확인 방법: Play 중 Server에서 `DataStoreService:GetDataStore("Progress_v1"):GetAsync("Player_0")`을 `pcall`로 호출해 (작업장 `RobotLab_v1`도 같은 방법으로 함께 검증. 테스트 키는 사용자 본인 키만) Error code 7이 사라졌는지 본다 (읽기만, 쓰기 없음). 계속 막히면 스크린샷으로 "Enable Studio Access to API Services" 스위치와 Save 여부를 확인한다.
 - **전제:** Studio Game Settings → Security → "Enable Studio Access to API Services" 설정을 사용자와 확인한다. Studio는 실제 게임과 같은 저장소를 쓰며 현재 데이터 유무는 미확인이다. 아래 시나리오는 쓰기 후 Stage가 남는 테스트이므로 대상 키와 예상 최종 값을 먼저 사용자와 확인한다.

@@ -111,7 +111,7 @@ ServerStorage/
   - `TimedDoor`: Part에 `Period`, `Offset` 속성. 서버 시간 기준으로 열고 닫는다.
 - 골인: EXIT에 도달하면 Stage 11이 되고, 서버가 `Remotes.Escaped:FireClient`로 알려 "탈출 성공!"을 표시한다.
 
-**구현 후 검증 대기:** 진행 저장(DataStore)은 구현했다. 실제 저장소를 이용한 재접속 검증은 Studio API 접근 문제 해결 후 진행한다.
+- 진행 저장: 오비 Stage(`Progress_v1`)와 로봇 작업장(`RobotLab_v1`)을 DataStore에 저장한다. 2026-11-17 실제 저장소로 재접속 복원을 확인했다. Studio API 접근은 **파일 → 체험 설정 → 보안**에서 켠다(켜져 있음).
 
 **로봇 작업장 (꼬마 로봇 연구소 확장, 장시간 플레이용 주력 콘텐츠):** 시작 발판과 EXIT에서 입장하는 비점프형 모드. 부품 줍기 → 로봇 수리(실제 시간) → 도우미 수입 → 업그레이드·구역 열기 루프. Studio 경로는 `Workspace/RobotLab`, `ServerScriptService/RobotLab`, `StarterPlayer/StarterPlayerScripts/RobotLabHud`, `ReplicatedStorage/Modules/RobotLabConfig`. 밸런스는 Config 숫자만 바꿔 조정한다. 로봇·업그레이드·구역 id는 저장 데이터 키가 될 예정이므로 바꾸지 않는다. 재접속 저장과 Robux 상품은 미구현이다. 상세는 HANDOFF B-10.
 
