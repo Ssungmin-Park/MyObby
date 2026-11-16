@@ -11,20 +11,20 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **OpenAI Codex** (꼬마 로봇 연구소와 부품 상점 구현) |
+| 마지막 작업 AI | **OpenAI Codex** (꼬마 로봇 연구소·부품 상점 구현, 전환 전 Studio 재확인) |
 | 작업 시점 | 2026-11-16 |
-| 다음 작업 AI | 연구소를 PC와 모바일에서 걸어서 플레이하고 안내와 동선을 확인한다. 로봇·부품·구매의 재접속 저장은 별도 설계를 확정한 뒤 작업한다 |
+| 다음 작업 AI | **Claude Code**. G의 순서대로 연구소 동선·터치 UI를 실기기에서 확인한 뒤 재접속 저장을 설계한다 |
 | 게임 이름 | 마이오비 (Studio place 이름) / 실험실 탈출 오비와 꼬마 로봇 연구소 |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
 | 소유 | 개인 계정 (CreatorType = User) |
 | Studio 인스턴스 ID | 2026-11-16 기준 `c45b95a2-fc62-4fb8-907e-0df1421a14db`. **실행할 때마다 바뀐다.** 새 세션에서 `list_roblox_studios`로 다시 조회하고, placeId가 위 값인 인스턴스만 사용한다 |
-| Studio 모드 | **Edit 모드**. 작업 전 사용자에게 알린 뒤 기존 Play를 종료하고, 새 테스트를 별도로 실행했다 |
+| Studio 모드 | Claude Code 전환 직전 MCP에서 **Edit 모드** 확인 |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 수정 | 사용자 승인 후 `Workspace/RobotLab`, `ServerScriptService/RobotLab`, `StarterPlayer/StarterPlayerScripts/RobotLabHud` 추가. 설치는 Studio MCP의 ChangeHistoryService 기록으로 묶였다 |
-| Studio 저장 상태 | place는 클라우드 저장 place다. 연구소는 Edit에 반영 후 Play로 검증했다. 이번 변경의 클라우드 저장은 사용자가 Ctrl+S로 수행한다 |
-| Studio API 접근 | **여전히 거부됨.** 기존 Play 세션에서 Codex가 `Progress_v1`의 `Player_0` 읽기를 확인했으며 Error code 7 (`Studio access to APIs is not allowed`)이 반환됐다. 쓰기는 시도하지 않았다. Security 탭에서 설정과 저장 여부를 확인해야 한다 |
+| 마지막 게임 수정 | `984473c`에서 `Workspace/RobotLab`, `ServerScriptService/RobotLab`, `StarterPlayer/StarterPlayerScripts/RobotLabHud` 추가. 설치는 Studio MCP의 ChangeHistoryService 기록으로 묶였다. 전환 직전 작업은 상태 확인과 문서 갱신이다 |
+| Studio 저장 상태 | `persistedToCloud = true`인 클라우드 place다. 현재 열린 Edit 모델에 연구소가 있다. **연구소 변경의 클라우드 저장 여부는 미확인**이다. Studio를 닫기 전 Ctrl+S로 저장하고 Studio의 저장 완료 표시를 확인한다 |
+| Studio API 접근 | 마지막 Play 테스트에서 `Progress_v1` 읽기가 Error code 7 (`Studio access to APIs is not allowed`)로 거부됐다. 전환 점검은 Edit 구조 확인으로 진행했다. Security 탭에서 API 접근 설정의 실제 저장 여부를 확인해야 한다 |
 | 백업 상태 | 스크립트 9개는 `src/`에서 관리한다. 연구소 맵 생성 코드는 `tools/build-robot-lab.luau`에 있다. 기존 오비 맵의 옛 버전은 `ServerStorage`에 있다 |
 | 게임 공개 상태 | 확인하지 않았고 바꾸지 않았다. AI는 Publish하지 않는다 (AGENTS.md §8 규칙 9) |
 
@@ -36,7 +36,7 @@
 - **핵심 플레이 구조:** 시작 발판(Stage 0) → 체크포인트 1~10을 순서대로 밟음 → 체크포인트 11(EXIT) = 탈출. 죽으면 마지막 체크포인트에서 1초 뒤 부활. 오른쪽 위 리더보드에 현재 Stage 표시.
 - **개발 목표:** 출시 가능한 게임 + 공개 GitHub 저장소를 포트폴리오로 활용.
 - **단계:** 1단계 그레이박스(재미 검증) → 2단계 시스템(저장, 수익화) → 3단계 비주얼.
-- **현재 완성도:** **1단계 그레이박스 완료, 2단계 시작.** 코스 전체를 처음부터 끝까지 깰 수 있다. 사용자가 직접 플레이해 "난이도 적당"을 확인했다(기기 미기록). 진행 저장은 구현했지만 실제 DataStore 재접속 테스트가 남았다. 색·재질·사운드·상점은 없다.
+- **현재 완성도:** 기존 오비 그레이박스와 연구소 첫 버전을 플레이할 수 있다. 오비 진행 저장은 구현했고 실제 DataStore 재접속 검증이 남았다. 연구소에는 부품 상점 2종이 있으며 도감·부품·구매의 재접속 저장은 미구현이다.
 
 ### 코스 배치 (Studio 실측)
 | 체크포인트 | 위치 (X, Y, Z) | 구간 |
@@ -126,7 +126,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 ### B-8. 데이터 저장 및 플레이어 진행
 - **DataStore `Progress_v1`을 쓴다** (B-1b). `DataStoreService`를 쓰는 곳은 `ProgressSave` 하나뿐이다.
-- 2026-11-16 현재 실제 저장소에 쓰인 데이터: **없는 것으로 본다.** Studio API 접근이 꺼져 있어 Studio 테스트는 모두 실패 경로(저장 안 함)로 끝났고, 게임은 아직 공개 서버에서 돌린 적이 없다(미확인).
+- 확인한 Studio 테스트에서는 API 접근 거부로 쓰기가 발생하지 않았다. 운영 저장소의 실제 데이터 유무는 미확인이다.
 - 키 이름·데이터 형식은 이제부터 바꾸지 않는다. 바꿔야 하면 마이그레이션 계획을 먼저 승인받는다 (AGENTS.md §7).
 
 ### B-9. 그 밖의 Studio 객체
@@ -150,14 +150,9 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 ## C. 진행 중인 개발
 
-- **진행 중인 작업:** 진행 저장 — **구현 완료, 실제 DataStore 재접속 테스트 대기.**
-  - 중단 위치: Studio API 접근이 계속 거부되어 G 1순위 테스트를 시작하지 못했다. 사용자에게 Game Settings → Security 탭 스크린샷을 요청한 상태. 코드는 더 고칠 계획이 없다.
-- **꼬마 로봇 연구소:** 첫 플레이 버전과 부품 상점 구현·Studio 자동 테스트 완료. 실제 모바일 조작, 첫 플레이어의 동선, 재접속 저장은 후속 작업이다.
-- **마지막 구현 작업 (Claude Code):**
-  1. 사용자가 Codex 설계안을 승인 → `ProgressSave` 구현, Studio 반영, 가짜 저장소 테스트 13개 통과, 기존 회귀 테스트 통과 (커밋 `0eceb0d`).
-  2. 실제 저장 테스트를 3번 시도 → 모두 API 접근 거부로 중단. 저장소에는 아무것도 쓰지 않았다.
-  3. Studio 실제 상태를 다시 확인하고 이 문서를 갱신했다.
-- **미완성 부분:** 진행 저장 실제 검증, 스테이지 스킵 상품, 보상형 광고, 3단계 비주얼.
+- **꼬마 로봇 연구소:** 첫 플레이 버전과 부품 상점 구현·Studio 자동 테스트 완료(`984473c`). 실제 PC·모바일 동선과 터치 UI는 미검증이고 영속 저장은 미구현이다.
+- **기존 오비:** `ProgressSave` 구현 및 모의 저장소 검증 완료(`0eceb0d`). 실제 저장·재접속 검증은 Studio API 접근 거부로 중단돼 있다.
+- **보류:** 오비 스테이지 스킵, Robux 상품·보상형 광고, 출시용 비주얼과 사운드.
 
 ---
 
@@ -186,11 +181,11 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 | # | 내용 | 재현 / 원인 | 시도한 것 | 상태 |
 |---|---|---|---|---|
-| 1 | Studio 저장 여부 미확인 | AI는 저장 여부를 알 수 없음 | 사용자에게 Ctrl+S 안내 | **사용자 확인 필요** |
+| 1 | 연구소의 클라우드 저장 여부 미확인 | MCP에서 현재 Edit 모델과 클라우드 place 연결 확인 | Ctrl+S 후 저장 완료 표시 확인 | **사용자 확인 필요** |
 | 2 | 실제 모바일 기기·터치 조작 미검증 | 자동 테스트는 순간이동 방식 | — | 미검증 |
 | 3 | 진행 저장의 실제 DataStore 동작 미검증 | Studio API 접근이 꺼져 있어 실제 저장소 호출이 거부됨 (`StudioAccessToApisNotAllowed`) | 가짜 저장소로 로직 테스트, 실패 경로 확인. 사용자가 설정을 켰다고 한 뒤 3번 재시도(Studio 재시작 포함) → 모두 거부 | **설정 확인 필요** (스크린샷 요청 중) |
 | 3b | Studio API 접근이 꺼져 있으면 Play 시작 때 불러오기를 3번 시도하느라 약 3초 동안 경고 로그가 나오고 시작 발판에 머문다 | 의도된 재시도 | — | 정상 동작. 실제 서버에서는 해당 없음 |
-| 4 | 맵(파트·모델)은 Git에 백업이 없음 | Rojo 미사용, 스크립트만 `src/`로 내보냄 | — | 알려진 한계. Studio의 버전 기록(File → Version History)에 의존 |
+| 4 | 오비 전체 맵(파트·모델)은 Git에 백업이 없음 | Rojo 미사용, 스크립트는 `src/`에서 관리 | 연구소 맵은 `tools/build-robot-lab.luau`로 재생성 가능 | 오비 맵은 Studio 버전 기록과 `ServerStorage`의 일부 백업 참고 |
 | 5 | 체크포인트 1~10에 옛 속성 `Stage`(숫자)가 남아 있음 | 이전 단일 스크립트의 흔적. 현재 스크립트는 이름으로 판정하므로 무해 | — | 정리 선택 사항 (삭제 전 승인) |
 | 6 | `ServerStorage` 백업 2개 남아 있음 | 의도된 백업 | — | 삭제 여부는 사용자 결정 |
 | 7 | Claude Code GitHub 플러그인 커넥터 연결 실패 | 토큰 환경 변수 없음 | gh CLI로 대체 | 의도적 미사용 |
@@ -264,13 +259,12 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 **⑨ 2026-11-16 연구소·상점 및 오비 회귀 테스트 (Codex)** — 시작 및 EXIT 입장, 발견·수리 순서, 도감 3/3, 구매 2종, 잔액 부족·중복 구매·배터리 없이 루미 발견 차단, 기존 Stage와 위치로 복귀, 같은 세션 재입장 보존을 실제 프롬프트 이벤트로 확인했다. 기존 오비의 진행·리스폰·장애물 및 클라이언트 탈출 메시지도 확인했다. 낙사 직후 체크포인트 3으로 이동하는 첫 검사에서 부활 위치 보정과 겹쳐 재실행했고, 캐릭터가 체크포인트 2에서 안착한 뒤 3~11을 통과했다. 콘솔에는 기존 DataStore 접근 거부 경고와 골인 로그만 있었다. 자동 이동으로 검증했으며 실제 걷기 동선·모바일 조작은 미검증이다.
 
-**아직 안 한 것:** 실제 DataStore에 저장 → 다시 Play → 같은 체크포인트에서 시작. Stage 11 복원 시 탈출 메시지가 다시 뜨지 않는지. 60초 자동 저장.
-
-### 실패한 테스트
-- 없음.
+**⑩ 2026-11-16 Claude Code 전환 직전 확인 (Codex, MCP Edit 읽기)** — Place ID와 Universe ID 일치, 스테이지 10개·체크포인트 11개, 체크포인트 10 라벨과 11의 `IsFinish`, 장애물 태그 4종을 확인했다. 연구소는 하위 객체 70개와 상호작용 9개(입구 2, 복귀 1, 수리대 1, 로봇 3, 상품 2)가 있고, 백업 스크립트는 비활성 상태이며 스테이지 백업 7개가 있다. Studio와 `src/`의 스크립트 9개 모두 바이트 크기 및 체크섬 일치. 직전 Play 테스트 결과는 ⑨에 기록했다.
 
 ### 아직 테스트하지 않은 항목
 - 실제 모바일 기기 터치 조작, 저사양 기기 성능
+- 연구소를 처음 접하는 플레이어의 실제 걷기 동선·구매 안내
+- 오비 실제 DataStore 저장과 재접속 복원, Stage 11 복원 시 메시지 재표시 여부, 60초 자동 저장
 - 여러 플레이어가 동시에 접속했을 때 (Mover 발판 동시 탑승, 리더보드)
 - 실제 서버(공개 게임)에서의 네트워크 지연 상황
 
@@ -284,7 +278,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 - **구현한 범위:** 연구실 1곳, 평지 탐색 구역 2곳, 로봇 3종, 수리대, 도감, 상품 2종. 첫 로봇을 수리하면 탐지기가 열려 다음 로봇의 신호를 찾을 수 있다.
 - **검증:** 처음 보는 사람이 설명 없이 첫 로봇을 찾고 수리하는지, 첫 수리 후 스스로 두 번째 로봇을 찾으러 가는지 확인한다.
 - **참고 사례:** 성장으로 탐색 범위를 넓히는 [Bee Swarm Simulator](https://www.roblox.com/games/1537690962/Bee-Swarm-Simulator), 구역 탐색과 수집을 결합한 [Find the Chomiks](https://www.roblox.com/games/7031179594/Find-the-Chomiks), 성장·수확으로 재접속 목표를 주는 [Grow a Garden](https://www.roblox.com/games/126884695634066/Grow-a-Garden).
-- **다음 AI:** 사용자가 실제로 걸어 보며 안내와 동선을 확인하도록 한다. 로봇·부품·구매의 영속 저장을 설계할 때 기존 오비 `Progress_v1` 형식을 보존한다. 스테이지 스킵보다 연구소 검증을 우선한다.
+- **다음 AI — Claude Code:** ① 현재 Place와 연구소의 클라우드 저장 상태 확인 ② 시작 발판 입장 → 삐삐 발견·수리 → 창고 탐지 → 상점에서 배터리 구매 → 온실 루미 구조를 PC·모바일에서 실제로 걸어 확인 ③ 로봇 도감·부품 잔액·구매 내역을 함께 저장하는 설계 제시. 오비 `Progress_v1` 형식은 보존한다. 스테이지 스킵은 보류한다.
 
 ### 0순위 — 작업 환경 확인 (매 세션)
 - **목표:** 올바른 게임과 최신 상태에서 시작.
@@ -300,7 +294,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 ### 1순위 — 진행 저장 실제 검증 (구현은 완료, B-1b)
 - **목표:** 실제 DataStore로 "저장 → 재접속 → 이어하기"를 확인하고 진행 저장을 완료로 기록.
 - **먼저 할 일:** 사용자와 함께 API 접근 설정을 확인한다. 확인 방법: Play 중 Server에서 `DataStoreService:GetDataStore("Progress_v1"):GetAsync("Player_0")`을 `pcall`로 호출해 Error code 7이 사라졌는지 본다 (읽기만, 쓰기 없음). 계속 막히면 스크린샷으로 "Enable Studio Access to API Services" 스위치와 Save 여부를 확인한다.
-- **전제:** 사용자가 Studio Game Settings → Security → "Enable Studio Access to API Services"를 켠다 (AI가 바꾸지 않는다). Studio는 실제 게임과 **같은 저장소**를 쓴다. 게임은 아직 공개 전이라 기존 플레이어 데이터는 없다고 본다. 테스트는 사용자 본인 키(`Player_<사용자 UserId>`)에만 쓴다.
+- **전제:** Studio Game Settings → Security → "Enable Studio Access to API Services" 설정을 사용자와 확인한다. Studio는 실제 게임과 같은 저장소를 쓰며 현재 데이터 유무는 미확인이다. 아래 시나리오는 쓰기 후 Stage가 남는 테스트이므로 대상 키와 예상 최종 값을 먼저 사용자와 확인한다.
 - **테스트 순서:**
   1. Play → 로그에 불러오기 경고 없음, Stage 0(또는 이전 저장값) 확인.
   2. 체크포인트 1 → 2 → 3 진행 → Play 종료 (퇴장/BindToClose 저장).
