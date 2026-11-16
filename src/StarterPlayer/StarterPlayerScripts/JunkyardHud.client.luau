@@ -77,6 +77,9 @@ local incomeLabel = label(panel, UDim2.fromOffset(12, 36), UDim2.new(1, -24, 0, 
 local carryLabel = label(panel, UDim2.fromOffset(12, 56), UDim2.new(1, -24, 0, 30), 12, muted)
 local lockButton = button(panel, "방어막", UDim2.fromOffset(12, 92), UDim2.fromOffset(110, 32), Color3.fromRGB(60, 120, 170))
 local catalogButton = button(panel, "도감", UDim2.fromOffset(128, 92), UDim2.fromOffset(110, 32), Color3.fromRGB(70, 82, 96))
+-- 저장 상태 (오른쪽 위 작은 글씨): 불러오는 중 / 저장 안 됨
+local saveLabel = label(panel, UDim2.new(1, -112, 0, 6), UDim2.fromOffset(100, 18), 12, Color3.fromRGB(255, 150, 150))
+saveLabel.TextXAlignment = Enum.TextXAlignment.Right
 
 -- 도감 창
 local catalog = Instance.new("Frame")
@@ -316,6 +319,9 @@ local function render()
 	local multiplier = (player:GetAttribute("Multiplier") or 1) :: number
 	moneyLabel.Text = "💰 " .. Config.formatMoney(money)
 	incomeLabel.Text = ("초당 +%s   (도감 보너스 x%.2f)"):format(Config.formatMoney(income), multiplier)
+	saveLabel.Text = if player:GetAttribute("Loading") == true then "⏳ 불러오는 중"
+		elseif player:GetAttribute("SaveOff") == true then "⚠ 저장 안 됨"
+		else ""
 
 	local carrying = player:GetAttribute("Carrying")
 	if typeof(carrying) == "string" and carrying ~= "" then

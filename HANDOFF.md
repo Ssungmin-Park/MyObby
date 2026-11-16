@@ -11,9 +11,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — **로봇 고물상 타이쿤 1단계**(멀티플레이 새 주력 모드). 그 전: 로봇 작업장 1~3단계 일부 |
+| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — 로봇 고물상 1단계 + 2인 테스트 반영 + **2단계 저장**(`JunkyardSave`) |
 | 작업 시점 | 2026-11-17 |
-| 다음 작업 AI | Codex 또는 Claude Code. ① **2인 이상 로컬 서버 테스트로 훔치기·붙잡기·방어막 밀어내기 확인**(아직 미검증) ② 고물상 2단계(저장) |
+| 다음 작업 AI | Codex 또는 Claude Code. 로봇 고물상 **3단계(상점·이벤트)** 계획을 사용자와 정한다. 선택: 2인 테스트로 "훔친 로봇이 재접속 후에도 도둑 것"인지 확인 |
 | 게임 이름 | 마이오비 (Studio place 이름) / **주력: 로봇 고물상 타이쿤**(멀티플레이). 부가: 실험실 탈출 오비, 로봇 작업장(꼬마 로봇 연구소) |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -22,10 +22,10 @@
 | Studio 모드 | 작업 종료 시 **Edit 모드** (Play 테스트 종료함) |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-17 Claude Code: **로봇 고물상 1단계** — `Workspace/Junkyard`(맵), `ReplicatedStorage/Modules/JunkyardConfig`, `ServerScriptService/Junkyard`·`JunkyardBelt`, `StarterPlayerScripts/JunkyardHud`, `Remotes/JunkyardBelt·JunkyardAction·JunkyardNotify` 추가, `Respawn`에 Mode 확인 4줄 추가. 모두 ChangeHistoryService 기록 |
+| 마지막 게임 수정 | 2026-11-17 Claude Code: **고물상 저장** — `ServerScriptService/JunkyardSave`(신규), `Junkyard`(불러오기·저장 연결), `JunkyardHud`(불러오는 중/저장 안 됨 표시), `JunkyardConfig`(오프라인 수입 50%·최대 3시간). 그 전: 방어막 표시·벽 높이 12 |
 | Studio 저장 상태 | `persistedToCloud = true`. **로봇 고물상 추가분의 클라우드 저장(Ctrl+S) 여부는 미확인** — 사용자에게 저장을 요청했다 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
-| 실제 저장 데이터 | 테스트로 **사용자 본인 키**에 값이 남아 있다: `Progress_v1/Player_12007797600` = Stage 11, `RobotLab_v1/Player_12007797600` = 부품 10·삐삐 Lv.1·튜토리얼 완료. 지우려면(RemoveAsync) 사용자 승인 필요 |
+| 실제 저장 데이터 | 테스트로 **사용자 본인 키**에 값이 남아 있다: `Progress_v1` = Stage 11, `RobotLab_v1` = 부품 10·삐삐 Lv.1, `Junkyard_v1` = 돈 약 31·받침대 삐삐/너트/스펀지(일반 세트 완성). 지우려면(RemoveAsync) 사용자 승인 필요 |
 | 백업 상태 | 스크립트 15개(Script·ModuleScript·LocalScript)는 `src/`에서 관리하고 Studio와 체크섬 일치. 맵 생성 코드: 연구소 `tools/build-robot-lab.luau` → `tools/expand-robot-lab.luau`, 고물상 `tools/build-junkyard.luau`. 백업: `ServerStorage/ObbyServer_backup`, `StagesBackup`, `RobotLabV1Backup` |
 | 게임 공개 상태 | 확인하지 않았고 바꾸지 않았다. AI는 Publish하지 않는다 (AGENTS.md §8 규칙 9) |
 
@@ -167,7 +167,13 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 - 산 로봇은 죽어도 계속 들고 있다(새 캐릭터에 다시 붙임). 로봇을 든 채로는 오비 포털 이용 불가.
 - 플레이어 속성(클라이언트 표시용): `Mode`, `BaseIndex`, `Money`, `Income`, `Multiplier`, `Catalog`(JSON 배열), `Carrying`, `CarryStolen`, `LockedUntil`, `LockCooldownUntil`.
 - `JunkyardNotify`: `"Info"`/`"Alert"`/`"Global"`/`"Money"` 알림.
-- **저장 없음**(2단계 예정): 나가면 기지가 비워지고 돈·도감이 초기화된다.
+- **저장 `ServerScriptService/JunkyardSave`** (ModuleScript, 2026-11-17)
+  - **저장 형식 (바꾸지 말 것):** DataStore `Junkyard_v1`, 키 `Player_<UserId>`, 값 `{ version = 1, data = { money, catalog = {id=true}, pads = {["받침대 번호"] = 로봇 id} }, lastSeen, lock }`.
+  - `RobotLabSave`와 같은 세션 잠금·불러오기 실패 시 저장 안 함·알 수 없는 형식 보존·값 정리(없는 로봇·잘못된 받침대 번호 제거, 받침대 로봇은 도감에 추가, 돈 0~1e15).
+  - 고물상 데이터는 돈·도감·기지에 흩어져 있어 `track(player, getData)`로 저장 때마다 `Junkyard`의 `snapshot(state)`를 부른다. snapshot은 금고 돈을 돈에 합치고, 들고 있던 **산** 로봇은 빈 받침대에 넣거나(없으면 산 값 환급), 도둑이 들고 가는 중인 예약석은 넣지 않는다(주인이 나가면 도둑 것이 되므로 중복 방지).
+  - 퇴장: `Junkyard`가 `JunkyardSave.finish(player)`를 기지를 비우기 **전에** 부른다(값을 즉시 모으고 저장은 따로 진행, lock 해제). 60초 자동 저장, `BindToClose`.
+  - 불러오기: 기지가 배정된 플레이어만. 불러오는 동안(`Loading` 속성) 구매·훔치기 막음. 성공 → 돈·도감(배수·칭호)·받침대 복원, **오프라인 수입 = 초당 수입 × 50% × 경과(최대 3시간)**을 금고에 넣고 알림. 실패·잠김 → 기본값으로 플레이, `SaveOff` 속성, HUD "⚠ 저장 안 됨".
+  - 떠나 있는 동안 기지는 서버에서 비워지므로 아무도 훔칠 수 없다. 기지 6개가 꽉 차서 기지가 없는 플레이어는 불러오지도 저장하지도 않는다.
 
 **클라이언트 `StarterPlayerScripts/JunkyardHud`** — 잠긴 기지마다 위에 "🛡 방어막 N초" 빌보드(모두에게 보임, 300스터드), 왼쪽 위 패널(돈, 초당·도감 배수, 운반 상태, 방어막 버튼, 도감 버튼), 도감 창(18칸 + 세트 보너스 진행), 위쪽 알림, 벨트 로봇 직접 그리기와 구매 프롬프트, 받침대 버튼 문구(내 기지 "팔기 +금액" / 남의 기지 "훔치기"). Mode가 Junkyard일 때만 보인다.
 
@@ -217,7 +223,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 ## C. 진행 중인 개발
 
-- **로봇 고물상 타이쿤 (주력):** 1단계 구현·1인 테스트 완료(F ⑮). **훔치기·붙잡기·방어막 밀어내기는 2명 이상이 필요해 아직 실행 검증 못 함** — 다음 작업에서 Studio 로컬 서버(플레이어 2명)로 확인. 그다음 2단계(저장).
+- **로봇 고물상 타이쿤 (주력):** 1단계(F ⑮·⑯)와 2단계 저장(F ⑰) 완료. 다음은 3단계(상점·이벤트) 계획.
 
 - **로봇 작업장:** 1단계(핵심 루프·업그레이드, F ⑪)와 2단계(저장·오프라인 수입, F ⑫) 구현·자동 테스트 완료. 실제 DataStore 재접속 검증 완료(F ⑭). **남은 것: 실제 걷기·모바일 확인, 밸런스·연출(3단계).**
 - **기존 오비:** `ProgressSave` 구현 및 모의 저장소 검증 완료(`0eceb0d`). 실제 저장·재접속 검증은 Studio API 접근 거부로 중단돼 있다.
@@ -368,6 +374,11 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 참고: 운반 중이던 희귀 로봇(스프링)은 설계대로 저장되지 않았다.
 
+**⑰ 2026-11-17 로봇 고물상 저장 (Claude Code)**
+- 가짜 저장소 15항목 PASS: 새 플레이어(돈 50, lock), 저장·불러오기 같은 값, 퇴장 시 lock 해제, 다른 서버 lock → locked, lock 빼앗긴 저장 → lostLock, 만료 lock 가져오기, 알 수 없는 형식 보존, 망가진 값 정리(음수 돈, 없는 로봇, 받침대 번호 0·11·2.5·문자, 받침대 로봇 도감 추가), NaN 돈 → 0, 오프라인 1시간 = 18000(초당 10)·하루 = 3시간치 54000·lastSeen 없음 0, 요청 실패 재시도.
+- 실제 DataStore: 1차 접속에서 일반 로봇 2개 배치 + 세 번째를 든 채로 종료(돈 3, 금고 약 28) → 재접속 시 돈 31, 받침대 1 삐삐·2 너트·**3 스펀지(들고 있던 로봇)**, 도감 3종 → **일반 세트 완성 x1.05, 칭호 [일반 수집가]**, 오프라인 수입 금고 10, 불러오기 1초, 경고 없음.
+- 2인 실행 확인 안 한 것: 훔친 로봇이 재접속 후에도 도둑 쪽에 남는지, 도둑질 도중 주인이 나간 경우.
+
 **⑮ 2026-11-17 로봇 고물상 1단계 (Claude Code, Play 1인)**
 
 | 항목 | 결과 |
@@ -415,7 +426,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 ### 로봇 고물상 타이쿤 (주력, 최우선)
 1. **2인 로컬 서버 테스트:** Studio 테스트 탭 → "클라이언트 및 서버"(플레이어 2명) 시작. 훔치기 → 도둑 기지 배치 / 주인이 붙잡기 → 복귀 / 도둑 사망 → 복귀 / 방어막 중 훔치기 거절·밀어내기 / 같은 벨트 로봇을 둘이 동시에 사기.
-2. **2단계 저장:** 돈, 도감, 받침대 로봇, 떠나 있는 동안 수입. `RobotLabSave`의 세션 잠금 방식을 재사용(새 DataStore 예: `Junkyard_v1`). 계획 먼저 승인.
+2. ✅ **2단계 저장** 완료 (B-11 저장, F ⑰).
 3. **3단계 상점·이벤트:** 방해(EMP 기절, 빠른 도둑), 방어(방어막 연장, 레이저 울타리), 도움(수입 2배·행운·받침대 추가·이동 속도), 서버 전체("희귀 로봇 비"), 10분마다 희귀 로봇 열차, 서버 협력 거대 로봇. Robux 상품 등록은 사용자가 Creator Dashboard에서.
 4. **4단계:** 환생, 변종(금색·무지개), 비주얼·사운드. 서버 최대 인원을 6명으로 맞추기(체험 설정, 사용자).
 5. 기존 오비·로봇 작업장 정리 여부는 고물상이 자리 잡은 뒤 사용자와 결정(삭제 금지, 보관).

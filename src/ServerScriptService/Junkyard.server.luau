@@ -7,13 +7,14 @@
 --   다른 사람 기지의 로봇을 "훔치기"(1.5초 누르기) → 들고 내 기지로 가면 내 것. 주인이 가까이 오면 떨어뜨려 되돌아간다.
 --   기지 주인은 방어막(60초, 쿨타임 60초)으로 막을 수 있다. 잠긴 기지 안의 다른 사람은 밖으로 밀려난다.
 -- 화면 표시는 클라이언트(JunkyardHud), 숫자는 ReplicatedStorage/Modules/JunkyardConfig.
--- 아직 저장하지 않는다(2단계). 나가면 기지가 비워진다.
+-- 저장: JunkyardSave(돈·도감·받침대 로봇). 나가면 기지는 비워지지만 다시 들어오면 그대로 채워진다.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("JunkyardConfig"))
 local Belt = require(script.Parent:WaitForChild("JunkyardBelt"))
+local JunkyardSave = require(script.Parent:WaitForChild("JunkyardSave"))
 
 local junkyard = workspace:WaitForChild("Junkyard")
 local basesFolder = junkyard:WaitForChild("Bases")
@@ -55,6 +56,7 @@ type State = {
 	incomeValue: IntValue?,
 	lastFullNotice: number,
 	lastAction: number,
+	loading: boolean, -- 저장된 데이터를 불러오는 중 (구매·훔치기 잠시 막음)
 }
 
 local bases: { Base } = {}
@@ -401,8 +403,45 @@ local function spawnCFrame(base: Base): CFrame
 	return spawn.CFrame + Vector3.new(0, 3, 0)
 end
 
+-- 저장할 값 모으기 ------------------------------------------------------------------
+-- 금고에 남은 돈은 돈에 합친다. 들고 있던 산 로봇은 빈 받침대에 넣고, 자리가 없으면 산 값을 돌려준다.
+-- 도둑이 들고 가는 중인 자리(예약석)는 넣지 않는다 (주인이 나가면 도둑 것이 되므로 중복 방지).
+local function snapshot(state: State): JunkyardSave.Data
+	local money = state.money
+	local pads: { [string]: string } = {}
+	local base = state.base
+	if base then
+		money += math.floor(base.vault)
+		for index, robotId in base.robots do
+			pads[tostring(index)] = robotId
+		end
+	end
+	local carry = state.carry
+	if carry and not carry.fromBase then
+		local placed = false
+		if base then
+			for index = 1, #base.pads do
+				if not base.robots[index] and not base.reserved[index] and not pads[tostring(index)] then
+					pads[tostring(index)] = carry.robotId
+					placed = true
+					break
+				end
+			end
+		end
+		if not placed then
+			local rarity = Config.rarityOf(carry.robotId)
+			money += if rarity then rarity.price else 0
+		end
+	end
+	return { money = money, catalog = table.clone(state.catalog), pads = pads }
+end
+
 -- 행동 ----------------------------------------------------------------------------
 local function buy(state: State, itemId: number)
+	if state.loading then
+		notify(state.player, "Alert", "저장된 기지를 불러오는 중이에요. 잠시만요!")
+		return
+	end
 	if state.carry then
 		notify(state.player, "Alert", "이미 로봇을 들고 있어요. 먼저 기지에 두세요.")
 		return
@@ -482,8 +521,8 @@ local function steal(state: State, base: Base, padIndex: number)
 	if not robotId or not base.owner or base.owner == state.player then
 		return
 	end
-	if not state.base then
-		notify(state.player, "Alert", "기지가 없어서 훔칠 수 없어요.")
+	if not state.base or state.loading then
+		notify(state.player, "Alert", "기지가 준비되지 않아 훔칠 수 없어요.")
 		return
 	end
 	if state.carry then
@@ -662,6 +701,61 @@ end)
 Belt.start(beltRemote, function(robotId: string)
 	notifyAll(("✨ %s 로봇이 컨베이어에 나타났어요!"):format(robotLabel(robotId)))
 end)
+JunkyardSave.start()
+
+-- 저장된 기지 불러오기 ------------------------------------------------------------
+local function setCatalog(state: State, catalog: { [string]: boolean })
+	state.catalog = catalog
+	local multiplier = Config.catalogMultiplier(catalog)
+	state.multiplier = multiplier
+	local ids = {}
+	for id in catalog do
+		table.insert(ids, id)
+	end
+	state.player:SetAttribute("Catalog", HttpService:JSONEncode(ids))
+	state.player:SetAttribute("Multiplier", multiplier)
+	applyTitle(state)
+end
+
+local function loadPlayer(state: State)
+	local player = state.player
+	local base = state.base
+	local status, data, lastSeen = JunkyardSave.loadAsync(player.UserId)
+	if player.Parent == nil or states[player] ~= state or not base then
+		if data then
+			JunkyardSave.saveAsync(player.UserId, data, true) -- 불러오는 사이에 나갔다: lock만 푼다
+		end
+		return
+	end
+	if data then
+		setMoney(state, data.money)
+		setCatalog(state, data.catalog)
+		for key, robotId in data.pads do
+			local index = tonumber(key)
+			if index and base.pads[index] then
+				setPadRobot(base, index, robotId)
+			end
+		end
+		refreshIncome(state)
+		local gained = JunkyardSave.offlineEarnings(baseIncome(base, state), lastSeen, os.time())
+		if gained > 0 then
+			base.vault += gained
+			base.model:SetAttribute("Vault", math.floor(base.vault))
+			notify(player, "Money", ("떠나 있는 동안 금고에 +%s"):format(Config.formatMoney(gained)))
+		end
+		JunkyardSave.track(player, function()
+			return snapshot(state)
+		end)
+		player:SetAttribute("SaveOff", false)
+	else
+		player:SetAttribute("SaveOff", true)
+		notify(player, "Alert", if status == "locked"
+			then "다른 서버에서 아직 저장 중이라 이번 접속은 저장되지 않아요."
+			else "저장된 기지를 불러오지 못해 이번 접속은 저장되지 않아요.")
+	end
+	state.loading = false
+	player:SetAttribute("Loading", false)
+end
 
 -- 플레이어 ----------------------------------------------------------------------
 local function onCharacterAdded(state: State, character: Model)
@@ -692,17 +786,24 @@ local function onPlayerAdded(player: Player)
 		incomeValue = nil,
 		lastFullNotice = 0,
 		lastAction = 0,
+		loading = true,
 	}
 	states[player] = state
 	player:SetAttribute("Mode", "Junkyard") -- 들어오면 고물상에서 시작 (Respawn 스크립트가 이 값을 본다)
 	player:SetAttribute("Catalog", "[]")
 	player:SetAttribute("Multiplier", 1)
+	player:SetAttribute("Loading", true)
 	syncCarryAttributes(state)
-	if not assignBase(state) then
-		player:SetAttribute("Mode", "Obby")
-		notify(player, "Alert", "이 서버의 기지 6개가 모두 찼어요. 오비를 즐겨 주세요!")
-	end
 	setMoney(state, Config.StartMoney)
+	if assignBase(state) then
+		task.spawn(loadPlayer, state) -- 저장된 돈·도감·받침대 로봇을 불러온다
+	else
+		player:SetAttribute("Mode", "Obby")
+		player:SetAttribute("SaveOff", true)
+		state.loading = false
+		player:SetAttribute("Loading", false)
+		notify(player, "Alert", "이 서버의 기지 6개가 모두 찼어요. 오비를 즐겨 주세요! (이번 접속은 고물상 진행이 저장되지 않아요)")
+	end
 	refreshIncome(state)
 
 	player.CharacterAdded:Connect(function(character)
@@ -750,6 +851,7 @@ Players.PlayerRemoving:Connect(function(player)
 	if state.carry and state.carry.fromBase then
 		returnStolen(state, "도둑이 나감")
 	end
+	JunkyardSave.finish(player) -- 기지를 비우기 전에 지금 값을 모아 저장 (금고·들고 있던 로봇 포함)
 	if state.base then
 		releaseBase(state.base)
 	end

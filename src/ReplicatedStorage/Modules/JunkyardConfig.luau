@@ -64,6 +64,10 @@ Config.CatchRange = 6 -- 주인이 이 거리 안에 들어오면 도둑이 로�
 Config.LockDuration = 60 -- 기지 잠금 시간(초)
 Config.LockCooldown = 60 -- 잠금이 끝난 뒤 다시 잠글 수 있기까지(초)
 
+-- 떠나 있던 동안의 수입 (다시 들어오면 금고에 쌓여 있다)
+Config.OfflineRate = 0.5 -- 평소 수입의 50%
+Config.OfflineMaxHours = 3 -- 최대 3시간치
+
 local robotById: { [string]: Robot } = {}
 for _, robot in Config.Robots do
 	robotById[robot.id] = robot
