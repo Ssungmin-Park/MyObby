@@ -11,28 +11,28 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **OpenAI Codex** (Studio·저장소 접근 재확인, 비점프형 콘셉트 조사). 마지막 게임 코드는 Claude Code가 수정했다 |
+| 마지막 작업 AI | **OpenAI Codex** (꼬마 로봇 연구소와 부품 상점 구현) |
 | 작업 시점 | 2026-11-16 |
-| 다음 작업 AI | Codex 또는 Claude Code. 저장은 Studio API 접근 설정 확인 후 G 1순위 검증을 재개한다. 비점프형 콘셉트는 G의 시안과 첫 구현 범위를 사용자와 확정한다 |
-| 게임 이름 | 마이오비 (Studio place 이름) / 콘셉트명 "실험실 탈출" |
+| 다음 작업 AI | 연구소를 PC와 모바일에서 걸어서 플레이하고 안내와 동선을 확인한다. 로봇·부품·구매의 재접속 저장은 별도 설계를 확정한 뒤 작업한다 |
+| 게임 이름 | 마이오비 (Studio place 이름) / 실험실 탈출 오비와 꼬마 로봇 연구소 |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
 | 소유 | 개인 계정 (CreatorType = User) |
 | Studio 인스턴스 ID | 2026-11-16 기준 `c45b95a2-fc62-4fb8-907e-0df1421a14db`. **실행할 때마다 바뀐다.** 새 세션에서 `list_roblox_studios`로 다시 조회하고, placeId가 위 값인 인스턴스만 사용한다 |
-| Studio 모드 | 마지막 확인 시 **Play 모드** — 사용자가 직접 플레이 중(Stage 6). AI는 멈추지 않고 Server로 읽기만 했다. 다음 AI는 편집 전에 모드를 확인하고, Play를 멈춰야 하면 사용자에게 알린다 |
+| Studio 모드 | **Edit 모드**. 작업 전 사용자에게 알린 뒤 기존 Play를 종료하고, 새 테스트를 별도로 실행했다 |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 수정 | **진행 저장 구현 (사용자 승인 후).** Studio에 `ServerScriptService/ProgressSave`(ModuleScript) 추가, `Leaderstats` 수정(불러오기 연결), `Respawn`·`Finish`의 leaderstats 대기 시간 5초/10초 → 30초. ChangeHistoryService로 기록(Ctrl+Z 가능) |
-| Studio 저장 상태 | place는 클라우드 저장 place(`persistedToCloud = true`)다. 사용자가 Studio를 다시 시작한 뒤에도 `ProgressSave`와 수정한 스크립트 3개가 그대로 있었다 → **진행 저장 코드는 클라우드에 저장된 것으로 보인다**(간접 확인). AI는 저장·Publish를 하지 않았다 |
+| 마지막 수정 | 사용자 승인 후 `Workspace/RobotLab`, `ServerScriptService/RobotLab`, `StarterPlayer/StarterPlayerScripts/RobotLabHud` 추가. 설치는 Studio MCP의 ChangeHistoryService 기록으로 묶였다 |
+| Studio 저장 상태 | place는 클라우드 저장 place다. 연구소는 Edit에 반영 후 Play로 검증했다. 이번 변경의 클라우드 저장은 사용자가 Ctrl+S로 수행한다 |
 | Studio API 접근 | **여전히 거부됨.** 기존 Play 세션에서 Codex가 `Progress_v1`의 `Player_0` 읽기를 확인했으며 Error code 7 (`Studio access to APIs is not allowed`)이 반환됐다. 쓰기는 시도하지 않았다. Security 탭에서 설정과 저장 여부를 확인해야 한다 |
-| 백업 상태 | 스크립트: `src/`(Git, GitHub)에 7개 모두 있고 Studio와 내용이 같다(체크섬 일치). 맵(파트·모델): **Git에 백업 없음**, Studio 클라우드에만 있다. 옛 버전은 `ServerStorage`에 백업 |
+| 백업 상태 | 스크립트 9개는 `src/`에서 관리한다. 연구소 맵 생성 코드는 `tools/build-robot-lab.luau`에 있다. 기존 오비 맵의 옛 버전은 `ServerStorage`에 있다 |
 | 게임 공개 상태 | 확인하지 않았고 바꾸지 않았다. AI는 Publish하지 않는다 (AGENTS.md §8 규칙 9) |
 
 ---
 
 ## A. 프로젝트 개요
 
-- **콘셉트:** "실험실 탈출" 오비(장애물 코스). 실험실에 갇힌 플레이어가 레이저 복도, 회전 레이저, 움직이는 화물 발판, 보안문을 지나 EXIT까지 탈출한다.
+- **콘셉트:** 기존 "실험실 탈출" 오비는 시작 발판과 EXIT를 연결한다. 새 "꼬마 로봇 연구소"는 두 지점의 입구로 드나들며, 평지에서 로봇을 찾고 수리하고 도감을 모은다.
 - **핵심 플레이 구조:** 시작 발판(Stage 0) → 체크포인트 1~10을 순서대로 밟음 → 체크포인트 11(EXIT) = 탈출. 죽으면 마지막 체크포인트에서 1초 뒤 부활. 오른쪽 위 리더보드에 현재 Stage 표시.
 - **개발 목표:** 출시 가능한 게임 + 공개 GitHub 저장소를 포트폴리오로 활용.
 - **단계:** 1단계 그레이박스(재미 검증) → 2단계 시스템(저장, 수익화) → 3단계 비주얼.
@@ -61,7 +61,7 @@
 
 ## B. 현재 구현된 기능
 
-활성 스크립트 7개(Script 5, ModuleScript 1, LocalScript 1)는 `--!strict`이며, 로컬 `src/`와 바이트 크기 및 체크섬이 일치한다 (2026-11-16).
+프로젝트 스크립트 9개의 바이트 크기와 체크섬이 Studio와 `src/`에서 일치한다.
 
 ### B-1. 리더보드 — `ServerScriptService/Leaderstats` (Script, 1691 B)
 - 플레이어가 들어오면 `leaderstats`(Folder)와 `Stage`(IntValue, 0)를 만든다.
@@ -139,13 +139,20 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 | `ServerStorage/ObbyServer_backup` | 옛 단일 스크립트 (Disabled, 2622 B, `--!strict` 없음). **백업. 승인 없이 삭제 금지** |
 | `ServerStorage/StagesBackup/Stage04~10` | 장애물을 넣기 전 스테이지. **백업. 승인 없이 삭제 금지** |
 
+### B-10. 꼬마 로봇 연구소와 부품 상점
+
+- `Workspace/RobotLab`에는 연구실, 창고, 온실과 `Interactions`의 상호작용 지점이 있다. 시작 발판이나 EXIT에서 입장하고 연구실 출구에서 현재 오비 체크포인트로 돌아간다. 맵 재생성 함수는 `tools/build-robot-lab.luau`에 있다.
+- `ServerScriptService/RobotLab` (5608 B)은 삐삐 → 볼트 → 루미의 발견·수리 순서와 보상 4·6·8부품을 관리한다. 상점은 고출력 배터리 5부품(루미 구조 조건), 신호 증폭기 3부품(탐지 범위 30 → 55스터드)을 한 번씩 판매한다. 게임 내 부품을 사용한다.
+- 서버가 상호작용 거리, 생존, 연구소 입장 여부, 잔액과 중복 구매를 확인한다. `StarterPlayer/StarterPlayerScripts/RobotLabHud` (4161 B)는 서버가 복제한 속성으로 도감과 목표, 부품, 신호를 표시한다.
+- 도감·부품·구매는 서버 세션에 보관한다. 오비로 돌아가거나 캐릭터가 재생성돼도 같은 세션에는 보존되고, 서버에서 나갔다 돌아오면 초기화된다. 오비 `Progress_v1`은 그대로다.
+
 ---
 
 ## C. 진행 중인 개발
 
 - **진행 중인 작업:** 진행 저장 — **구현 완료, 실제 DataStore 재접속 테스트 대기.**
   - 중단 위치: Studio API 접근이 계속 거부되어 G 1순위 테스트를 시작하지 못했다. 사용자에게 Game Settings → Security 탭 스크린샷을 요청한 상태. 코드는 더 고칠 계획이 없다.
-- **신규 개발 후보:** 사용자가 점프 없이 오래 플레이할 수 있는 ‘키우기’·‘찾기’ 주제를 요청했다. G에 조사 결과와 시안을 기록했다. 맵·스크립트 변경은 승인 대기 중이다.
+- **꼬마 로봇 연구소:** 첫 플레이 버전과 부품 상점 구현·Studio 자동 테스트 완료. 실제 모바일 조작, 첫 플레이어의 동선, 재접속 저장은 후속 작업이다.
 - **마지막 구현 작업 (Claude Code):**
   1. 사용자가 Codex 설계안을 승인 → `ProgressSave` 구현, Studio 반영, 가짜 저장소 테스트 13개 통과, 기존 회귀 테스트 통과 (커밋 `0eceb0d`).
   2. 실제 저장 테스트를 3번 시도 → 모두 API 접근 거부로 중단. 저장소에는 아무것도 쓰지 않았다.
@@ -255,6 +262,8 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 **⑧ 2026-11-16 Codex 확인 (기존 Play 세션 유지)** — Place ID·Universe ID 일치. 스크립트 7개 바이트 크기·체크섬 일치, 체크포인트 10 라벨과 11의 `IsFinish`, 스테이지 10개, 장애물 4종, 백업 2개 확인. 저장소 읽기 요청은 Error code 7로 거부됐다. 새 플레이테스트와 쓰기는 없었다.
 
+**⑨ 2026-11-16 연구소·상점 및 오비 회귀 테스트 (Codex)** — 시작 및 EXIT 입장, 발견·수리 순서, 도감 3/3, 구매 2종, 잔액 부족·중복 구매·배터리 없이 루미 발견 차단, 기존 Stage와 위치로 복귀, 같은 세션 재입장 보존을 실제 프롬프트 이벤트로 확인했다. 기존 오비의 진행·리스폰·장애물 및 클라이언트 탈출 메시지도 확인했다. 낙사 직후 체크포인트 3으로 이동하는 첫 검사에서 부활 위치 보정과 겹쳐 재실행했고, 캐릭터가 체크포인트 2에서 안착한 뒤 3~11을 통과했다. 콘솔에는 기존 DataStore 접근 거부 경고와 골인 로그만 있었다. 자동 이동으로 검증했으며 실제 걷기 동선·모바일 조작은 미검증이다.
+
 **아직 안 한 것:** 실제 DataStore에 저장 → 다시 Play → 같은 체크포인트에서 시작. Stage 11 복원 시 탈출 메시지가 다시 뜨지 않는지. 60초 자동 저장.
 
 ### 실패한 테스트
@@ -269,13 +278,13 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 ## G. 다음 개발 계획 (우선순위 순)
 
-### 새 콘셉트 시안 — 꼬마 로봇 연구소 (승인 대기)
+### 연구소 다음 작업
 
 - **핵심 플레이:** 걸어서 고장 난 로봇을 찾고 부품을 모아 연구실에서 수리한다. 도감에 등록한 로봇이 새 탐색 기능을 열어 같은 구역에서 숨은 단서를 발견할 수 있게 한다.
-- **첫 버전:** 연구실 1곳, 평지 탐색 구역 2곳, 로봇 3종, 수리대 1개, 도감. 첫 로봇은 시작 방에서 발견하고, 수리한 탐지 로봇의 신호로 다음 로봇을 찾는다. PC·모바일 모두 걸어서 목표에 도달하도록 설계한다.
+- **구현한 범위:** 연구실 1곳, 평지 탐색 구역 2곳, 로봇 3종, 수리대, 도감, 상품 2종. 첫 로봇을 수리하면 탐지기가 열려 다음 로봇의 신호를 찾을 수 있다.
 - **검증:** 처음 보는 사람이 설명 없이 첫 로봇을 찾고 수리하는지, 첫 수리 후 스스로 두 번째 로봇을 찾으러 가는지 확인한다.
 - **참고 사례:** 성장으로 탐색 범위를 넓히는 [Bee Swarm Simulator](https://www.roblox.com/games/1537690962/Bee-Swarm-Simulator), 구역 탐색과 수집을 결합한 [Find the Chomiks](https://www.roblox.com/games/7031179594/Find-the-Chomiks), 성장·수확으로 재접속 목표를 주는 [Grow a Garden](https://www.roblox.com/games/126884695634066/Grow-a-Garden).
-- **다음 AI:** 콘셉트와 프로토타입 범위를 사용자와 확정한다. 기존 오비 맵과 `Progress_v1` 저장 형식을 보존한다. 새 모드가 승인되면 로봇 도감·수리에 맞는 저장 설계를 정한다. 장르가 확정될 때까지 아래 2순위 스테이지 스킵은 보류한다.
+- **다음 AI:** 사용자가 실제로 걸어 보며 안내와 동선을 확인하도록 한다. 로봇·부품·구매의 영속 저장을 설계할 때 기존 오비 `Progress_v1` 형식을 보존한다. 스테이지 스킵보다 연구소 검증을 우선한다.
 
 ### 0순위 — 작업 환경 확인 (매 세션)
 - **목표:** 올바른 게임과 최신 상태에서 시작.
@@ -285,7 +294,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
   3. **Codex라면 Roblox Studio MCP 연결부터 확인한다** (E-8). 없으면 사용자에게 알리고 Studio 작업은 하지 않는다 (AGENTS.md §6 "Studio MCP를 쓸 수 없을 때").
   4. `list_roblox_studios`로 인스턴스 ID를 새로 받고 placeId `77293997616106`을 확인한다.
   5. Studio에는 체크포인트 10 라벨이 올바르게 표시된다. 마지막 클라우드 저장 여부는 사용자에게 확인한다 (E-1).
-  6. 스크립트 7개 크기(또는 체크섬)가 `src/`와 같은지 확인한다.
+  6. 스크립트 9개 크기(또는 체크섬)가 `src/`와 같은지 확인한다.
 - **완료 조건:** 위 항목에서 이상이 없거나, 이상한 점을 사용자에게 보고함.
 
 ### 1순위 — 진행 저장 실제 검증 (구현은 완료, B-1b)

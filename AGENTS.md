@@ -108,7 +108,7 @@ ServerStorage/
 
 **구현 후 검증 대기:** 진행 저장(DataStore)은 구현했다. 실제 저장소를 이용한 재접속 검증은 Studio API 접근 문제 해결 후 진행한다.
 
-**아직 없는 것:** 상점/수익화, 비주얼, 사운드.
+**꼬마 로봇 연구소:** 시작 발판과 EXIT에서 입장하는 비점프형 모드. Studio 경로는 `Workspace/RobotLab`, `ServerScriptService/RobotLab`, `StarterPlayer/StarterPlayerScripts/RobotLabHud`다. 도감, 부품 보상, 부품 상점 2종을 서버에서 판정한다. 연구소 재접속 저장과 Robux 상품은 미구현이다.
 
 ## 5. 코드 작성 규칙과 아키텍처 원칙
 
