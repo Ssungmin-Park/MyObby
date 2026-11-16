@@ -106,7 +106,9 @@ ServerStorage/
   - `TimedDoor`: Part에 `Period`, `Offset` 속성. 서버 시간 기준으로 열고 닫는다.
 - 골인: EXIT에 도달하면 Stage 11이 되고, 서버가 `Remotes.Escaped:FireClient`로 알려 "탈출 성공!"을 표시한다.
 
-**아직 없는 것:** 진행 저장(DataStore), 상점/수익화, 비주얼, 사운드. 재접속하면 Stage가 0으로 초기화된다.
+**구현 후 검증 대기:** 진행 저장(DataStore)은 구현했다. 실제 저장소를 이용한 재접속 검증은 Studio API 접근 문제 해결 후 진행한다.
+
+**아직 없는 것:** 상점/수익화, 비주얼, 사운드.
 
 ## 5. 코드 작성 규칙과 아키텍처 원칙
 

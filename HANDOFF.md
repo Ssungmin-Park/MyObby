@@ -11,9 +11,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5). 그 전: OpenAI Codex (검증, 진행 저장 설계) |
+| 마지막 작업 AI | **OpenAI Codex** (Studio·저장소 접근 재확인, 비점프형 콘셉트 조사). 마지막 게임 코드는 Claude Code가 수정했다 |
 | 작업 시점 | 2026-11-16 |
-| 다음 작업 AI | Codex 또는 Claude Code. 먼저 **Studio API 접근 설정 문제**를 사용자와 해결하고 진행 저장의 실제 재접속 테스트(G 1순위)를 끝낸다 |
+| 다음 작업 AI | Codex 또는 Claude Code. 저장은 Studio API 접근 설정 확인 후 G 1순위 검증을 재개한다. 비점프형 콘셉트는 G의 시안과 첫 구현 범위를 사용자와 확정한다 |
 | 게임 이름 | 마이오비 (Studio place 이름) / 콘셉트명 "실험실 탈출" |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -24,7 +24,7 @@
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
 | 마지막 수정 | **진행 저장 구현 (사용자 승인 후).** Studio에 `ServerScriptService/ProgressSave`(ModuleScript) 추가, `Leaderstats` 수정(불러오기 연결), `Respawn`·`Finish`의 leaderstats 대기 시간 5초/10초 → 30초. ChangeHistoryService로 기록(Ctrl+Z 가능) |
 | Studio 저장 상태 | place는 클라우드 저장 place(`persistedToCloud = true`)다. 사용자가 Studio를 다시 시작한 뒤에도 `ProgressSave`와 수정한 스크립트 3개가 그대로 있었다 → **진행 저장 코드는 클라우드에 저장된 것으로 보인다**(간접 확인). AI는 저장·Publish를 하지 않았다 |
-| Studio API 접근 | **여전히 거부됨.** 사용자가 설정을 켰다고 한 뒤 3번(Studio 재시작 후 포함) 다시 시도했지만 모두 `StudioAccessToApisNotAllowed`(Error code 7). 원인 미확인: 다른 스위치("Allow HTTP Requests")를 켰거나 Save를 누르지 않았을 가능성. 사용자에게 Security 탭 스크린샷을 요청했고 아직 받지 못했다 |
+| Studio API 접근 | **여전히 거부됨.** 기존 Play 세션에서 Codex가 `Progress_v1`의 `Player_0` 읽기를 확인했으며 Error code 7 (`Studio access to APIs is not allowed`)이 반환됐다. 쓰기는 시도하지 않았다. Security 탭에서 설정과 저장 여부를 확인해야 한다 |
 | 백업 상태 | 스크립트: `src/`(Git, GitHub)에 7개 모두 있고 Studio와 내용이 같다(체크섬 일치). 맵(파트·모델): **Git에 백업 없음**, Studio 클라우드에만 있다. 옛 버전은 `ServerStorage`에 백업 |
 | 게임 공개 상태 | 확인하지 않았고 바꾸지 않았다. AI는 Publish하지 않는다 (AGENTS.md §8 규칙 9) |
 
@@ -145,7 +145,8 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 - **진행 중인 작업:** 진행 저장 — **구현 완료, 실제 DataStore 재접속 테스트 대기.**
   - 중단 위치: Studio API 접근이 계속 거부되어 G 1순위 테스트를 시작하지 못했다. 사용자에게 Game Settings → Security 탭 스크린샷을 요청한 상태. 코드는 더 고칠 계획이 없다.
-- **가장 최근 작업 (Claude Code):**
+- **신규 개발 후보:** 사용자가 점프 없이 오래 플레이할 수 있는 ‘키우기’·‘찾기’ 주제를 요청했다. G에 조사 결과와 시안을 기록했다. 맵·스크립트 변경은 승인 대기 중이다.
+- **마지막 구현 작업 (Claude Code):**
   1. 사용자가 Codex 설계안을 승인 → `ProgressSave` 구현, Studio 반영, 가짜 저장소 테스트 13개 통과, 기존 회귀 테스트 통과 (커밋 `0eceb0d`).
   2. 실제 저장 테스트를 3번 시도 → 모두 API 접근 거부로 중단. 저장소에는 아무것도 쓰지 않았다.
   3. Studio 실제 상태를 다시 확인하고 이 문서를 갱신했다.
@@ -252,6 +253,8 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 **⑦ 2026-11-16 상태 재확인 (Claude Code, 사용자 Play 중 Server 읽기)** — 스크립트 7개 크기·체크섬이 `src/`와 일치, 태그 수(KillPart 8, Spinner 2, Mover 4, TimedDoor 2), 체크포인트 11, 스테이지 10, ServerStorage 백업 2개 그대로. DataStore 접근은 여전히 거부.
 
+**⑧ 2026-11-16 Codex 확인 (기존 Play 세션 유지)** — Place ID·Universe ID 일치. 스크립트 7개 바이트 크기·체크섬 일치, 체크포인트 10 라벨과 11의 `IsFinish`, 스테이지 10개, 장애물 4종, 백업 2개 확인. 저장소 읽기 요청은 Error code 7로 거부됐다. 새 플레이테스트와 쓰기는 없었다.
+
 **아직 안 한 것:** 실제 DataStore에 저장 → 다시 Play → 같은 체크포인트에서 시작. Stage 11 복원 시 탈출 메시지가 다시 뜨지 않는지. 60초 자동 저장.
 
 ### 실패한 테스트
@@ -265,6 +268,14 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 ---
 
 ## G. 다음 개발 계획 (우선순위 순)
+
+### 새 콘셉트 시안 — 꼬마 로봇 연구소 (승인 대기)
+
+- **핵심 플레이:** 걸어서 고장 난 로봇을 찾고 부품을 모아 연구실에서 수리한다. 도감에 등록한 로봇이 새 탐색 기능을 열어 같은 구역에서 숨은 단서를 발견할 수 있게 한다.
+- **첫 버전:** 연구실 1곳, 평지 탐색 구역 2곳, 로봇 3종, 수리대 1개, 도감. 첫 로봇은 시작 방에서 발견하고, 수리한 탐지 로봇의 신호로 다음 로봇을 찾는다. PC·모바일 모두 걸어서 목표에 도달하도록 설계한다.
+- **검증:** 처음 보는 사람이 설명 없이 첫 로봇을 찾고 수리하는지, 첫 수리 후 스스로 두 번째 로봇을 찾으러 가는지 확인한다.
+- **참고 사례:** 성장으로 탐색 범위를 넓히는 [Bee Swarm Simulator](https://www.roblox.com/games/1537690962/Bee-Swarm-Simulator), 구역 탐색과 수집을 결합한 [Find the Chomiks](https://www.roblox.com/games/7031179594/Find-the-Chomiks), 성장·수확으로 재접속 목표를 주는 [Grow a Garden](https://www.roblox.com/games/126884695634066/Grow-a-Garden).
+- **다음 AI:** 콘셉트와 프로토타입 범위를 사용자와 확정한다. 기존 오비 맵과 `Progress_v1` 저장 형식을 보존한다. 새 모드가 승인되면 로봇 도감·수리에 맞는 저장 설계를 정한다. 장르가 확정될 때까지 아래 2순위 스테이지 스킵은 보류한다.
 
 ### 0순위 — 작업 환경 확인 (매 세션)
 - **목표:** 올바른 게임과 최신 상태에서 시작.
