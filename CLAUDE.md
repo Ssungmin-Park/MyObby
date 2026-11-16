@@ -5,6 +5,8 @@
 
 @AGENTS.md
 
+> Claude Code는 `AGENTS.md`를 스스로 읽지 않고 `CLAUDE.md`만 자동으로 읽는다. 그래서 위의 `@AGENTS.md` 줄로 공통 지침을 불러온다. 이 줄을 지우지 않는다. (Codex는 `AGENTS.md`를 자동으로 읽는다.)
+
 작업을 시작하면 `HANDOFF.md`도 반드시 읽는다. 다른 AI(Codex)가 마지막으로 작업했을 수 있다.
 
 ---
@@ -13,7 +15,8 @@
 
 ### Roblox Studio MCP (`Roblox_Studio`)
 - 도구는 지연 로드된다. 처음 쓸 때 ToolSearch로 `mcp__Roblox_Studio__*` 도구를 불러온다.
-- 모든 호출에 `studio_id`가 필요하다. `list_roblox_studios`로 "마이오비" 인스턴스를 찾는다.
+- 모든 호출에 `studio_id`가 필요하다. `list_roblox_studios`로 "마이오비"(placeId 77293997616106) 인스턴스를 찾는다. ID는 Studio를 다시 열면 바뀐다.
+- `save_place` 도구가 있지만 **쓰지 않는다.** 저장은 사용자가 Ctrl+S로 한다 (AGENTS.md §6, §8 규칙 9).
 - `execute_luau`의 `datamodel_type`
   - Edit 모드에서는 `Edit`을 쓴다.
   - Play 중에는 `Server` 또는 `Client`를 쓴다. Play 중에는 `Edit`이 거부된다.

@@ -11,6 +11,7 @@
 
 - **장르:** 로블록스 오비(장애물 코스) 게임
 - **콘셉트:** "실험실 탈출" — 실험실에 갇힌 플레이어가 레이저 복도, 회전 레이저, 움직이는 화물 발판, 보안문을 지나 EXIT까지 탈출한다.
+- **핵심 플레이:** 시작 발판(Stage 0) → 체크포인트 1~10을 순서대로 밟으며 점프·장애물 통과 → 체크포인트 11(EXIT) 도달 시 탈출 성공. 떨어지거나 레이저에 닿으면 마지막 체크포인트에서 다시 시작한다. 리더보드에 현재 스테이지가 보인다.
 - **목적:** 출시 가능한 게임을 만드는 것, 그리고 개발 과정을 공개 GitHub 저장소에 남겨 **포트폴리오**로 쓰는 것.
 - **개발 단계 계획:**
   1. **1단계 그레이박스** — 재미 검증. 색·재질·장식을 넣지 않는다. (예외: 닿으면 죽는 파트는 `Transparency 0.4`로만 구분)
@@ -22,13 +23,15 @@
 
 | 항목 | 내용 |
 |---|---|
-| 엔진 | Roblox Studio (place: "마이오비", placeId `77293997616106`, 클라우드 저장) |
+| 엔진 | Roblox Studio (place: "마이오비", placeId `77293997616106`, universeId `10777081510`, 클라우드 저장, 소유자: 개인 계정) |
 | 언어 | Luau (`--!strict`) |
-| Studio 연결 | Roblox Studio MCP 서버 (Claude Code에서는 `Roblox_Studio`라는 이름) |
+| Studio 연결 | Roblox Studio MCP 서버 (Claude Code에서는 `Roblox_Studio`라는 이름). Studio 인스턴스 ID는 실행할 때마다 바뀌므로 매 세션 `list_roblox_studios`로 다시 조회한다 |
+| AI 도구 | Claude Code(데스크톱 앱), OpenAI Codex(데스크톱 앱). 사용량에 따라 번갈아 사용 |
 | OS | Windows 11 |
+| 로컬 프로젝트 폴더 | `C:\RobloxProjects\MyObby` (두 AI 공통) |
 | 버전 관리 | git (`main` 브랜치) + GitHub CLI `gh` |
 | 원격 저장소 | https://github.com/Ssungmin-Park/MyObby (**공개**) |
-| 동기화 도구 | 없음 (Rojo 미사용). 스크립트는 Studio에서 `src/`로 **수동 내보내기** |
+| 동기화 도구 | 없음 (Rojo 미사용). Studio와 로컬 폴더는 **자동 동기화되지 않는다.** 스크립트는 Studio에서 `src/`로 **수동 내보내기** |
 
 **중요 — 진짜 원본은 Studio다.**
 게임이 실제로 돌아가는 코드와 맵은 Studio place(클라우드)에 있다. `src/`는 그 스크립트를 보관·공개용으로 복사한 **거울(mirror)**이다.
@@ -74,6 +77,8 @@ ServerScriptService/            서버 스크립트 5개 (위 src/와 1:1)
 ReplicatedStorage/Remotes/Escaped   RemoteEvent (서버 → 클라이언트 전용)
 ReplicatedStorage/Modules/      공용 ModuleScript 자리 (현재 비어 있음, 폴더 없음)
 StarterPlayer/StarterPlayerScripts/EscapeMessage   LocalScript
+StarterGui, StarterPack, ReplicatedFirst, SoundService, Teams   비어 있음
+Lighting/                       템플릿 기본 효과(Sky, Atmosphere, Bloom, SunRays, DepthOfField)만 있음
 ServerStorage/
   ObbyServer_backup             옛 단일 스크립트 (Disabled) — 백업
   StagesBackup/Stage04~10       장애물 추가 전 스테이지 — 백업
@@ -121,6 +126,30 @@ ServerStorage/
 - **움직이는 물체는 물리 제약으로:** 캐릭터를 태워야 하는 물체는 CFrame 트윈이 아니라 Constraint로 움직이고, `SetNetworkOwner(nil)`을 호출한다.
 - **Remote 위치:** RemoteEvent / RemoteFunction은 `ReplicatedStorage/Remotes/`에 두고, 공용 모듈은 `ReplicatedStorage/Modules/`에 둔다.
 
+### 서버와 클라이언트의 역할
+| 서버 (`ServerScriptService`) | 클라이언트 (`StarterPlayerScripts`, `StarterGui`) |
+|---|---|
+| 스테이지 판정, 리스폰 위치, 장애물 구동, 사망 처리, (예정) 저장·구매 처리 | 화면 표시(UI, 메시지, 효과음)만 |
+| 값을 결정하고 클라이언트에 알린다 | 받은 값을 보여 주기만 하고 게임 상태를 바꾸지 않는다 |
+
+### RemoteEvent / RemoteFunction 보안
+- 클라이언트 → 서버 Remote는 **아무 값이나 보낼 수 있다고 가정**한다(해킹 가능). 서버에서 타입, 범위, 플레이어 상태를 검증한다.
+- 클라이언트가 "스테이지를 올려 달라", "보상을 달라"고 직접 요청하는 Remote는 만들지 않는다. 서버가 스스로 판정한다.
+- 서버 → 클라이언트 `RemoteFunction:InvokeClient`는 쓰지 않는다(클라이언트가 응답하지 않으면 서버가 멈춘다).
+- 현재 Remote는 `Escaped`(서버 → 클라이언트 전용) 하나뿐이다.
+
+### DataStore 안전 원칙 (2단계부터 적용)
+- 현재 게임은 DataStore를 **쓰지 않는다**(2026-11-16 Studio 전체 스크립트 확인). 처음 도입할 때 키 이름·데이터 형식을 문서(`HANDOFF.md`)에 적는다.
+- 저장은 `UpdateAsync` 또는 `SetAsync`를 `pcall`로 감싸고 재시도한다. 불러오기에 실패한 플레이어의 데이터는 **덮어쓰지 않는다**(빈 값으로 저장하면 진행이 사라진다).
+- 퇴장(`PlayerRemoving`)과 서버 종료(`game:BindToClose`) 때 저장한다.
+- Studio 테스트용 데이터와 실제 데이터를 구분할 필요가 생기면 사용자와 상의한다.
+- 기존 저장 데이터를 지우거나 형식을 바꾸는 코드는 사용자 승인 없이 실행하지 않는다.
+
+### 재사용과 변경 범위 확인
+- 새 기능은 **기존 스크립트를 재사용·확장**한다. 같은 일을 하는 스크립트를 새로 만들지 않는다.
+- 수정 전에 영향 범위를 확인한다. 예: `leaderstats.Stage`는 Leaderstats, Checkpoints, Respawn, Finish가 함께 쓴다. 체크포인트 이름은 Checkpoints, Respawn, Finish가 쓴다.
+  - Studio에서는 `script_grep` 또는 `script_search`(Studio MCP)로 이름을 검색해 의존 스크립트를 찾는다.
+
 ### 게임 디자인 규칙
 - 점프 구간은 PC와 **모바일 모두** 기본 캐릭터 점프로 깰 수 있어야 한다.
   - 기본값은 JumpHeight 7.2, WalkSpeed 16이고, 평지 최대 점프 거리는 약 8.7스터드다.
@@ -163,6 +192,8 @@ ServerStorage/
 ### 스크립트 내보내기 (Studio → `src/`)
 - Studio의 각 스크립트 `Source`를 `src/<Studio 경로>.<종류>.luau`에 그대로 저장한다.
 - 내보낸 뒤 **바이트 크기를 Studio의 `#Source`와 비교**해서 일치하는지 확인한다.
+- 내용까지 비교하려면 같은 체크섬을 양쪽에서 계산한다: `h = (h * 31 + byte) % 1000000007`을 모든 바이트에 적용.
+  - Studio: `string.byte(source, i)`로 계산. 로컬: Python으로 파일을 바이너리로 읽어 계산.
 - 줄바꿈은 LF다 (`.gitattributes`). Studio에 Windows 기본값인 CRLF로 다시 붙여넣지 않는다.
 
 ### Studio MCP를 쓸 수 없을 때 (예: Codex에 Studio 연결이 없을 때)
@@ -186,11 +217,23 @@ ServerStorage/
 
 ## 8. 모든 AI 공통 규칙 (인수인계 프로토콜)
 
+### 핵심 협업 규칙 10가지
+1. 작업 시작 전에 `AGENTS.md`와 `HANDOFF.md`를 읽는다.
+2. Roblox Studio MCP로 **실제 게임 상태**를 확인한다. 문서만 믿지 않는다.
+3. **Place ID를 확인한 뒤 올바른 게임만 수정한다.** `list_roblox_studios` 결과에서 placeId `77293997616106`("마이오비")인 인스턴스만 수정한다. 다른 place가 열려 있으면 건드리지 않는다.
+4. 이전 AI가 구현한 기능을 무작정 재작성하지 않는다.
+5. 기존 기능을 유지하면서 점진적으로 개발한다.
+6. 새 기능을 구현하면 가능한 범위에서 테스트한다 (§6 회귀 테스트).
+7. 주요 개발 단계가 끝날 때마다 `HANDOFF.md`를 갱신한다.
+8. 테스트하지 않은 기능은 검증 완료라고 기록하지 않는다.
+9. 사용자 승인 없이 게임을 초기화하거나 **외부에 공개하지 않는다.** Publish(게임 공개 배포), 공개 설정 변경, 상품 가격 등록은 사용자가 직접 하거나 명시적으로 승인한 경우에만 한다.
+10. AI를 전환할 때는 진행 중인 작업, 중단 위치, 주의사항을 `HANDOFF.md`에 상세히 적는다.
+
 ### 작업 시작 시
 1. `AGENTS.md`(이 파일)와 `HANDOFF.md`를 읽는다. 최근 기록이 필요하면 `NOTES.md`와 `git log`도 본다.
 2. `git status`, `git log --oneline -10`으로 커밋되지 않은 변경과 최근 이력을 확인한다.
    - 커밋되지 않은 변경이 있으면 **덮어쓰지 말고** 사용자에게 먼저 알린다.
-3. Studio 연결이 되면 실제 구조와 `src/`가 HANDOFF 내용과 맞는지 확인한다.
+3. Studio 연결이 되면 `list_roblox_studios`로 인스턴스 ID와 placeId를 확인하고, 실제 구조와 `src/`가 HANDOFF 내용과 맞는지 확인한다.
 4. **이전 AI의 작업에서 오류나 기록과 다른 점을 발견하면, 이어서 작업하기 전에 먼저 사용자에게 보고한다.**
 
 ### 작업 중

@@ -2,157 +2,272 @@
 
 > 이 문서는 **현재 상태 스냅샷**이다. 작업을 마치거나 AI를 전환할 때 **최신 상태로 덮어 갱신**한다.
 > 지난 이력은 `NOTES.md`와 `git log`에 있다. 규칙은 `AGENTS.md`를 따른다.
-> 모든 항목은 실제 파일, Git, Studio를 확인한 결과로 적는다. 추측은 "미확인"이라고 표시한다.
+> 모든 항목은 실제 파일, Git, Studio를 확인한 결과로 적는다. 확인하지 못한 것은 "미확인"이라고 표시한다.
+> 이 문서만 읽고도 이전 대화 없이 개발을 이어갈 수 있게 쓰는 것이 목표다.
 
 ---
 
-## 0. 기본 정보
+## H. 인수인계 시점 (먼저 읽기)
 
 | 항목 | 내용 |
 |---|---|
 | 마지막 작업 AI | **Claude Code** (모델: Claude Opus 5.5) |
-| 마지막 갱신 | 2026-11-16 |
-| 마지막 커밋 | 이 문서를 추가한 커밋 (`git log -1`로 확인). 그 전 커밋: `e4a1a8b` |
-| Git 상태 | `main`, 원격 `origin/main`과 동기화하도록 푸시함. 작업 시작 시 `git status`로 다시 확인할 것 |
-| Studio 상태 | Edit 모드, place "마이오비" (placeId 77293997616106) |
+| 작업 시점 | 2026-11-16 |
+| 다음 작업 AI | OpenAI Codex (사용자 계획) |
+| 게임 이름 | 마이오비 (Studio place 이름) / 콘셉트명 "실험실 탈출" |
+| Place ID | `77293997616106` |
+| Universe ID (GameId) | `10777081510` |
+| 소유 | 개인 계정 (CreatorType = User) |
+| Studio 인스턴스 ID | 2026-11-16 기준 `c45b95a2-fc62-4fb8-907e-0df1421a14db`. **실행할 때마다 바뀐다.** 새 세션에서 `list_roblox_studios`로 다시 조회하고, placeId가 위 값인 인스턴스만 사용한다 |
+| Studio 모드 | 인수인계 시점에 **Edit 모드** (Play 테스트는 종료함) |
+| 로컬 폴더 | `C:\RobloxProjects\MyObby` |
+| Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
+| 마지막 수정 | 인수인계 문서 보강(AGENTS.md, HANDOFF.md, CLAUDE.md). **게임(Studio) 내용은 이번에 바꾸지 않았다.** 마지막 Studio 변경은 체크포인트 10 라벨 "FINISH" → "10" |
+| Studio 저장 상태 | place는 클라우드 저장 place(`persistedToCloud = true`)다. 하지만 **마지막 변경 후 사용자가 저장(Ctrl+S)했는지는 AI가 확인할 수 없다** → 미확인. AI는 저장·Publish를 하지 않았다 |
+| 백업 상태 | 스크립트: `src/`(Git, GitHub)에 6개 모두 있고 Studio와 내용이 같다(체크섬 일치). 맵(파트·모델): **Git에 백업 없음**, Studio 클라우드에만 있다. 옛 버전은 `ServerStorage`에 백업 |
+| 게임 공개 상태 | 확인하지 않았고 바꾸지 않았다. AI는 Publish하지 않는다 (AGENTS.md §8 규칙 9) |
 
-## 1. 현재 개발 단계
+---
 
-**1단계 그레이박스 — 사실상 완료.** 2단계(시스템)는 아직 시작하지 않았다.
+## A. 프로젝트 개요
 
-- 사용자가 직접 플레이해 보고 "난이도는 적당하다"고 확인했다 (2026-11-16). 플레이한 기기(PC/모바일)는 기록되지 않았다.
-- 테마는 "실험실 탈출"로 확정했다.
+- **콘셉트:** "실험실 탈출" 오비(장애물 코스). 실험실에 갇힌 플레이어가 레이저 복도, 회전 레이저, 움직이는 화물 발판, 보안문을 지나 EXIT까지 탈출한다.
+- **핵심 플레이 구조:** 시작 발판(Stage 0) → 체크포인트 1~10을 순서대로 밟음 → 체크포인트 11(EXIT) = 탈출. 죽으면 마지막 체크포인트에서 1초 뒤 부활. 오른쪽 위 리더보드에 현재 Stage 표시.
+- **개발 목표:** 출시 가능한 게임 + 공개 GitHub 저장소를 포트폴리오로 활용.
+- **단계:** 1단계 그레이박스(재미 검증) → 2단계 시스템(저장, 수익화) → 3단계 비주얼.
+- **현재 완성도:** **1단계 그레이박스 완료.** 코스 전체를 처음부터 끝까지 깰 수 있다. 사용자가 직접 플레이해 "난이도 적당"을 확인했다(기기 미기록). 색·재질·사운드·저장·상점은 없다. 2단계는 시작하지 않았다.
 
-## 2. 완료된 기능 (2026-11-16 Studio에서 확인)
-
-| 기능 | 위치 | 검증 |
+### 코스 배치 (Studio 실측)
+| 체크포인트 | 위치 (X, Y, Z) | 구간 |
 |---|---|---|
-| 스테이지 10개 + EXIT (Checkpoints 1~11) | `Workspace/Stages`, `Workspace/Checkpoints` | 자동 테스트 통과 |
-| 리더보드 Stage (0 = 시작, 11 = 탈출) | `ServerScriptService/Leaderstats` | 자동 테스트 통과 |
-| 체크포인트 진행 (다음 번호만 인정, 건너뛰기·뒤로 가기 방지) | `ServerScriptService/Checkpoints` | 자동 테스트 통과 |
-| 낙사·사망 시 마지막 체크포인트에서 리스폰 (1초) | `ServerScriptService/Respawn` | 자동 테스트 통과 |
-| 레이저 KillPart 8개 (Stage 4, 5, 7, 9의 레이저 + 회전 막대 2개) | `ServerScriptService/Hazards` | 자동 테스트 통과 |
-| 회전 레이저 Spinner 2개 (Stage 6: 40°/s, Stage 10: 55°/s) | 〃 | 자동 테스트 통과 |
-| 움직이는 발판 Mover 4개 (Stage 7, 8×2, 10 / ±6스터드) | 〃 | 자동 테스트 통과 + 발판 탑승 확인 |
-| 시간제 보안문 TimedDoor 2개 (Stage 9 / 3초 교대) | 〃 | 자동 테스트 통과 |
-| 골인 → Stage 11 + `Remotes.Escaped` 발송 | `ServerScriptService/Finish` | 자동 테스트 통과 (서버 로그 확인) |
-| "탈출 성공!" 화면 메시지 (4초) | `StarterPlayerScripts/EscapeMessage` | 이전 테스트에서 표시 확인. 최신 테스트에서는 미확인 (§6 참고) |
-| GitHub 공개 저장소 + README + 스크린샷 | 이 저장소 | 푸시 완료 |
-| AI 인수인계 체계 (AGENTS.md / HANDOFF.md / CLAUDE.md 정리) | 이 저장소 | 이번 작업 |
+| 시작 SpawnLocation | 0, 40, 0 | |
+| 1 | 0, 40, 41 | 감방: 기본 점프 (1–3) |
+| 2 | 0, 40, 80.8 | |
+| 3 | 0, 40, 122 | |
+| 4 | 0, 42.5, 172 | 레이저 복도: 낮은 레이저 바 (4–5) |
+| 5 | 0, 45, 221.7 | |
+| 6 | 0, 47.5, 273 | 실험실: 회전 레이저 (6) |
+| 7 | 0, 53.5, 333 | 화물 창고: 움직이는 발판 (7–8) |
+| 8 | 0, 59.5, 392.5 | |
+| 9 | 0, 65.5, 454 | 보안문 2개 + 레이저 (9) |
+| 10 | 0, 76, 530 | 종합 (10) |
+| 11 (EXIT, `IsFinish = true`) | 0, 76, 545 | 골인 |
 
-**Studio와 `src/` 일치 여부:** 6개 스크립트 모두 Studio의 `#Source`와 파일 바이트 크기가 같다 (2026-11-16 확인).
+- `KillZone`: Y=20, 크기 2048×1×2048. 코스 아래 전체를 덮는 낙사 판정 바닥.
+- 캐릭터 기본값: JumpHeight 7.2, WalkSpeed 16 (UseJumpPower = false). 평지 최대 점프 약 8.7스터드. 발판 간격 3 → 6스터드, 높이차 0 → 1.75스터드.
 
-| 스크립트 | 크기 |
+---
+
+## B. 현재 구현된 기능
+
+모든 스크립트는 `--!strict`이며, 로컬 `src/`에 같은 내용의 거울이 있다.
+
+### B-1. 리더보드 — `ServerScriptService/Leaderstats` (Script, 792 B)
+- 플레이어가 들어오면 `player.leaderstats`(Folder)와 `Stage`(IntValue, 초기값 0)를 만든다.
+- 의존: 없음. **`Checkpoints`, `Respawn`, `Finish`가 이 `leaderstats.Stage`를 읽고 쓴다** → 이름 변경 금지.
+
+### B-2. 체크포인트 진행 — `ServerScriptService/Checkpoints` (Script, 1756 B)
+- `Workspace/Checkpoints`의 각 파트에 `Touched`를 연결한다. **파트 이름(숫자)이 곧 스테이지 번호**다.
+- 살아 있는 플레이어 캐릭터가 밟고, `번호 == 현재 Stage + 1`일 때만 Stage를 올린다 → 건너뛰기(순간이동 핵)와 뒤로 가기를 막는다.
+- 새로 추가되는 체크포인트도 `ChildAdded`로 자동 연결된다.
+- 의존: `Workspace/Checkpoints`, `leaderstats.Stage`.
+
+### B-3. 리스폰 — `ServerScriptService/Respawn` (Script, 2019 B)
+- `Players.RespawnTime = 1`로 설정한다. Studio 편집 화면에서는 기본값 3으로 보이지만 실행하면 이 스크립트가 1로 바꾼다(Play 중 1 확인).
+- `Workspace/KillZone`에 닿으면 사망 처리한다.
+- 캐릭터가 생길 때 `leaderstats`를 최대 5초 기다린 뒤 Stage 번호의 체크포인트 위(+3스터드)로 `PivotTo`한다. Stage 0이거나 체크포인트를 못 찾으면 `SpawnLocation`으로 보낸다.
+- 의존: `Workspace/Checkpoints`, `KillZone`, `SpawnLocation`, `leaderstats.Stage`.
+
+### B-4. 장애물 — `ServerScriptService/Hazards` (Script, 4036 B)
+CollectionService 태그와 Attribute로 동작한다. Studio 실측 태그 개수는 KillPart 8, Spinner 2, Mover 4, TimedDoor 2이다.
+
+| 태그 | 붙는 대상 | 동작 | 속성 (기본값) |
+|---|---|---|---|
+| `KillPart` | BasePart (레이저, 회전 막대) | 닿으면 Health = 0 | 없음 |
+| `Spinner` | Model (Stage 6: 40°/s, Stage 10: 55°/s) | 안의 `HingeConstraint`를 Motor로 돌려 `Bar` 회전 | `SpeedDeg` (40) |
+| `Mover` | Model (Stage 7, 8×2, 10) | 안의 `PrismaticConstraint`를 Servo로 `Platform` 왕복 | `Range` (6), `Speed` (4), `StartSign` (1), `Pause` (1) |
+| `TimedDoor` | BasePart (Stage 9, 2개) | 서버 시간 기준으로 열림/닫힘 반복. 열리면 CanCollide false, Transparency 0.85 | `Period` (3), `Offset` (0) |
+
+- 움직이는 파트는 `SetNetworkOwner(nil)`로 서버가 물리를 계산한다.
+- 새 장애물 종류는 `bindTag(태그, setup함수)` 한 줄로 추가한다.
+
+### B-5. 골인 — `ServerScriptService/Finish` (Script, 1423 B)
+- 플레이어의 `Stage.Changed`를 감시하다가 값이 `IsFinish = true`인 체크포인트 번호(현재 11)가 되면 서버 로그 `[Finish] 이름 탈출 성공`을 남기고 `Remotes.Escaped:FireClient(player)`를 보낸다.
+- 의존: `ReplicatedStorage/Remotes/Escaped`, `Workspace/Checkpoints`의 `IsFinish` 속성, `leaderstats.Stage`.
+
+### B-6. 탈출 메시지 — `StarterPlayer/StarterPlayerScripts/EscapeMessage` (LocalScript, 908 B)
+- `Escaped` 이벤트를 받으면 `PlayerGui`에 `EscapeMessage` ScreenGui를 만들어 "탈출 성공!"을 4초 동안 보여 준다. 표시만 담당.
+
+### B-7. Remote
+- `ReplicatedStorage/Remotes/Escaped` (RemoteEvent): **서버 → 클라이언트 전용.** 클라이언트에서 서버로 보내는 Remote는 하나도 없다.
+
+### 시스템 연결 흐름
+```
+입장 → Leaderstats(Stage=0) → Respawn(Stage 위치로 이동)
+체크포인트 밟음 → Checkpoints(Stage+1)
+     └ Stage가 11이 되면 → Finish → Remotes.Escaped → EscapeMessage("탈출 성공!")
+레이저(KillPart) 또는 KillZone 닿음 → 사망 → 1초 뒤 Respawn(마지막 체크포인트)
+Hazards → Spinner·Mover·TimedDoor 계속 구동
+```
+
+### B-8. 데이터 저장 및 플레이어 진행
+- **DataStore를 쓰지 않는다.** Studio의 모든 스크립트(7개, 백업 포함)를 확인했다. `DataStoreService` 사용 없음.
+- 진행은 서버 메모리의 `leaderstats.Stage`에만 있다 → **재접속하면 Stage 0부터 다시 시작한다.**
+- 따라서 지금은 지켜야 할 기존 저장 데이터가 없다.
+
+### B-9. 그 밖의 Studio 객체
+| 위치 | 내용 |
 |---|---|
-| Leaderstats | 792 B |
-| Respawn | 2019 B |
-| Checkpoints | 1756 B |
-| Finish | 1423 B |
-| Hazards | 4036 B |
-| EscapeMessage | 908 B |
+| `Workspace/Stages/Stage01~10` | 스테이지별 Model (발판, 레이저, Spinner/Mover 모델, 문) |
+| `Workspace/Baseplate` | 템플릿 기본 바닥 (Y=-8) |
+| `Lighting` | 템플릿 기본 효과 Sky, Atmosphere, Bloom, SunRays, DepthOfField |
+| `StarterGui`, `StarterPack`, `ReplicatedFirst`, `SoundService`, `Teams` | 비어 있음 |
+| `ServerStorage/ObbyServer_backup` | 옛 단일 스크립트 (Disabled, 2622 B). **백업. 승인 없이 삭제 금지** |
+| `ServerStorage/StagesBackup/Stage04~10` | 장애물을 넣기 전 스테이지. **백업. 승인 없이 삭제 금지** |
 
-## 3. 진행 중인 작업과 완료 정도
+---
 
-- **진행 중인 기능 개발: 없음.** 이번 작업은 인수인계 체계 구축(문서와 Git 규칙)이었고, 완료했다.
-- 다음 큰 작업(2단계 시스템)은 아직 계획도 승인받지 않았다.
+## C. 진행 중인 개발
 
-## 4. 마지막으로 수정한 파일과 내용
+- **진행 중인 게임 기능: 없음.** 중단된 기능 작업이 없다.
+- **가장 최근 작업:** AI 인수인계 체계 구축과 보강 (문서만 수정).
+  - 이번에 Studio 실제 상태를 다시 조사했다. 스크립트 6개가 `src/`와 바이트 단위로 같고(체크섬 일치), 탈출 메시지가 클라이언트에 표시되는 것을 확인했다.
+- **마지막 게임 수정:** 체크포인트 10의 SurfaceGui 라벨 "FINISH" → "10" (커밋 `e4a1a8b` 무렵).
+- **미완성 부분:** 2단계 시스템 전체(진행 저장, 스테이지 스킵 상품, 보상형 광고)와 3단계 비주얼. 아직 계획 승인도 받지 않았다.
 
-이번 작업 (Claude Code, 2026-11-16):
+---
 
-| 파일 | 변경 |
-|---|---|
-| `AGENTS.md` (신규) | 공통 개발 지침. 기존 `CLAUDE.md`의 규칙을 모두 옮기고 인수인계 프로토콜, Git 규칙, 테스트 체크리스트, 보호 주의사항을 추가 |
-| `CLAUDE.md` | 공통 규칙을 빼고 `@AGENTS.md` 불러오기와 Claude 전용 설정(Studio MCP 사용법, gh 경로)만 남김 |
-| `HANDOFF.md` (신규) | 이 문서 |
-| `.gitignore` | 민감 파일 패턴 추가 (`.env.*`, `*.pem`, `*.key`, `*credentials*`, `*secret*`, `*.cookie`, `.codex/`, `.vscode/`) |
-| `NOTES.md` | 인수인계 체계 구축 기록 한 줄 추가 |
+## D. 주요 설계 결정
 
-직전 작업:
-- **Studio:** 체크포인트 10의 SurfaceGui 라벨을 "FINISH"에서 "10"으로 바꿨다.
-- **저장소:** `README.md`에 스크린샷을 넣었다 (커밋 `e4a1a8b`).
-
-## 5. 결정된 설계와 이유
-
-| 결정 | 이유 |
-|---|---|
-| 테마는 "실험실 탈출" | 시장 분석 결과, 일반 오비는 포화 상태여서 테마·이야기형으로 차별화. 레이저/화물/보안문 장애물이 테마와 자연스럽게 맞음 |
-| 체크포인트는 "바로 다음 번호만" 인정 | 순간이동 핵으로 건너뛰는 것을 서버에서 차단. 코스가 일직선이라 정상 플레이에는 영향 없음 |
-| 골인을 `Checkpoints/11` + `IsFinish` 속성으로 구현 | 별도 `Workspace/Finish` 대신 기존 체크포인트·리스폰 로직을 그대로 재사용. 리더보드 11 = 탈출 |
-| 장애물은 CollectionService 태그 + Attribute | 스크립트 수정 없이 레벨 디자인 반복 가능. 사용자(초보)도 태그만 붙여 장애물 추가 가능 |
-| 움직이는 발판·회전 막대는 Constraint(물리) + 서버 네트워크 소유 | CFrame 트윈은 캐릭터를 태우지 못하고 Touched가 불안정함. 서버 소유로 모든 플레이어에게 같은 위치 |
-| 보안문은 서버 시간(`GetServerTimeNow`) 하나의 시계 | 문끼리 박자가 정확히 맞고 클라이언트 간 차이 없음 |
-| 레이저는 색 없이 `Transparency 0.4` | 1단계 규칙(색·재질 금지)을 지키면서 위험 요소를 구분 가능하게 |
-| Stage 10 간격 6.0~6.1스터드 | 발판을 4×4로 키운 뒤 간격이 5.1로 줄어 Stage 9(5.7)보다 쉬워진 것을 바로잡음 |
-| 원본은 Studio, `src/`는 거울 (Rojo 미사용) | 초보 사용자 환경 단순화. 대신 수동 내보내기와 크기 비교로 동기화 |
-| GitHub 연동은 git + gh (플러그인 커넥터 미사용) | 커넥터는 토큰 환경 변수가 필요. gh는 브라우저 로그인만으로 동작 |
-| 공개 저장소 | 사용자의 포트폴리오 목적 |
-| 수익화 방향 (아직 미구현) | 스테이지 스킵 Developer Product(뒤로 갈수록 비싸게) + 꾸미기 게임패스 + 보상형 광고. 공정성을 깨는 pay-to-win은 피함 |
-
-## 6. 발견된 버그와 미해결 문제
-
-| # | 내용 | 상태 |
+| 결정 | 이유 | 지켜야 할 원칙 |
 |---|---|---|
-| 1 | **Studio 저장 여부 미확인.** 체크포인트 10 라벨 수정 등 최근 Studio 변경이 클라우드에 저장(Ctrl+S)됐는지 AI가 확인할 방법이 없음 | 사용자 확인 필요 |
-| 2 | 최신 회귀 테스트에서 "탈출 성공!" 클라이언트 표시를 확인하지 못함. 서버 로그에는 "탈출 성공"이 찍힘. 클라이언트 확인 시점이 4초 표시 시간을 넘겼을 가능성이 큼. 직전 테스트(직접 FireClient)에서는 표시 확인됨 | 재확인 권장 (버그 아닐 가능성 높음) |
-| 3 | 실제 모바일 기기·터치 조작으로는 테스트하지 않음. 자동 테스트는 순간이동 방식이라 점프 감각을 검증하지 못함 | 미검증 |
-| 4 | 진행 저장 없음: 재접속하면 Stage가 0으로 초기화 | 2단계에서 구현 예정 (버그 아님) |
-| 5 | `src/` ↔ Studio 동기화가 수동이고 크기만 비교. 크기가 같은데 내용이 다른 경우는 못 잡음 | 알려진 한계 |
-| 6 | 체크포인트 1~10에 옛 속성 `Stage`(숫자)가 남아 있음. 현재 스크립트는 쓰지 않음(이름으로 판정). 무해 | 정리 선택 사항 (삭제 전 승인) |
-| 7 | `ServerStorage/ObbyServer_backup`, `ServerStorage/StagesBackup` 백업이 남아 있음 | 삭제 여부는 사용자 결정 |
-| 8 | Claude Code의 GitHub 플러그인 커넥터 연결 실패 (토큰 환경 변수 없음) | 의도적으로 미사용 |
-| 9 | Codex 쪽에 Roblox Studio MCP가 연결되어 있는지 확인되지 않음. 연결이 없으면 Codex는 Studio를 직접 수정할 수 없음 | Codex 첫 작업 때 확인 필요 |
+| 테마 "실험실 탈출" | 일반 오비는 포화 상태여서 테마·이야기형으로 차별화. 레이저/화물/보안문 장애물이 테마와 맞음 | 오리지널 설정만 사용 |
+| 체크포인트는 "바로 다음 번호만" 인정 | 순간이동 핵으로 건너뛰기를 서버에서 차단. 코스가 일직선이라 정상 플레이에 영향 없음 | 진행 판정은 서버에서만 |
+| 골인 = `Checkpoints/11` + `IsFinish` | 기존 체크포인트·리스폰 로직 재사용. 리더보드 11 = 탈출 | 체크포인트 이름과 `IsFinish` 변경 금지 |
+| 장애물은 태그 + Attribute | 스크립트 수정 없이 레벨 디자인 반복. 초보 사용자도 태그만 붙여 추가 가능 | 새 장애물도 이 방식 우선 |
+| 움직이는 물체는 Constraint + 서버 소유 | CFrame 트윈은 캐릭터를 태우지 못함. 서버 소유로 모두에게 같은 위치 | 트윈으로 바꾸지 않기 |
+| 보안문은 `GetServerTimeNow` 하나의 시계 | 문끼리 박자가 맞고 클라이언트 간 차이 없음 | |
+| 레이저는 색 없이 `Transparency 0.4` | 1단계 규칙(색·재질 금지)을 지키면서 위험 구분 | 3단계에서 비주얼 적용 |
+| 역할별 스크립트 분리 | 한 스크립트가 커지면 수정 위험이 큼 | 새 기능은 새 스크립트 또는 기존 역할 확장 |
+| 원본은 Studio, `src/`는 거울 (Rojo 미사용) | 초보 사용자 환경 단순화 | Studio 수정 후 같은 작업 안에서 `src/` 갱신 |
+| GitHub는 git + gh (플러그인 커넥터 미사용) | 커넥터는 토큰 환경 변수가 필요. gh는 브라우저 로그인으로 동작 | |
+| 공개 저장소 | 포트폴리오 목적 | 비밀 정보 커밋 금지 |
+| 수익화 방향 (미구현) | 스테이지 스킵 Developer Product(뒤로 갈수록 비싸게) + 꾸미기 게임패스 + 보상형 광고 | pay-to-win 금지 |
 
-## 7. 마지막으로 실행한 테스트와 결과
+---
 
-**2026-11-16, Claude Code, Studio 플레이테스트 (서버에서 자동 회귀 테스트)**
+## E. 발견된 오류와 문제
+
+**현재 알려진 게임 버그: 없음.** 아래는 미확인 항목과 알려진 한계다.
+
+| # | 내용 | 재현 / 원인 | 시도한 것 | 상태 |
+|---|---|---|---|---|
+| 1 | Studio 저장 여부 미확인 | AI는 저장 여부를 알 수 없음 | 사용자에게 Ctrl+S 안내 | **사용자 확인 필요** |
+| 2 | 실제 모바일 기기·터치 조작 미검증 | 자동 테스트는 순간이동 방식 | — | 미검증 |
+| 3 | 진행 저장 없음 (재접속 시 Stage 0) | DataStore 미구현 | — | 2단계 예정 (버그 아님) |
+| 4 | 맵(파트·모델)은 Git에 백업이 없음 | Rojo 미사용, 스크립트만 `src/`로 내보냄 | — | 알려진 한계. Studio의 버전 기록(File → Version History)에 의존 |
+| 5 | 체크포인트 1~10에 옛 속성 `Stage`(숫자)가 남아 있음 | 이전 단일 스크립트의 흔적. 현재 스크립트는 이름으로 판정하므로 무해 | — | 정리 선택 사항 (삭제 전 승인) |
+| 6 | `ServerStorage` 백업 2개 남아 있음 | 의도된 백업 | — | 삭제 여부는 사용자 결정 |
+| 7 | Claude Code GitHub 플러그인 커넥터 연결 실패 | 토큰 환경 변수 없음 | gh CLI로 대체 | 의도적 미사용 |
+| 8 | Codex에 Roblox Studio MCP가 연결되어 있는지 미확인 | 연결이 없으면 Codex는 Studio를 수정할 수 없음 | — | **Codex 첫 작업 때 확인** |
+| 9 | Lighting에 템플릿 기본 효과(Bloom, DepthOfField 등)가 켜져 있음 | 템플릿 기본값 | — | 3단계 비주얼 때 결정 |
+
+해결됨: 이전 문서의 "최신 테스트에서 탈출 메시지 미확인" → 2026-11-16 재테스트에서 **클라이언트 표시 확인**(F 참고). 이전 테스트에서는 확인 시점이 4초 표시 시간을 넘겼던 것으로 본다.
+
+---
+
+## F. 테스트 상태
+
+### 실제로 실행한 테스트
+
+**① 2026-11-16 회귀 테스트 (Claude Code, Play 모드에서 서버 자동 테스트)**
 
 | # | 항목 | 결과 |
 |---|---|---|
 | 1 | 입장 시 Stage 0 | PASS |
 | 2 | 체크포인트 1 → 2 진행 | PASS |
-| 3 | 건너뛰기 방지 (2에서 5 밟기 → 2 유지) | PASS |
+| 3 | 건너뛰기 방지 (2에서 5 → 2 유지) | PASS |
 | 4 | 뒤로 가기 방지 | PASS |
 | 5 | 레이저(KillPart) 닿으면 사망 | PASS |
-| 6 | 마지막 체크포인트(2)에서 리스폰, 거리 0.0 | PASS |
+| 6 | 마지막 체크포인트에서 리스폰 (거리 0.0) | PASS |
 | 7 | KillZone 낙사 | PASS |
 | 8 | Mover 이동 (X 0.8 → 6.0) | PASS |
 | 9 | Spinner 회전 (−19° → 37°) | PASS |
 | 10 | TimedDoor 두 문 엇갈림 | PASS |
-| 11 | EXIT 도달 시 Stage 11, 서버 로그 "[Finish] … 탈출 성공" | PASS |
-| — | 클라이언트 "탈출 성공!" GUI | **미확인** (§6-2) |
-| — | 출력 로그 에러·경고 | 없음 |
+| 11 | EXIT 도달 시 Stage 11 + 서버 로그 | PASS |
 
-사용자 수동 플레이: 난이도 적당 (2026-11-16, 기기 미기록).
+**② 2026-11-16 인수인계 검증 (Claude Code)**
 
-## 8. 다음 AI가 가장 먼저 할 일
+| 항목 | 결과 |
+|---|---|
+| Play 중 `Players.RespawnTime` = 1 | PASS |
+| 체크포인트 1~11 순서대로 → Stage 0 → 11 | PASS |
+| 클라이언트 `PlayerGui.EscapeMessage` 생성, 문구 "탈출 성공!" | **PASS** (이번에 확인) |
+| 출력 로그 | `[Finish] … 탈출 성공`만 있고 에러·경고 없음 |
+| Studio 스크립트 ↔ `src/` 내용 비교 (6개, 크기 + 체크섬) | 모두 일치 |
 
-1. `AGENTS.md`와 이 문서를 읽고, `git status`와 `git log --oneline -5`로 상태를 확인한다.
-2. **Studio 연결을 확인한다.** Codex라면 Roblox Studio MCP가 있는지 확인한다(§6-9).
-   - 없으면 사용자에게 알리고 Studio 작업은 하지 않는다.
-3. **사용자에게 Studio 저장(Ctrl+S) 여부를 확인한다** (§6-1).
-4. Studio에 연결되면 `src/`와 Studio 스크립트 크기가 일치하는지 다시 확인한다.
-5. **다음 기능: 2단계 시스템의 첫 작업인 "진행 저장(DataStore)"의 계획을 세워 사용자 승인을 받는다.**
-   - 저장 대상: `leaderstats.Stage`
-   - 입장 시 불러오기, 퇴장 시와 주기적으로 저장, 서버 종료 시(`game:BindToClose`) 저장
-   - `pcall`과 재시도 처리
-   - 별도 스크립트로 만든다. 예: `ServerScriptService/ProgressSave`
-   - 그다음 작업 후보: 스테이지 스킵 Developer Product
-6. 선택 사항: §6-2(탈출 메시지)를 다시 확인한다. 사용자가 원하면 백업(§6-7)과 옛 속성(§6-6)을 정리한다.
+**③ 사용자 직접 플레이:** 처음부터 끝까지 플레이, 난이도 적당 (2026-11-16, 기기 미기록).
 
-## 9. 다음 작업 시 주의사항
+### 실패한 테스트
+- 없음.
 
-- **DataStore를 Studio에서 테스트하려면** 사용자가 Studio의 Game Settings → Security에서 "Enable Studio Access to API Services"를 켜야 한다.
-  - 이 설정은 사용자가 직접 바꾸게 안내한다.
-- DataStore 키 이름과 데이터 형식은 한 번 정하면 바꾸지 않는다 (AGENTS.md §7).
-- 저장된 Stage를 불러올 때 `Respawn`이 첫 스폰에서 그 체크포인트로 옮기는지 확인한다.
-  - 현재 `Respawn`은 `leaderstats`를 최대 5초 기다린 뒤 Stage를 읽는다. 저장값 로딩이 늦으면 시작 발판에서 출발할 수 있다.
-- `Checkpoints`는 "다음 번호만" 인정한다. 저장된 Stage가 있으면 그 다음 번호부터 정상 진행되는지 확인한다.
-- 스킵 상품을 만들 때 구매 처리(`MarketplaceService.ProcessReceipt`)는 서버에서만 한다. 한 번만 지급되도록 영수증을 처리한다.
-- 사용자가 Studio에서 Play 중일 수 있다. 편집하려고 Play를 멈출 때는 알린다.
-- 공개 저장소다. 토큰, API 키, 쿠키를 코드나 커밋에 넣지 않는다.
+### 아직 테스트하지 않은 항목
+- 실제 모바일 기기 터치 조작, 저사양 기기 성능
+- 여러 플레이어가 동시에 접속했을 때 (Mover 발판 동시 탑승, 리더보드)
+- 실제 서버(공개 게임)에서의 네트워크 지연 상황
 
-## 10. Studio 미반영 변경
+---
+
+## G. 다음 개발 계획 (우선순위 순)
+
+### 0순위 — 작업 환경 확인 (매 세션)
+- **목표:** 올바른 게임과 최신 상태에서 시작.
+- **방법:**
+  1. `AGENTS.md`와 이 문서를 읽는다.
+  2. `git status`, `git log --oneline -5`를 확인한다.
+  3. **Codex라면 Roblox Studio MCP 연결부터 확인한다** (E-8). 없으면 사용자에게 알리고 Studio 작업은 하지 않는다 (AGENTS.md §6 "Studio MCP를 쓸 수 없을 때").
+  4. `list_roblox_studios`로 인스턴스 ID를 새로 받고 placeId `77293997616106`을 확인한다.
+  5. 사용자에게 Studio를 저장(Ctrl+S)했는지 묻는다 (E-1).
+  6. 스크립트 6개 크기(또는 체크섬)가 `src/`와 같은지 확인한다.
+- **완료 조건:** 위 항목에서 이상이 없거나, 이상한 점을 사용자에게 보고함.
+
+### 1순위 — 진행 저장 (DataStore)
+- **목표:** 재접속해도 마지막 Stage에서 이어서 시작.
+- **대상 스크립트:** 새 Script `ServerScriptService/ProgressSave` (기존 `Leaderstats`는 최소 수정 또는 수정하지 않음).
+- **구현 방향 (계획을 먼저 사용자에게 보여 주고 승인받을 것):**
+  - DataStore 이름·키 형식을 정해 문서에 기록. 예: DataStore `"Progress_v1"`, 키 `"Player_<UserId>"`, 값 `{ Stage = number }`.
+  - 입장 시 `GetAsync`로 불러와 `leaderstats.Stage`에 설정. `pcall` + 재시도(예: 3회).
+  - **불러오기에 실패한 플레이어는 저장하지 않는다** (빈 값으로 덮어쓰기 방지).
+  - 퇴장 시, 주기적으로(예: 60초), `game:BindToClose`에서 저장.
+  - 불러온 Stage가 1~11 범위인지 검증.
+  - `Respawn`은 첫 스폰 때 `leaderstats`를 최대 5초 기다린 뒤 Stage를 읽는다. 저장값 로딩이 늦으면 시작 발판에서 출발할 수 있으므로, 불러온 뒤 캐릭터를 다시 옮기거나 로딩 완료 후 `LoadCharacter`하는 방식을 검토.
+  - Studio에서 테스트하려면 사용자가 Game Settings → Security → "Enable Studio Access to API Services"를 켜야 한다 (사용자가 직접 설정).
+- **완료 조건:** Studio에서 Stage 진행 → 나갔다 다시 Play → 같은 Stage 체크포인트에서 시작. 로딩 실패를 흉내 냈을 때 데이터를 덮어쓰지 않음. 회귀 테스트 12항목 통과. `src/`·README·HANDOFF 갱신.
+
+### 2순위 — 스테이지 스킵 Developer Product
+- **목표:** 막힌 플레이어가 Robux로 다음 스테이지로 넘어감 (수익화 1차).
+- **대상 스크립트:** 새 Script `ServerScriptService/SkipStage` + 클라이언트 버튼 UI(`StarterGui`).
+- **구현 방향:** `MarketplaceService.ProcessReceipt`는 서버에서만 처리하고, 같은 영수증을 두 번 지급하지 않는다. 지급은 Stage+1 후 그 체크포인트로 이동. Checkpoints의 "다음 번호만" 규칙과 충돌하지 않게 서버에서 직접 Stage를 설정. 상품 등록(가격 설정)은 **사용자가 직접** Creator Dashboard에서 한다.
+- **완료 조건:** Studio 테스트 구매로 Stage +1과 이동 확인, Stage 11에서는 구매 불가, 회귀 테스트 통과.
+
+### 3순위 — 정리 (선택, 사용자 승인 후)
+- 체크포인트 1~10의 옛 속성 `Stage` 제거 (E-5), 백업 정리 여부 결정 (E-6).
+
+### 그다음
+- 보상형 광고, 3단계 비주얼(재질·조명·사운드·썸네일).
+
+---
+
+## 주의사항
+
+- 사용자는 로블록스 초보자다. 한국어로 답하고 용어를 짧게 설명한다.
+- 사용자가 Studio에서 Play 중일 수 있다. Play를 멈출 때는 알린다. Play 중에도 `Server` datamodel로 읽기는 가능하다.
+- 체크포인트 이름(`1`~`11`), `IsFinish`, `leaderstats.Stage`는 바꾸지 않는다.
+- DataStore를 넣은 뒤에는 키 이름·데이터 형식을 바꾸지 않는다.
+- AI는 Studio를 Publish하거나 게임 공개 설정을 바꾸지 않는다.
+- 공개 저장소다. 토큰, API 키, 쿠키, 비밀번호를 코드나 커밋에 넣지 않는다.
+
+## Studio 미반영 변경
 
 `src/`만 고치고 아직 Studio에 반영하지 못한 변경을 여기에 적는다.
 
