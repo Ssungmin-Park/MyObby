@@ -36,6 +36,10 @@ local function onCharacterAdded(player: Player, character: Model)
 	local leaderstats = player:WaitForChild("leaderstats", 30)
 	local stageValue = leaderstats and leaderstats:FindFirstChild("Stage")
 	local stage = if stageValue and stageValue:IsA("IntValue") then stageValue.Value else 0
+	-- 로봇 고물상에 있는 플레이어는 Junkyard 스크립트가 자기 기지로 보낸다
+	if player:GetAttribute("Mode") == "Junkyard" then
+		return
+	end
 	local part = getRespawnPart(stage)
 	character:PivotTo(part.CFrame + Vector3.new(0, part.Size.Y / 2 + 3, 0))
 	root.AssemblyLinearVelocity = Vector3.zero

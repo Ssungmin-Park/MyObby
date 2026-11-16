@@ -113,7 +113,9 @@ ServerStorage/
 
 - 진행 저장: 오비 Stage(`Progress_v1`)와 로봇 작업장(`RobotLab_v1`)을 DataStore에 저장한다. 2026-11-17 실제 저장소로 재접속 복원을 확인했다. Studio API 접근은 **파일 → 체험 설정 → 보안**에서 켠다(켜져 있음).
 
-**로봇 작업장 (꼬마 로봇 연구소 확장, 장시간 플레이용 주력 콘텐츠):** 시작 발판과 EXIT에서 입장하는 비점프형 모드. 부품 줍기 → 로봇 수리(실제 시간) → 도우미 수입 → 업그레이드·구역 열기 루프. Studio 경로는 `Workspace/RobotLab`, `ServerScriptService/RobotLab`, `StarterPlayer/StarterPlayerScripts/RobotLabHud`, `ReplicatedStorage/Modules/RobotLabConfig`. 밸런스는 Config 숫자만 바꿔 조정한다. 로봇·업그레이드·구역 id는 저장 데이터 키가 될 예정이므로 바꾸지 않는다. 재접속 저장과 Robux 상품은 미구현이다. 상세는 HANDOFF B-10.
+**로봇 고물상 타이쿤 (현재 주력, 멀티플레이):** 접속하면 고물상 기지에서 시작한다. 가운데 컨베이어에서 로봇을 사서 기지 받침대에 두면 초당 수입, 남의 로봇 훔치기·붙잡기·방어막, 도감 세트 보너스. 플레이어 속성 `Mode`("Junkyard"/"Obby")로 어느 모드인지 구분하고 `Respawn`은 Junkyard 모드면 관여하지 않는다. Studio 경로: `Workspace/Junkyard`, `ServerScriptService/Junkyard`·`JunkyardBelt`, `StarterPlayer/StarterPlayerScripts/JunkyardHud`, `ReplicatedStorage/Modules/JunkyardConfig`, `Remotes/JunkyardBelt·JunkyardAction·JunkyardNotify`. 아직 저장 없음. 상세는 HANDOFF B-11.
+
+**로봇 작업장 (꼬마 로봇 연구소 확장, 이전 주력 → 부가 모드):** 시작 발판과 EXIT에서 입장하는 비점프형 모드. 부품 줍기 → 로봇 수리(실제 시간) → 도우미 수입 → 업그레이드·구역 열기 루프. Studio 경로는 `Workspace/RobotLab`, `ServerScriptService/RobotLab`, `StarterPlayer/StarterPlayerScripts/RobotLabHud`, `ReplicatedStorage/Modules/RobotLabConfig`. 밸런스는 Config 숫자만 바꿔 조정한다. 로봇·업그레이드·구역 id는 저장 데이터 키가 될 예정이므로 바꾸지 않는다. 재접속 저장과 Robux 상품은 미구현이다. 상세는 HANDOFF B-10.
 
 ## 5. 코드 작성 규칙과 아키텍처 원칙
 

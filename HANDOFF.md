@@ -11,10 +11,10 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — 로봇 작업장 1단계(핵심 루프), 2단계(저장·오프라인 수입), 3단계 일부(전시대·안내선·밸런스). 그 전: Codex (연구소 첫 버전) |
+| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — **로봇 고물상 타이쿤 1단계**(멀티플레이 새 주력 모드). 그 전: 로봇 작업장 1~3단계 일부 |
 | 작업 시점 | 2026-11-17 |
-| 다음 작업 AI | Codex 또는 Claude Code. 사용자 직접 플레이(PC·모바일) 피드백을 받아 3단계 다듬기. 실제 저장 재접속 검증은 끝났다(F ⑭) |
-| 게임 이름 | 마이오비 (Studio place 이름) / 실험실 탈출 오비와 꼬마 로봇 연구소 |
+| 다음 작업 AI | Codex 또는 Claude Code. ① **2인 이상 로컬 서버 테스트로 훔치기·붙잡기·방어막 밀어내기 확인**(아직 미검증) ② 고물상 2단계(저장) |
+| 게임 이름 | 마이오비 (Studio place 이름) / **주력: 로봇 고물상 타이쿤**(멀티플레이). 부가: 실험실 탈출 오비, 로봇 작업장(꼬마 로봇 연구소) |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
 | 소유 | 개인 계정 (CreatorType = User) |
@@ -22,18 +22,23 @@
 | Studio 모드 | 작업 종료 시 **Edit 모드** (Play 테스트 종료함) |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-17 Claude Code: **3단계 일부** — `RobotLabHud`에 연구실 전시대·안내선·구역 열기 안내, `RobotLabConfig` 온실 60→40·레벨업 수리비 배수(`LevelCostStep`), `RobotLab` `repairCost` 레벨 반영. 그 전: **저장 추가** — `ServerScriptService/RobotLabSave`(신규 ModuleScript), `RobotLab`(불러오기·저장 연결), `RobotLabHud`("저장 안 됨" 표시), `RobotLabConfig`(보관함 상한 4시간, 수입 함수 공용화). 그 전: 로봇 작업장 확장. `ReplicatedStorage/Modules/RobotLabConfig`(신규), `Remotes/RobotLabState`·`RobotLabAction`(신규), `ServerScriptService/RobotLab`·`RobotLabHud` 교체, `Workspace/RobotLab`에 폐품 처리장·`SpawnPoints`·장치 7개 추가. v1 스크립트와 고정 로봇·상점 장치는 `ServerStorage/RobotLabV1Backup`으로 옮김(삭제 없음). 모두 ChangeHistoryService 기록(Ctrl+Z 가능) |
-| Studio 저장 상태 | `persistedToCloud = true`인 클라우드 place다. **로봇 작업장 확장·저장 추가의 클라우드 저장(Ctrl+S) 여부는 미확인** — 사용자에게 저장을 요청했다 |
+| 마지막 게임 수정 | 2026-11-17 Claude Code: **로봇 고물상 1단계** — `Workspace/Junkyard`(맵), `ReplicatedStorage/Modules/JunkyardConfig`, `ServerScriptService/Junkyard`·`JunkyardBelt`, `StarterPlayerScripts/JunkyardHud`, `Remotes/JunkyardBelt·JunkyardAction·JunkyardNotify` 추가, `Respawn`에 Mode 확인 4줄 추가. 모두 ChangeHistoryService 기록 |
+| Studio 저장 상태 | `persistedToCloud = true`. **로봇 고물상 추가분의 클라우드 저장(Ctrl+S) 여부는 미확인** — 사용자에게 저장을 요청했다 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
 | 실제 저장 데이터 | 테스트로 **사용자 본인 키**에 값이 남아 있다: `Progress_v1/Player_12007797600` = Stage 11, `RobotLab_v1/Player_12007797600` = 부품 10·삐삐 Lv.1·튜토리얼 완료. 지우려면(RemoveAsync) 사용자 승인 필요 |
-| 백업 상태 | 스크립트 11개는 `src/`에서 관리하고 Studio와 체크섬 일치. 연구소 맵은 `tools/build-robot-lab.luau`(v1) → `tools/expand-robot-lab.luau`(확장) 순서로 다시 만들 수 있다. 연구소 v1은 `ServerStorage/RobotLabV1Backup`, 오비 옛 버전은 `ServerStorage`에 있다 |
+| 백업 상태 | 스크립트 15개(Script·ModuleScript·LocalScript)는 `src/`에서 관리하고 Studio와 체크섬 일치. 맵 생성 코드: 연구소 `tools/build-robot-lab.luau` → `tools/expand-robot-lab.luau`, 고물상 `tools/build-junkyard.luau`. 백업: `ServerStorage/ObbyServer_backup`, `StagesBackup`, `RobotLabV1Backup` |
 | 게임 공개 상태 | 확인하지 않았고 바꾸지 않았다. AI는 Publish하지 않는다 (AGENTS.md §8 규칙 9) |
 
 ---
 
 ## A. 프로젝트 개요
 
-- **방향 전환 (2026-11-17 사용자 결정):** 점프맵보다 **오래 접속해 있을 수 있는 주제**를 원한다. Codex가 제안한 "꼬마 로봇 연구소"를 장시간 플레이용 **로봇 작업장**(수집·성장형)으로 키우기로 했다. 기존 오비는 그대로 두고 연구소 입구로 연결한다.
+- **2차 방향 전환 (2026-11-17 사용자 결정, 최신):** 로봇 작업장은 "혼자 하는 게임이라 재미없다". 사용자가 원하는 것은 **여럿이 함께 오래 하는 게임 + 상점(다른 플레이어 방해/나에게 도움) + 도감 수집(완성 보상 포함)**. 사용자가 예로 든 인기 장르("~를 건설하세요", "~스쿼드를 만드세요"류)는 흐름만 참고하고 이름·캐릭터·맵은 따라 하지 않는다. 그래서 **"로봇 고물상 타이쿤"**을 새 주력 모드로 만들고 있다(B-11).
+  - 루프: 가운데 컨베이어에 흐르는 고장 난 로봇을 **돈으로 구매**(모두가 같은 벨트를 보며 경쟁) → 머리 위에 들고 **내 기지 받침대**에 배치 → **초당 수입**이 금고에 쌓임 → 금고를 밟아 수령 → 더 비싼 로봇.
+  - 멀티: 남의 기지 로봇 **훔치기**, 주인이 쫓아가 **붙잡기**, **방어막**(60초). 희귀 로봇 등장·도감 세트 완성은 서버 전체 알림.
+  - 도감: 18종 6등급. 등급 3종을 모두 모으면 **영구 수입 배수 + 머리 위 칭호**.
+  - 승인된 단계: 1) 핵심(완료, 2인 테스트만 남음) 2) 저장·오프라인 수입 3) 상점(방해·방어·도움 아이템, Robux 상품), 서버 이벤트, 협력 목표 4) 환생·변종·비주얼.
+- **1차 방향 전환 (2026-11-17 사용자 결정):** 점프맵보다 **오래 접속해 있을 수 있는 주제**를 원한다. Codex가 제안한 "꼬마 로봇 연구소"를 장시간 플레이용 **로봇 작업장**(수집·성장형)으로 키우기로 했다. 기존 오비는 그대로 두고 연구소 입구로 연결한다.
 - **로봇 작업장 핵심 루프:** 구역에서 부품 줍기 → 수거함에 넣기 → 고장 난 로봇 신호 찾기 → 수리대에 맡기기(부품 + **실제 시간**) → 수리한 로봇이 **계속 부품을 벌어 줌**(보관함) → 업그레이드·새 구역 열기 → 더 희귀한 로봇. 오래 머물게 하는 장치: 실시간 수리 대기, 자동 수입, 12종 도감과 4개 등급, 같은 로봇 재수리로 레벨업(최대 5), 업그레이드 4종, 구역 3곳.
 - **오비 구조 (기존):** 시작 발판(Stage 0) → 체크포인트 1~10 → 체크포인트 11(EXIT) = 탈출. 죽으면 마지막 체크포인트에서 1초 뒤 부활. 리더보드에 Stage 표시.
 - **개발 목표:** 출시 가능한 게임 + 공개 GitHub 저장소를 포트폴리오로 활용.
@@ -141,6 +146,31 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 | `ServerStorage/ObbyServer_backup` | 옛 단일 스크립트 (Disabled, 2622 B, `--!strict` 없음). **백업. 승인 없이 삭제 금지** |
 | `ServerStorage/StagesBackup/Stage04~10` | 장애물을 넣기 전 스테이지. **백업. 승인 없이 삭제 금지** |
 
+### B-11. 로봇 고물상 타이쿤 (2026-11-17, 1단계)
+
+**모드 전환:** 플레이어 속성 `Mode` = `"Junkyard"`(기본, 접속 시 설정) 또는 `"Obby"`. `Respawn`은 Mode가 Junkyard면 아무것도 안 하고, `Junkyard` 스크립트가 자기 기지 `Spawn`으로 보낸다. 고물상 `ObbyPortal` → 오비(현재 Stage 체크포인트), 오비 시작 발판의 `JunkyardPortal`(Workspace/Junkyard 안에 있음) → 내 기지. 로봇 작업장 입구(시작 발판·EXIT)는 그대로.
+
+**맵 `Workspace/Junkyard`** (X 290~510, Z 0~200, 바닥 윗면 Y 40.5, `tools/build-junkyard.luau`)
+- `Belt`: Z 100, X 315→485 (속성 `StartPos`, `EndPos`). 양옆 `BeltRail`, 시작 `BeltStart`(고물 투입구), 끝 `BeltEnd`.
+- `Bases/Base1~6`: 북쪽 1~3(Z 23~57, 입구 +Z), 남쪽 4~6(Z 143~177, 입구 −Z), X 340/400/460. 속성 `Index`, `Front`, `Center`, `OwnerUserId`, `OwnerName`, `Vault`, `LockedUntil`. 자식: `Floor`, `Wall`(뒷벽에 이름판 `Sign`), `Shield`(입구, 잠기면 반투명), `Pads/Pad1~10`(각 `RobotPrompt`, 1.5초 누르기), `Vault`(밟으면 수령, `Amount` 빌보드), `LockButton`(`LockPrompt`), `Spawn`(투명).
+- `ObbyPortal`(298, 42.5, 100), `JunkyardPortal`(오비 시작 발판 −X쪽).
+
+**설정 `ReplicatedStorage/Modules/JunkyardConfig`** — 6등급(일반·고급·희귀·에픽·전설·신화: 벨트 확률 600/250/100/40/9/1, 가격 25/100/500/2.5K/15K/100K, 초당 1/4/15/60/300/1500, 세트 보너스 +5/10/15/25/40/100%), 로봇 18종(등급별 3), 시작 돈 50, 벨트 2.5초 간격·초속 4, 받침대 10, 판매 50%, 운반 중 걷기 11, 훔치기 1.5초, 붙잡기 거리 6, 방어막 60초+쿨타임 60초. **로봇 id는 저장 키가 될 예정이라 바꾸지 않는다.**
+
+**벨트 `ServerScriptService/JunkyardBelt`** (ModuleScript) — 서버는 `{id, robotId, spawnTime}`만 기록하고 `JunkyardBelt` RemoteEvent로 "Add"/"Remove"/"Snapshot"을 보낸다. 위치 = 시작 + 방향 × 속도 × (서버 시간 − spawnTime). 클라이언트가 같은 공식으로 그린다(서버 파트 복제 없음 → 렉 적음). 전설·신화가 나오면 서버 전체 알림.
+
+**서버 `ServerScriptService/Junkyard`** (Script)
+- 접속 시 빈 기지 배정(6개 모두 차면 오비 모드 + 안내), 돈 50, leaderstats에 `돈`·`초당` 추가(Leaderstats가 만든 뒤).
+- `JunkyardAction` 요청: `"Buy"(itemId)` — 운반 중 아님, 기지 있음, 서버 공식 위치에서 14스터드 이내, 돈 충분, 아직 안 팔림 → 돈 차감, 머리 위에 로봇(용접, 걷기 11). `"Lock"` — 방어막.
+- 0.2초마다: 운반 중인 플레이어가 **내 기지 안**이면 빈 받침대(도둑 예약석 제외)에 배치 → 도감 등록. 훔친 로봇이면 주인이 6스터드 안에 오면 **원래 받침대로 복귀**. 잠긴 기지 안의 다른 사람은 입구 밖으로 이동. 1초마다 기지 수입 × 도감 배수를 금고에 적립.
+- 받침대 프롬프트: 주인 → **팔기**(가격 50%), 다른 사람 → **훔치기**(방어막 아님, 운반 중 아님, 내 기지 있음). 훔치면 그 받침대는 예약석(되돌아올 자리). 도둑이 죽거나 나가면 원래 주인에게 복귀. 주인이 나가면 훔쳐 가던 로봇은 도둑 것.
+- 산 로봇은 죽어도 계속 들고 있다(새 캐릭터에 다시 붙임). 로봇을 든 채로는 오비 포털 이용 불가.
+- 플레이어 속성(클라이언트 표시용): `Mode`, `BaseIndex`, `Money`, `Income`, `Multiplier`, `Catalog`(JSON 배열), `Carrying`, `CarryStolen`, `LockedUntil`, `LockCooldownUntil`.
+- `JunkyardNotify`: `"Info"`/`"Alert"`/`"Global"`/`"Money"` 알림.
+- **저장 없음**(2단계 예정): 나가면 기지가 비워지고 돈·도감이 초기화된다.
+
+**클라이언트 `StarterPlayerScripts/JunkyardHud`** — 왼쪽 위 패널(돈, 초당·도감 배수, 운반 상태, 방어막 버튼, 도감 버튼), 도감 창(18칸 + 세트 보너스 진행), 위쪽 알림, 벨트 로봇 직접 그리기와 구매 프롬프트, 받침대 버튼 문구(내 기지 "팔기 +금액" / 남의 기지 "훔치기"). Mode가 Junkyard일 때만 보인다.
+
 ### B-10. 로봇 작업장 (꼬마 로봇 연구소 확장, 2026-11-17)
 
 **맵 `Workspace/RobotLab`** (Codex v1 + Claude 확장, X 120~180 / Z −10~126, 바닥 Y 40)
@@ -186,6 +216,8 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 ---
 
 ## C. 진행 중인 개발
+
+- **로봇 고물상 타이쿤 (주력):** 1단계 구현·1인 테스트 완료(F ⑮). **훔치기·붙잡기·방어막 밀어내기는 2명 이상이 필요해 아직 실행 검증 못 함** — 다음 작업에서 Studio 로컬 서버(플레이어 2명)로 확인. 그다음 2단계(저장).
 
 - **로봇 작업장:** 1단계(핵심 루프·업그레이드, F ⑪)와 2단계(저장·오프라인 수입, F ⑫) 구현·자동 테스트 완료. 실제 DataStore 재접속 검증 완료(F ⑭). **남은 것: 실제 걷기·모바일 확인, 밸런스·연출(3단계).**
 - **기존 오비:** `ProgressSave` 구현 및 모의 저장소 검증 완료(`0eceb0d`). 실제 저장·재접속 검증은 Studio API 접근 거부로 중단돼 있다.
@@ -336,6 +368,26 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 참고: 운반 중이던 희귀 로봇(스프링)은 설계대로 저장되지 않았다.
 
+**⑮ 2026-11-17 로봇 고물상 1단계 (Claude Code, Play 1인)**
+
+| 항목 | 결과 |
+|---|---|
+| 접속 → Mode Junkyard, 기지 1 배정, 기지 스폰(340, _, 49), HUD 표시, 리더보드 Stage·돈 50·초당 0 | PASS |
+| 벨트: 로봇 6개 표시, 1초에 4.00스터드 이동 | PASS |
+| 일반 로봇 구매 → 돈 50→25, 머리 위 운반 모델, 걷기 11 | PASS |
+| 기지 안 진입 → 받침대 자동 배치, 초당 1, 도감 등록 알림 | PASS |
+| 5초 후 금고 6 → 금고 밟기 → 돈 +6 | PASS |
+| 내 받침대 프롬프트 "삐삐 / 팔기 +12 / 1.5초" → 팔기 후 돈 +12, 프롬프트 꺼짐 | PASS |
+| 방어막: 버튼 → "방어 중 60초", 방패 투명도 0.5, 다시 누르면 "이미 켜져 있음" | PASS |
+| 오비 포털 → Mode Obby, 저장된 Stage 11 체크포인트, HUD 숨김 / 고물상 포털 → Mode Junkyard, 기지 스폰 | PASS |
+| 고물상에서 사망 → 기지 스폰 / 오비 모드 사망 → 체크포인트 11(거리 0.01) | PASS |
+| 클라이언트·서버 경고·에러 | 없음 |
+| Studio ↔ `src/` 스크립트 체크섬 | 일치 |
+
+**미검증:** 훔치기·붙잡기·도둑 사망 시 복귀·방어막 중 훔치기 거절·잠긴 기지 밀어내기·여러 명의 벨트 경쟁(2명 이상 필요), 도감 세트 완성 보너스·칭호·전체 알림(시간이 오래 걸려 미실행), 전설·신화 등장 알림.
+
+**렉 측정:** 이번 Play에서 클라이언트 FPS 15였지만 **벨트를 숨겨도 15로 같았고**, 벨트 모델 17개 이동 비용은 프레임당 0.04ms. 게임 코드가 원인이 아니라 Studio 창이 포커스를 잃어(사용자가 다른 창 사용 중) 렌더링이 느려진 것으로 본다(이전 측정은 60 FPS). Studio 메모리 2.8GB.
+
 **⑬ 2026-11-17 로봇 작업장 3단계 일부 (Claude Code)**
 - 밸런스 시뮬레이션(파이썬, 1분 주기 근사): 원래 값은 일반 로봇 중복 수리가 싸서 30분 만에 분당 수입 ~30, 온실은 40~48분에야 열림 → 레벨업 수리비 배수 추가, 온실 60→40. 조정 후 30분에 도감 5~7종·분당 11~17, 온실 18~30분, 2시간에 도감 9~10종. 근사 모델이라 실제 플레이로 다시 확인해야 한다.
 - Play 테스트: 입장 시 전시대 12칸(0/12)과 튜토리얼 로봇으로 안내선 / 삐삐 운반 중 → 수리대로 안내선 / 수리 완료 → 전시대 "삐삐 Lv.1" / 다음 로봇 운반 중 부품 0 → 가장 가까운 부품 더미로 안내선, 수리대 안내 "볼트 맡기기 (부품 8개)" / 오비 복귀 시 전시대·안내선 숨김 / 클라이언트 에러 0. 레벨업 수리비는 무작위 신호라 실행으로 확인하지 못했고 코드 검토만 했다.
@@ -354,6 +406,14 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 ---
 
 ## G. 다음 개발 계획 (우선순위 순)
+
+### 로봇 고물상 타이쿤 (주력, 최우선)
+1. **2인 로컬 서버 테스트:** Studio 테스트 탭 → "클라이언트 및 서버"(플레이어 2명) 시작. 훔치기 → 도둑 기지 배치 / 주인이 붙잡기 → 복귀 / 도둑 사망 → 복귀 / 방어막 중 훔치기 거절·밀어내기 / 같은 벨트 로봇을 둘이 동시에 사기.
+2. **2단계 저장:** 돈, 도감, 받침대 로봇, 떠나 있는 동안 수입. `RobotLabSave`의 세션 잠금 방식을 재사용(새 DataStore 예: `Junkyard_v1`). 계획 먼저 승인.
+3. **3단계 상점·이벤트:** 방해(EMP 기절, 빠른 도둑), 방어(방어막 연장, 레이저 울타리), 도움(수입 2배·행운·받침대 추가·이동 속도), 서버 전체("희귀 로봇 비"), 10분마다 희귀 로봇 열차, 서버 협력 거대 로봇. Robux 상품 등록은 사용자가 Creator Dashboard에서.
+4. **4단계:** 환생, 변종(금색·무지개), 비주얼·사운드. 서버 최대 인원을 6명으로 맞추기(체험 설정, 사용자).
+5. 기존 오비·로봇 작업장 정리 여부는 고물상이 자리 잡은 뒤 사용자와 결정(삭제 금지, 보관).
+
 
 ### 로봇 작업장 다음 작업 (우선순위 순)
 
