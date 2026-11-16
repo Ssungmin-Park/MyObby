@@ -13,18 +13,18 @@
 |---|---|
 | 마지막 작업 AI | **Claude Code** (Claude Opus 5.5). 그 전: OpenAI Codex (검증, 진행 저장 설계) |
 | 작업 시점 | 2026-11-16 |
-| 다음 작업 AI | Codex 또는 Claude Code. 먼저 **진행 저장의 실제 재접속 테스트**(G 1순위)를 끝낸다 |
+| 다음 작업 AI | Codex 또는 Claude Code. 먼저 **Studio API 접근 설정 문제**를 사용자와 해결하고 진행 저장의 실제 재접속 테스트(G 1순위)를 끝낸다 |
 | 게임 이름 | 마이오비 (Studio place 이름) / 콘셉트명 "실험실 탈출" |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
 | 소유 | 개인 계정 (CreatorType = User) |
 | Studio 인스턴스 ID | 2026-11-16 기준 `c45b95a2-fc62-4fb8-907e-0df1421a14db`. **실행할 때마다 바뀐다.** 새 세션에서 `list_roblox_studios`로 다시 조회하고, placeId가 위 값인 인스턴스만 사용한다 |
-| Studio 모드 | 인수인계 시점에 **Edit 모드** (Play 테스트는 종료함) |
+| Studio 모드 | 마지막 확인 시 **Play 모드** — 사용자가 직접 플레이 중(Stage 6). AI는 멈추지 않고 Server로 읽기만 했다. 다음 AI는 편집 전에 모드를 확인하고, Play를 멈춰야 하면 사용자에게 알린다 |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
 | 마지막 수정 | **진행 저장 구현 (사용자 승인 후).** Studio에 `ServerScriptService/ProgressSave`(ModuleScript) 추가, `Leaderstats` 수정(불러오기 연결), `Respawn`·`Finish`의 leaderstats 대기 시간 5초/10초 → 30초. ChangeHistoryService로 기록(Ctrl+Z 가능) |
-| Studio 저장 상태 | place는 클라우드 저장 place(`persistedToCloud = true`)다. 하지만 **마지막 변경 후 사용자가 저장(Ctrl+S)했는지는 AI가 확인할 수 없다** → 미확인. AI는 저장·Publish를 하지 않았다 |
-| Studio API 접근 | **꺼져 있음** (2026-11-16 Play에서 `StudioAccessToApisNotAllowed` 확인). Studio에서 DataStore를 실제로 쓰려면 사용자가 Game Settings → Security → "Enable Studio Access to API Services"를 켜야 한다 |
+| Studio 저장 상태 | place는 클라우드 저장 place(`persistedToCloud = true`)다. 사용자가 Studio를 다시 시작한 뒤에도 `ProgressSave`와 수정한 스크립트 3개가 그대로 있었다 → **진행 저장 코드는 클라우드에 저장된 것으로 보인다**(간접 확인). AI는 저장·Publish를 하지 않았다 |
+| Studio API 접근 | **여전히 거부됨.** 사용자가 설정을 켰다고 한 뒤 3번(Studio 재시작 후 포함) 다시 시도했지만 모두 `StudioAccessToApisNotAllowed`(Error code 7). 원인 미확인: 다른 스위치("Allow HTTP Requests")를 켰거나 Save를 누르지 않았을 가능성. 사용자에게 Security 탭 스크린샷을 요청했고 아직 받지 못했다 |
 | 백업 상태 | 스크립트: `src/`(Git, GitHub)에 7개 모두 있고 Studio와 내용이 같다(체크섬 일치). 맵(파트·모델): **Git에 백업 없음**, Studio 클라우드에만 있다. 옛 버전은 `ServerStorage`에 백업 |
 | 게임 공개 상태 | 확인하지 않았고 바꾸지 않았다. AI는 Publish하지 않는다 (AGENTS.md §8 규칙 9) |
 
@@ -144,8 +144,11 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 ## C. 진행 중인 개발
 
 - **진행 중인 작업:** 진행 저장 — **구현 완료, 실제 DataStore 재접속 테스트 대기.**
-  - 중단 위치: 사용자가 Studio API 접근을 켜면 G 1순위의 테스트를 실행한다. 코드는 더 고칠 계획이 없다.
-- **가장 최근 작업 (Claude Code):** 사용자가 Codex 설계안을 승인 → `ProgressSave` 구현, Studio 반영, 가짜 저장소 테스트 13개 통과, 기존 회귀 테스트 통과.
+  - 중단 위치: Studio API 접근이 계속 거부되어 G 1순위 테스트를 시작하지 못했다. 사용자에게 Game Settings → Security 탭 스크린샷을 요청한 상태. 코드는 더 고칠 계획이 없다.
+- **가장 최근 작업 (Claude Code):**
+  1. 사용자가 Codex 설계안을 승인 → `ProgressSave` 구현, Studio 반영, 가짜 저장소 테스트 13개 통과, 기존 회귀 테스트 통과 (커밋 `0eceb0d`).
+  2. 실제 저장 테스트를 3번 시도 → 모두 API 접근 거부로 중단. 저장소에는 아무것도 쓰지 않았다.
+  3. Studio 실제 상태를 다시 확인하고 이 문서를 갱신했다.
 - **미완성 부분:** 진행 저장 실제 검증, 스테이지 스킵 상품, 보상형 광고, 3단계 비주얼.
 
 ---
@@ -177,7 +180,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 |---|---|---|---|---|
 | 1 | Studio 저장 여부 미확인 | AI는 저장 여부를 알 수 없음 | 사용자에게 Ctrl+S 안내 | **사용자 확인 필요** |
 | 2 | 실제 모바일 기기·터치 조작 미검증 | 자동 테스트는 순간이동 방식 | — | 미검증 |
-| 3 | 진행 저장의 실제 DataStore 동작 미검증 | Studio API 접근이 꺼져 있어 실제 저장소 호출이 거부됨 (`StudioAccessToApisNotAllowed`) | 가짜 저장소로 로직 테스트, 실패 경로 확인 | **사용자가 설정을 켠 뒤 테스트 필요** |
+| 3 | 진행 저장의 실제 DataStore 동작 미검증 | Studio API 접근이 꺼져 있어 실제 저장소 호출이 거부됨 (`StudioAccessToApisNotAllowed`) | 가짜 저장소로 로직 테스트, 실패 경로 확인. 사용자가 설정을 켰다고 한 뒤 3번 재시도(Studio 재시작 포함) → 모두 거부 | **설정 확인 필요** (스크린샷 요청 중) |
 | 3b | Studio API 접근이 꺼져 있으면 Play 시작 때 불러오기를 3번 시도하느라 약 3초 동안 경고 로그가 나오고 시작 발판에 머문다 | 의도된 재시도 | — | 정상 동작. 실제 서버에서는 해당 없음 |
 | 4 | 맵(파트·모델)은 Git에 백업이 없음 | Rojo 미사용, 스크립트만 `src/`로 내보냄 | — | 알려진 한계. Studio의 버전 기록(File → Version History)에 의존 |
 | 5 | 체크포인트 1~10에 옛 속성 `Stage`(숫자)가 남아 있음 | 이전 단일 스크립트의 흔적. 현재 스크립트는 이름으로 판정하므로 무해 | — | 정리 선택 사항 (삭제 전 승인) |
@@ -245,6 +248,10 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 | 클라이언트 "탈출 성공!" | PASS (클라이언트 감시를 먼저 켠 뒤 EXIT를 다시 밟아 확인. 처음 조회는 4초가 지나 놓침) |
 | 출력 로그 | 예상한 경고(API 접근 거부, 가짜 오류)와 골인 로그만. 다른 에러 없음 |
 
+**⑥ 2026-11-16 실제 DataStore 테스트 시도 (Claude Code)** — 사용자가 설정을 켰다고 한 뒤 Play 3회(마지막은 Studio 재시작 후). 3회 모두 `GetAsync`가 `Studio access to APIs is not allowed`로 거부되어 **테스트하지 못함**. 게임은 Stage 0으로 정상 진행(실패 경로 재확인). 쓰기 없음.
+
+**⑦ 2026-11-16 상태 재확인 (Claude Code, 사용자 Play 중 Server 읽기)** — 스크립트 7개 크기·체크섬이 `src/`와 일치, 태그 수(KillPart 8, Spinner 2, Mover 4, TimedDoor 2), 체크포인트 11, 스테이지 10, ServerStorage 백업 2개 그대로. DataStore 접근은 여전히 거부.
+
 **아직 안 한 것:** 실제 DataStore에 저장 → 다시 Play → 같은 체크포인트에서 시작. Stage 11 복원 시 탈출 메시지가 다시 뜨지 않는지. 60초 자동 저장.
 
 ### 실패한 테스트
@@ -272,6 +279,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 ### 1순위 — 진행 저장 실제 검증 (구현은 완료, B-1b)
 - **목표:** 실제 DataStore로 "저장 → 재접속 → 이어하기"를 확인하고 진행 저장을 완료로 기록.
+- **먼저 할 일:** 사용자와 함께 API 접근 설정을 확인한다. 확인 방법: Play 중 Server에서 `DataStoreService:GetDataStore("Progress_v1"):GetAsync("Player_0")`을 `pcall`로 호출해 Error code 7이 사라졌는지 본다 (읽기만, 쓰기 없음). 계속 막히면 스크린샷으로 "Enable Studio Access to API Services" 스위치와 Save 여부를 확인한다.
 - **전제:** 사용자가 Studio Game Settings → Security → "Enable Studio Access to API Services"를 켠다 (AI가 바꾸지 않는다). Studio는 실제 게임과 **같은 저장소**를 쓴다. 게임은 아직 공개 전이라 기존 플레이어 데이터는 없다고 본다. 테스트는 사용자 본인 키(`Player_<사용자 UserId>`)에만 쓴다.
 - **테스트 순서:**
   1. Play → 로그에 불러오기 경고 없음, Stage 0(또는 이전 저장값) 확인.

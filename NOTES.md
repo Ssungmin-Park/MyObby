@@ -12,3 +12,4 @@
 - 인수인계 문서를 보강했다. Studio 실측으로 Universe ID(10777081510)와 전체 구조를 기록하고, 스크립트 6개가 `src/`와 바이트 단위로 같은 것(체크섬)을 확인했다. 재테스트에서 클라이언트 "탈출 성공!" 표시를 확인했다. HANDOFF.md를 A–H 구성으로 다시 쓰고, AGENTS.md에 협업 규칙 10가지·Remote 보안·DataStore 안전 원칙을 추가했다. 게임(Studio) 내용은 바꾸지 않았다.
 - Codex에서 Studio MCP 연결, Place ID, 스크립트 6개 일치 여부를 확인했다. 그레이박스 회귀 테스트를 통과하고 Edit 모드로 복귀했다. 진행 저장 설계를 HANDOFF.md에 기록했으며 구현은 사용자 승인 대기 중이다.
 - 진행 저장(2단계 첫 작업)을 구현했다. Codex 설계안을 사용자가 승인했다. `ProgressSave` 모듈(DataStore `Progress_v1`, 키 `Player_<UserId>`, `{ Stage }`)을 추가하고 `Leaderstats`가 불러오게 했다. `Respawn`·`Finish`는 leaderstats 대기를 30초로 늘렸다. 가짜 저장소 테스트 13개와 기존 회귀 테스트를 통과했다. Studio API 접근이 꺼져 있어 실제 재접속 테스트는 아직이다.
+- 진행 저장 실제 테스트를 3번 시도했지만 Studio API 접근이 계속 거부되어 하지 못했다(Studio 재시작 후도 동일, 쓰기 없음). Studio 재시작 후에도 진행 저장 코드가 남아 있어 클라우드 저장은 된 것으로 본다. Studio 상태(스크립트 7개 체크섬 일치)를 다시 확인하고 HANDOFF를 갱신했다.
