@@ -50,7 +50,8 @@ README.md      포트폴리오용 소개 페이지 (GitHub 첫 화면)
 docs/screenshots/   README용 Studio 캡처
 src/           Studio 스크립트의 거울 (Studio 경로 그대로)
   ServerScriptService/
-    Leaderstats.server.luau   리더보드 leaderstats.Stage 생성
+    Leaderstats.server.luau   리더보드 leaderstats.Stage 생성 + 저장된 진행 불러오기
+    ProgressSave.luau         진행 저장 모듈 (DataStore Progress_v1)
     Checkpoints.server.luau   체크포인트 진행 판정 (바로 다음 번호만 인정)
     Respawn.server.luau       KillZone 낙사 + 마지막 체크포인트 리스폰 (RespawnTime 1초)
     Hazards.server.luau       태그 기반 장애물 구동 (KillPart/Spinner/Mover/TimedDoor)
@@ -73,7 +74,7 @@ Workspace/
   KillZone                      Y=20, 2048×2048 낙사 판정 바닥
   SpawnLocation                 시작 발판 (Y=40)
   Baseplate                     기본 바닥 (Y=-8)
-ServerScriptService/            서버 스크립트 5개 (위 src/와 1:1)
+ServerScriptService/            서버 Script 5개 + ModuleScript ProgressSave (위 src/와 1:1)
 ReplicatedStorage/Remotes/Escaped   RemoteEvent (서버 → 클라이언트 전용)
 ReplicatedStorage/Modules/      공용 ModuleScript 자리 (현재 비어 있음, 폴더 없음)
 StarterPlayer/StarterPlayerScripts/EscapeMessage   LocalScript
@@ -139,7 +140,8 @@ ServerStorage/
 - 현재 Remote는 `Escaped`(서버 → 클라이언트 전용) 하나뿐이다.
 
 ### DataStore 안전 원칙 (2단계부터 적용)
-- 현재 게임은 DataStore를 **쓰지 않는다**(2026-11-16 Studio 전체 스크립트 확인). 처음 도입할 때 키 이름·데이터 형식을 문서(`HANDOFF.md`)에 적는다.
+- **현재 사용 중인 저장 형식 (바꾸지 않는다):** DataStore `Progress_v1`, 키 `Player_<UserId>`, 값 `{ Stage = 정수 }`. DataStore는 `ServerScriptService/ProgressSave` 한 곳에서만 다룬다. 새 저장 항목이 필요하면 이 모듈을 확장하고, 형식 변경은 마이그레이션 계획을 먼저 승인받는다.
+- 진행은 늘어나기만 한다는 전제로 "저장된 값보다 클 때만 저장"한다. 진행을 낮추는 기능을 넣을 때는 이 규칙을 함께 고친다.
 - 저장은 `UpdateAsync` 또는 `SetAsync`를 `pcall`로 감싸고 재시도한다. 불러오기에 실패한 플레이어의 데이터는 **덮어쓰지 않는다**(빈 값으로 저장하면 진행이 사라진다).
 - 퇴장(`PlayerRemoving`)과 서버 종료(`game:BindToClose`) 때 저장한다.
 - Studio 테스트용 데이터와 실제 데이터를 구분할 필요가 생기면 사용자와 상의한다.

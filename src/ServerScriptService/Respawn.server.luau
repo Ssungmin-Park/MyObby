@@ -32,7 +32,8 @@ end)
 local function onCharacterAdded(player: Player, character: Model)
 	local root = character:WaitForChild("HumanoidRootPart") :: BasePart
 	task.wait() -- 기본 스폰 위치 배치가 끝난 뒤에 옮긴다
-	local leaderstats = player:WaitForChild("leaderstats", 5)
+	-- leaderstats는 저장된 진행을 불러온 뒤에 생기므로(재시도 포함) 넉넉히 기다린다
+	local leaderstats = player:WaitForChild("leaderstats", 30)
 	local stageValue = leaderstats and leaderstats:FindFirstChild("Stage")
 	local stage = if stageValue and stageValue:IsA("IntValue") then stageValue.Value else 0
 	local part = getRespawnPart(stage)

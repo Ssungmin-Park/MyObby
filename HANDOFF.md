@@ -11,9 +11,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **OpenAI Codex** |
+| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5). 그 전: OpenAI Codex (검증, 진행 저장 설계) |
 | 작업 시점 | 2026-11-16 |
-| 다음 작업 AI | Codex 또는 Claude Code. 먼저 진행 저장 계획 승인 여부를 확인한다 |
+| 다음 작업 AI | Codex 또는 Claude Code. 먼저 **진행 저장의 실제 재접속 테스트**(G 1순위)를 끝낸다 |
 | 게임 이름 | 마이오비 (Studio place 이름) / 콘셉트명 "실험실 탈출" |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -22,9 +22,10 @@
 | Studio 모드 | 인수인계 시점에 **Edit 모드** (Play 테스트는 종료함) |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 수정 | Codex에서 MCP 연결, Studio 구조, 스크립트 일치 여부, 그레이박스 회귀 테스트를 확인했다. 게임 스크립트와 객체 변경은 없다. 마지막 Studio 변경은 체크포인트 10 라벨 "FINISH" → "10" |
+| 마지막 수정 | **진행 저장 구현 (사용자 승인 후).** Studio에 `ServerScriptService/ProgressSave`(ModuleScript) 추가, `Leaderstats` 수정(불러오기 연결), `Respawn`·`Finish`의 leaderstats 대기 시간 5초/10초 → 30초. ChangeHistoryService로 기록(Ctrl+Z 가능) |
 | Studio 저장 상태 | place는 클라우드 저장 place(`persistedToCloud = true`)다. 하지만 **마지막 변경 후 사용자가 저장(Ctrl+S)했는지는 AI가 확인할 수 없다** → 미확인. AI는 저장·Publish를 하지 않았다 |
-| 백업 상태 | 스크립트: `src/`(Git, GitHub)에 6개 모두 있고 Studio와 내용이 같다(체크섬 일치). 맵(파트·모델): **Git에 백업 없음**, Studio 클라우드에만 있다. 옛 버전은 `ServerStorage`에 백업 |
+| Studio API 접근 | **꺼져 있음** (2026-11-16 Play에서 `StudioAccessToApisNotAllowed` 확인). Studio에서 DataStore를 실제로 쓰려면 사용자가 Game Settings → Security → "Enable Studio Access to API Services"를 켜야 한다 |
+| 백업 상태 | 스크립트: `src/`(Git, GitHub)에 7개 모두 있고 Studio와 내용이 같다(체크섬 일치). 맵(파트·모델): **Git에 백업 없음**, Studio 클라우드에만 있다. 옛 버전은 `ServerStorage`에 백업 |
 | 게임 공개 상태 | 확인하지 않았고 바꾸지 않았다. AI는 Publish하지 않는다 (AGENTS.md §8 규칙 9) |
 
 ---
@@ -35,7 +36,7 @@
 - **핵심 플레이 구조:** 시작 발판(Stage 0) → 체크포인트 1~10을 순서대로 밟음 → 체크포인트 11(EXIT) = 탈출. 죽으면 마지막 체크포인트에서 1초 뒤 부활. 오른쪽 위 리더보드에 현재 Stage 표시.
 - **개발 목표:** 출시 가능한 게임 + 공개 GitHub 저장소를 포트폴리오로 활용.
 - **단계:** 1단계 그레이박스(재미 검증) → 2단계 시스템(저장, 수익화) → 3단계 비주얼.
-- **현재 완성도:** **1단계 그레이박스 완료.** 코스 전체를 처음부터 끝까지 깰 수 있다. 사용자가 직접 플레이해 "난이도 적당"을 확인했다(기기 미기록). 색·재질·사운드·저장·상점은 없다. 2단계는 시작하지 않았다.
+- **현재 완성도:** **1단계 그레이박스 완료, 2단계 시작.** 코스 전체를 처음부터 끝까지 깰 수 있다. 사용자가 직접 플레이해 "난이도 적당"을 확인했다(기기 미기록). 진행 저장은 구현했지만 실제 DataStore 재접속 테스트가 남았다. 색·재질·사운드·상점은 없다.
 
 ### 코스 배치 (Studio 실측)
 | 체크포인트 | 위치 (X, Y, Z) | 구간 |
@@ -60,11 +61,22 @@
 
 ## B. 현재 구현된 기능
 
-활성 스크립트 6개는 `--!strict`이며, 로컬 `src/`와 바이트 크기 및 체크섬이 일치한다.
+활성 스크립트 7개(Script 5, ModuleScript 1, LocalScript 1)는 `--!strict`이며, 로컬 `src/`와 바이트 크기 및 체크섬이 일치한다 (2026-11-16).
 
-### B-1. 리더보드 — `ServerScriptService/Leaderstats` (Script, 792 B)
-- 플레이어가 들어오면 `player.leaderstats`(Folder)와 `Stage`(IntValue, 초기값 0)를 만든다.
-- 의존: 없음. **`Checkpoints`, `Respawn`, `Finish`가 이 `leaderstats.Stage`를 읽고 쓴다** → 이름 변경 금지.
+### B-1. 리더보드 — `ServerScriptService/Leaderstats` (Script, 1691 B)
+- 플레이어가 들어오면 `leaderstats`(Folder)와 `Stage`(IntValue, 0)를 만든다.
+- `ProgressSave.loadAsync`로 저장된 Stage를 불러와 **`leaderstats`를 플레이어에 붙이기 전에** 값을 넣는다. 그래야 Finish가 복원된 11을 "방금 탈출"로 착각하지 않는다.
+- 불러오기에 성공하면 `ProgressSave.track`으로 저장 대상에 등록한다. 실패하면 Stage 0으로 플레이는 가능하지만 이번 접속은 저장하지 않는다(경고 로그).
+- 불러오는 동안 `leaderstats`가 없으므로 Checkpoints는 진행을 판정하지 않는다. 불러오는 중 나간 플레이어는 무시한다.
+- 의존: `ProgressSave`. **`Checkpoints`, `Respawn`, `Finish`가 이 `leaderstats.Stage`를 읽고 쓴다** → 이름 변경 금지.
+
+### B-1b. 진행 저장 — `ServerScriptService/ProgressSave` (ModuleScript, 6230 B)
+- **저장 형식 (바꾸지 말 것):** DataStore `Progress_v1`, 키 `Player_<UserId>`, 값 `{ Stage = 정수 }`. 허용 범위는 0 ~ Checkpoints의 최대 번호(현재 11).
+- `loadAsync(userId)`: `GetAsync` + `pcall`, 최대 3회(1초, 2초 대기). 값 없음 → 0. 실패나 이상한 형식 → nil.
+- `saveAsync(userId, stage)`: `UpdateAsync`로 **기존 값보다 높을 때만** 쓴다. 기존 값의 형식이 이상하면 덮어쓰지 않는다. 최대 3회 시도.
+- `start()`: Leaderstats가 한 번 호출. 60초 자동 저장, `PlayerRemoving` 저장, `game:BindToClose` 저장(최대 25초 대기)을 켠다. 같은 플레이어의 저장이 겹치지 않게 `saving` 표시를 쓴다.
+- `setStoreForTest(fake)`: 테스트용 가짜 저장소 주입. 게임 코드에서는 쓰지 않는다.
+- 진행은 늘어나기만 하므로(Checkpoints 규칙) "저장된 값보다 클 때만 저장"으로 충분하다. 나중에 **진행을 낮추는 기능**(예: 처음부터 다시 하기)을 넣으면 이 규칙을 같이 바꿔야 한다.
 
 ### B-2. 체크포인트 진행 — `ServerScriptService/Checkpoints` (Script, 1756 B)
 - `Workspace/Checkpoints`의 각 파트에 `Touched`를 연결한다. **파트 이름(숫자)이 곧 스테이지 번호**다.
@@ -72,10 +84,10 @@
 - 새로 추가되는 체크포인트도 `ChildAdded`로 자동 연결된다.
 - 의존: `Workspace/Checkpoints`, `leaderstats.Stage`.
 
-### B-3. 리스폰 — `ServerScriptService/Respawn` (Script, 2019 B)
+### B-3. 리스폰 — `ServerScriptService/Respawn` (Script, 2130 B)
 - `Players.RespawnTime = 1`로 설정한다. Studio 편집 화면에서는 기본값 3으로 보이지만 실행하면 이 스크립트가 1로 바꾼다(Play 중 1 확인).
 - `Workspace/KillZone`에 닿으면 사망 처리한다.
-- 캐릭터가 생길 때 `leaderstats`를 최대 5초 기다린 뒤 Stage 번호의 체크포인트 위(+3스터드)로 `PivotTo`한다. Stage 0이거나 체크포인트를 못 찾으면 `SpawnLocation`으로 보낸다.
+- 캐릭터가 생길 때 `leaderstats`를 최대 30초 기다린 뒤(진행 불러오기 시간 포함) Stage 번호의 체크포인트 위(+3스터드)로 `PivotTo`한다. Stage 0이거나 체크포인트를 못 찾으면 `SpawnLocation`으로 보낸다.
 - 의존: `Workspace/Checkpoints`, `KillZone`, `SpawnLocation`, `leaderstats.Stage`.
 
 ### B-4. 장애물 — `ServerScriptService/Hazards` (Script, 4036 B)
@@ -91,8 +103,9 @@ CollectionService 태그와 Attribute로 동작한다. Studio 실측 태그 개�
 - 움직이는 파트는 `SetNetworkOwner(nil)`로 서버가 물리를 계산한다.
 - 새 장애물 종류는 `bindTag(태그, setup함수)` 한 줄로 추가한다.
 
-### B-5. 골인 — `ServerScriptService/Finish` (Script, 1423 B)
+### B-5. 골인 — `ServerScriptService/Finish` (Script, 1515 B)
 - 플레이어의 `Stage.Changed`를 감시하다가 값이 `IsFinish = true`인 체크포인트 번호(현재 11)가 되면 서버 로그 `[Finish] 이름 탈출 성공`을 남기고 `Remotes.Escaped:FireClient(player)`를 보낸다.
+- `leaderstats`를 최대 30초 기다린다(진행 불러오기 시간 포함).
 - 의존: `ReplicatedStorage/Remotes/Escaped`, `Workspace/Checkpoints`의 `IsFinish` 속성, `leaderstats.Stage`.
 
 ### B-6. 탈출 메시지 — `StarterPlayer/StarterPlayerScripts/EscapeMessage` (LocalScript, 908 B)
@@ -103,7 +116,8 @@ CollectionService 태그와 Attribute로 동작한다. Studio 실측 태그 개�
 
 ### 시스템 연결 흐름
 ```
-입장 → Leaderstats(Stage=0) → Respawn(Stage 위치로 이동)
+입장 → Leaderstats → ProgressSave.loadAsync(저장된 Stage) → leaderstats 붙임 → Respawn(그 Stage 위치로 이동)
+퇴장 / 60초마다 / 서버 종료 → ProgressSave가 더 높아진 Stage만 저장
 체크포인트 밟음 → Checkpoints(Stage+1)
      └ Stage가 11이 되면 → Finish → Remotes.Escaped → EscapeMessage("탈출 성공!")
 레이저(KillPart) 또는 KillZone 닿음 → 사망 → 1초 뒤 Respawn(마지막 체크포인트)
@@ -111,9 +125,9 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 ```
 
 ### B-8. 데이터 저장 및 플레이어 진행
-- **DataStore를 쓰지 않는다.** Studio의 모든 스크립트(7개, 백업 포함)를 확인했다. `DataStoreService` 사용 없음.
-- 진행은 서버 메모리의 `leaderstats.Stage`에만 있다 → **재접속하면 Stage 0부터 다시 시작한다.**
-- 따라서 지금은 지켜야 할 기존 저장 데이터가 없다.
+- **DataStore `Progress_v1`을 쓴다** (B-1b). `DataStoreService`를 쓰는 곳은 `ProgressSave` 하나뿐이다.
+- 2026-11-16 현재 실제 저장소에 쓰인 데이터: **없는 것으로 본다.** Studio API 접근이 꺼져 있어 Studio 테스트는 모두 실패 경로(저장 안 함)로 끝났고, 게임은 아직 공개 서버에서 돌린 적이 없다(미확인).
+- 키 이름·데이터 형식은 이제부터 바꾸지 않는다. 바꿔야 하면 마이그레이션 계획을 먼저 승인받는다 (AGENTS.md §7).
 
 ### B-9. 그 밖의 Studio 객체
 | 위치 | 내용 |
@@ -129,10 +143,10 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 ## C. 진행 중인 개발
 
-- **진행 중인 작업:** 진행 저장 설계. 사용자 승인 대기 중이며 구현은 시작하지 않았다.
-- **가장 최근 작업:** Codex MCP 연결과 실제 게임 상태 확인. 스크립트 6개의 바이트 크기·체크섬이 `src/`와 일치했다. 기존 코스를 다시 테스트하고 Edit 모드로 돌아왔다.
-- **마지막 게임 수정:** 체크포인트 10의 SurfaceGui 라벨 "FINISH" → "10" (커밋 `e4a1a8b` 무렵).
-- **미완성 부분:** 2단계 시스템 전체(진행 저장, 스테이지 스킵 상품, 보상형 광고)와 3단계 비주얼. 아직 계획 승인도 받지 않았다.
+- **진행 중인 작업:** 진행 저장 — **구현 완료, 실제 DataStore 재접속 테스트 대기.**
+  - 중단 위치: 사용자가 Studio API 접근을 켜면 G 1순위의 테스트를 실행한다. 코드는 더 고칠 계획이 없다.
+- **가장 최근 작업 (Claude Code):** 사용자가 Codex 설계안을 승인 → `ProgressSave` 구현, Studio 반영, 가짜 저장소 테스트 13개 통과, 기존 회귀 테스트 통과.
+- **미완성 부분:** 진행 저장 실제 검증, 스테이지 스킵 상품, 보상형 광고, 3단계 비주얼.
 
 ---
 
@@ -163,7 +177,8 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 |---|---|---|---|---|
 | 1 | Studio 저장 여부 미확인 | AI는 저장 여부를 알 수 없음 | 사용자에게 Ctrl+S 안내 | **사용자 확인 필요** |
 | 2 | 실제 모바일 기기·터치 조작 미검증 | 자동 테스트는 순간이동 방식 | — | 미검증 |
-| 3 | 진행 저장 없음 (재접속 시 Stage 0) | DataStore 미구현 | — | 2단계 예정 (버그 아님) |
+| 3 | 진행 저장의 실제 DataStore 동작 미검증 | Studio API 접근이 꺼져 있어 실제 저장소 호출이 거부됨 (`StudioAccessToApisNotAllowed`) | 가짜 저장소로 로직 테스트, 실패 경로 확인 | **사용자가 설정을 켠 뒤 테스트 필요** |
+| 3b | Studio API 접근이 꺼져 있으면 Play 시작 때 불러오기를 3번 시도하느라 약 3초 동안 경고 로그가 나오고 시작 발판에 머문다 | 의도된 재시도 | — | 정상 동작. 실제 서버에서는 해당 없음 |
 | 4 | 맵(파트·모델)은 Git에 백업이 없음 | Rojo 미사용, 스크립트만 `src/`로 내보냄 | — | 알려진 한계. Studio의 버전 기록(File → Version History)에 의존 |
 | 5 | 체크포인트 1~10에 옛 속성 `Stage`(숫자)가 남아 있음 | 이전 단일 스크립트의 흔적. 현재 스크립트는 이름으로 판정하므로 무해 | — | 정리 선택 사항 (삭제 전 승인) |
 | 6 | `ServerStorage` 백업 2개 남아 있음 | 의도된 백업 | — | 삭제 여부는 사용자 결정 |
@@ -209,6 +224,29 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 **④ 2026-11-16 Codex 회귀 테스트:** 초기 Stage 0, 체크포인트 순서·건너뛰기·역행 판정, 레이저 사망, Stage 2 리스폰(수평 오차 1스터드 미만), KillZone 사망, Mover 이동, Spinner 회전, 보안문 교대, Stage 11과 클라이언트 탈출 메시지를 확인했다. `RespawnTime`은 1초였고, 출력에는 골인 로그만 있었다. 메시지는 첫 조회에서 검출되지 않아 클라이언트 감시를 먼저 시작한 뒤 EXIT를 다시 밟아 확인했다. 테스트를 종료하고 Edit 모드로 돌아왔다.
 
+**⑤ 2026-11-16 진행 저장 테스트 (Claude Code, Play 모드)**
+
+가짜 저장소(`setStoreForTest`)를 넣은 `ProgressSave` 복제본으로 실행. 실제 DataStore는 건드리지 않았다.
+
+| 항목 | 결과 |
+|---|---|
+| 새 플레이어 불러오기 = 0 | PASS |
+| 3 저장 후 다시 불러오기 = 3 | PASS |
+| 낮은 값(2) 저장 시 3 유지, 쓰기 없음 | PASS |
+| 높은 값(11) 저장 | PASS |
+| 이상한 형식(`Stage = "x"`) → 불러오기 nil, 덮어쓰지 않음 | PASS |
+| 범위 밖(99) → nil | PASS |
+| 읽기 2번 실패 후 3번째 성공 (재시도 대기 3.0초) | PASS |
+| 읽기 3번 모두 실패 → nil | PASS |
+| 저장 3번 모두 실패 → false, 기존 값 유지 | PASS |
+| 저장 1번 실패 후 성공 | PASS |
+| 실제 실패 경로: Studio API 접근 꺼짐 → 3회 시도 후 Stage 0, 저장 안 함, 게임 정상 진행 | PASS |
+| 기존 회귀 테스트 1~11 (Stage 0 시작, 진행, 건너뛰기·역행 방지, 레이저·KillZone 사망, 리스폰 거리 0.00, Mover, Spinner, TimedDoor, Stage 11) | PASS |
+| 클라이언트 "탈출 성공!" | PASS (클라이언트 감시를 먼저 켠 뒤 EXIT를 다시 밟아 확인. 처음 조회는 4초가 지나 놓침) |
+| 출력 로그 | 예상한 경고(API 접근 거부, 가짜 오류)와 골인 로그만. 다른 에러 없음 |
+
+**아직 안 한 것:** 실제 DataStore에 저장 → 다시 Play → 같은 체크포인트에서 시작. Stage 11 복원 시 탈출 메시지가 다시 뜨지 않는지. 60초 자동 저장.
+
 ### 실패한 테스트
 - 없음.
 
@@ -229,24 +267,26 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
   3. **Codex라면 Roblox Studio MCP 연결부터 확인한다** (E-8). 없으면 사용자에게 알리고 Studio 작업은 하지 않는다 (AGENTS.md §6 "Studio MCP를 쓸 수 없을 때").
   4. `list_roblox_studios`로 인스턴스 ID를 새로 받고 placeId `77293997616106`을 확인한다.
   5. Studio에는 체크포인트 10 라벨이 올바르게 표시된다. 마지막 클라우드 저장 여부는 사용자에게 확인한다 (E-1).
-  6. 스크립트 6개 크기(또는 체크섬)가 `src/`와 같은지 확인한다.
+  6. 스크립트 7개 크기(또는 체크섬)가 `src/`와 같은지 확인한다.
 - **완료 조건:** 위 항목에서 이상이 없거나, 이상한 점을 사용자에게 보고함.
 
-### 1순위 — 진행 저장 (DataStore)
-- **목표:** 재접속해도 마지막 Stage에서 이어서 시작.
-- **상태:** 아래는 승인 대기 중인 설계안이다. 승인 후 구현한다.
-- **대상:** 새 서버 전용 ModuleScript `ServerScriptService/ProgressSave`와 기존 `Leaderstats`, `Respawn`, `Finish`의 초기화 부분. `Leaderstats`가 리더보드 생성을 계속 맡고 `ProgressSave`는 불러오기·저장을 맡는다.
-- **저장 형식 제안:** `Progress_v1`, 키 `Player_<UserId>`, 값 `{ Stage = number }`. 0~11 정수만 허용한다.
-- **불러오기:** `GetAsync`를 `pcall`로 감싸고 실패 시 최대 3회 시도한다. 조회 결과가 비어 있으면 새 플레이어를 Stage 0으로 시작시킨다. 오류 또는 잘못된 형식이면 현재 세션의 플레이는 가능하게 하되 저장을 건너뛴다.
-- **리스폰과 골인:** 불러온 값을 넣은 뒤 리더보드를 공개하고, 첫 리스폰 위치 판정은 초기화가 끝날 때까지 기다리게 한다. Stage 11 복원 자체는 골인 메시지를 띄우지 않는다. 로딩 중 퇴장하거나 캐릭터가 교체되는 경우도 확인한다.
-- **저장:** 진행이 바뀐 플레이어만 약 60초마다, 퇴장 시, 서버 종료 시 저장한다. `UpdateAsync`에서 유효한 기존 값과 현재 값 중 큰 값을 유지해 늦게 종료되는 서버가 진행을 낮추지 못하게 한다. 저장 요청의 중복과 실패 재시도를 처리한다.
-- **검증:** 먼저 모의 저장소로 재접속, 읽기 실패, 저장 재시도, 동시 저장, Stage 11 복원을 테스트한다. 실제 DataStore 재접속 검증은 분리된 테스트 환경에서 한다. Roblox는 Studio가 같은 경험의 운영 저장소에 접근할 수 있다고 안내한다. [Roblox DataStore 문서](https://create.roblox.com/docs/cloud-services/data-stores#enable-studio-access)
-- **완료 조건:** 재접속하면 저장된 체크포인트에서 시작하고, 로딩 실패 시 기존 데이터를 보존한다. 기존 회귀 테스트 12항목을 다시 확인하고 `src/`, README, HANDOFF를 갱신한다.
+### 1순위 — 진행 저장 실제 검증 (구현은 완료, B-1b)
+- **목표:** 실제 DataStore로 "저장 → 재접속 → 이어하기"를 확인하고 진행 저장을 완료로 기록.
+- **전제:** 사용자가 Studio Game Settings → Security → "Enable Studio Access to API Services"를 켠다 (AI가 바꾸지 않는다). Studio는 실제 게임과 **같은 저장소**를 쓴다. 게임은 아직 공개 전이라 기존 플레이어 데이터는 없다고 본다. 테스트는 사용자 본인 키(`Player_<사용자 UserId>`)에만 쓴다.
+- **테스트 순서:**
+  1. Play → 로그에 불러오기 경고 없음, Stage 0(또는 이전 저장값) 확인.
+  2. 체크포인트 1 → 2 → 3 진행 → Play 종료 (퇴장/BindToClose 저장).
+  3. 다시 Play → Stage 3, 체크포인트 3 위에서 시작하는지 확인.
+  4. 11까지 진행 → 종료 → 다시 Play → Stage 11, EXIT 위, "탈출 성공!"이 **다시 뜨지 않는지** 확인.
+  5. 출력 로그에 예상 밖의 에러가 없는지 확인.
+- **테스트 후 남는 값:** 사용자 키에 Stage 11(또는 마지막 값)이 남는다. 지우려면(`RemoveAsync`) 사용자 승인을 받는다.
+- **완료 조건:** 위 1~5 통과 → AGENTS.md §4에 진행 저장을 안정 기능으로 옮기고 README 로드맵을 갱신.
+- 참고: [Roblox DataStore 문서 — Studio 접근](https://create.roblox.com/docs/cloud-services/data-stores#enable-studio-access)
 
 ### 2순위 — 스테이지 스킵 Developer Product
 - **목표:** 막힌 플레이어가 Robux로 다음 스테이지로 넘어감 (수익화 1차).
 - **대상 스크립트:** 새 Script `ServerScriptService/SkipStage` + 클라이언트 버튼 UI(`StarterGui`).
-- **구현 방향:** `MarketplaceService.ProcessReceipt`는 서버에서만 처리하고, 같은 영수증을 두 번 지급하지 않는다. 지급은 Stage+1 후 그 체크포인트로 이동. Checkpoints의 "다음 번호만" 규칙과 충돌하지 않게 서버에서 직접 Stage를 설정. 상품 등록(가격 설정)은 **사용자가 직접** Creator Dashboard에서 한다.
+- **구현 방향:** `MarketplaceService.ProcessReceipt`는 서버에서만 처리하고, 같은 영수증을 두 번 지급하지 않는다. 지급은 Stage+1 후 그 체크포인트로 이동. 늘어난 Stage는 `ProgressSave`가 자동으로 저장한다(저장 직후 지급을 확정하려면 `ProgressSave`에 즉시 저장 함수를 추가하는 것을 검토). Checkpoints의 "다음 번호만" 규칙과 충돌하지 않게 서버에서 직접 Stage를 설정. 상품 등록(가격 설정)은 **사용자가 직접** Creator Dashboard에서 한다.
 - **완료 조건:** Studio 테스트 구매로 Stage +1과 이동 확인, Stage 11에서는 구매 불가, 회귀 테스트 통과.
 
 ### 3순위 — 정리 (선택, 사용자 승인 후)

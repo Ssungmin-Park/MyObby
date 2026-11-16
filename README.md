@@ -46,7 +46,8 @@
 ```
 src/
 ├─ ServerScriptService/
-│  ├─ Leaderstats.server.luau   리더보드 Stage 값 생성
+│  ├─ Leaderstats.server.luau   리더보드 Stage 값 생성 + 저장된 진행 불러오기
+│  ├─ ProgressSave.luau         진행 저장 (DataStore, 재시도·덮어쓰기 방지)
 │  ├─ Checkpoints.server.luau   체크포인트 진행 판정
 │  ├─ Respawn.server.luau       낙사 처리 + 마지막 체크포인트 리스폰
 │  ├─ Hazards.server.luau       태그 기반 장애물 구동

@@ -17,7 +17,8 @@ local function getFinishStage(): number?
 end
 
 local function onPlayerAdded(player: Player)
-	local leaderstats = player:WaitForChild("leaderstats", 10)
+	-- leaderstats는 저장된 진행을 불러온 뒤에 생기므로 넉넉히 기다린다
+	local leaderstats = player:WaitForChild("leaderstats", 30)
 	local stage = leaderstats and leaderstats:WaitForChild("Stage", 10)
 	if not stage or not stage:IsA("IntValue") then
 		warn("[Finish] leaderstats.Stage를 찾지 못함:", player.Name)
