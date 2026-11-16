@@ -7,3 +7,4 @@
 - 테마를 "실험실 탈출"로 정했다. 스테이지 4–10을 장애물 구간으로 다시 만들었다: 레이저 4–5, 회전 막대 6, 움직이는 발판 7–8, 시간제 보안문 9, 종합 10. 이전 스테이지는 `ServerStorage/StagesBackup`에 있다. 골인은 `Checkpoints/11`(EXIT)이다.
 - 스크립트를 추가했다: `Hazards`(태그 KillPart·Spinner·Mover·TimedDoor), `Finish`, `Remotes/Escaped`, `StarterPlayerScripts/EscapeMessage`. 플레이테스트에서 장애물 동작, 레이저 사망, 발판 탑승, Stage 11 골인, "탈출 성공!" 표시를 확인했고 에러는 없었다.
 - 직접 플레이해 보고 난이도가 적당하다고 확인했다. 스크립트를 `src/`로 내보내고 README를 썼다. git과 GitHub CLI로 공개 저장소 연동을 시작했다.
+- README에 구간별 그레이박스 스크린샷 5장을 넣었다(`docs/screenshots/`). 체크포인트 10에 이전 라벨 "FINISH"가 남아 있어 "10"으로 고쳤다.

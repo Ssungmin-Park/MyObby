@@ -6,6 +6,18 @@
 > **현재 단계: 1단계 그레이박스 프로토타입**
 > 재미 검증이 목적이라 색·재질·장식 없이 형태와 동작만 만들었습니다.
 
+## 스크린샷 (그레이박스)
+
+![시작 지점에서 본 코스 전체](docs/screenshots/01-overview.jpg)
+
+| 레이저 복도 (4–5) | 회전 레이저 (6) |
+|---|---|
+| ![레이저 복도](docs/screenshots/02-laser-corridor.jpg) | ![회전 레이저](docs/screenshots/03-spinner.jpg) |
+| **보안문 (9)** | **마지막 구간 → EXIT (10)** |
+| ![보안문](docs/screenshots/04-security-doors.jpg) | ![EXIT](docs/screenshots/05-finale-exit.jpg) |
+
+> 편집 모드 화면이라 회전 막대·움직이는 발판·문은 멈춘 상태로 찍혔습니다. 반투명한 얇은 막대가 닿으면 죽는 레이저입니다.
+
 ## 플레이 구성
 
 | 구간 | 스테이지 | 장애물 | 핵심 학습 포인트 |
