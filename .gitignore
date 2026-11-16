@@ -1,0 +1,12 @@
+# Roblox Studio 잠금/임시 파일
+*.rbxl.lock
+*.rbxlx.lock
+
+# OS 파일
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 개인 로컬 설정
+.claude/settings.local.json
+.env
