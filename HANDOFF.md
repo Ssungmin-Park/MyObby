@@ -11,9 +11,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — 로봇 고물상 1·2단계 완료, **3-1단계(게임 돈 상점·열차 이벤트) 구현·Studio 반영, 기능 테스트는 일부만** (사용량 소진 대비로 Codex에 인계) |
+| 마지막 작업 AI | **OpenAI Codex** — 3-1 팔기·2인 훔치기·상점 효과·재접속 복원·열차 테스트 완료. 모바일 상점 UI는 미검증 |
 | 작업 시점 | 2026-11-17 |
-| 다음 작업 AI | **OpenAI Codex**. G의 "로봇 고물상 3-1 마무리 테스트"부터 이어서 한다 |
+| 다음 작업 AI | 모바일 상점 UI 확인. 3-2 Robux 상품은 계획 승인과 사용자 생성 상품 ID를 받은 뒤 구현한다 |
 | 게임 이름 | 마이오비 (Studio place 이름) / **주력: 로봇 고물상 타이쿤**(멀티플레이). 부가: 실험실 탈출 오비, 로봇 작업장(꼬마 로봇 연구소) |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -26,7 +26,7 @@
 | Studio 저장 상태 | `persistedToCloud = true`. **로봇 고물상 추가분의 클라우드 저장(Ctrl+S) 여부는 미확인** — 사용자에게 저장을 요청했다 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
 | 실제 저장 데이터 | 테스트로 **사용자 본인 키**에 값이 남아 있다: `Progress_v1` = Stage 11, `RobotLab_v1` = 부품 10·삐삐 Lv.1, `Junkyard_v1` = 돈 약 31·받침대 삐삐/너트/스펀지(일반 세트 완성). 지우려면(RemoveAsync) 사용자 승인 필요 |
-| 백업 상태 | 스크립트 15개(Script·ModuleScript·LocalScript)는 `src/`에서 관리하고 Studio와 체크섬 일치. 맵 생성 코드: 연구소 `tools/build-robot-lab.luau` → `tools/expand-robot-lab.luau`, 고물상 `tools/build-junkyard.luau`. 백업: `ServerStorage/ObbyServer_backup`, `StagesBackup`, `RobotLabV1Backup` |
+| 백업 상태 | 스크립트 17개(Script·ModuleScript·LocalScript)는 `src/`에서 관리한다. 작업 시작 시 Studio와 모두 체크섬 일치. 맵 생성 코드: 연구소 `tools/build-robot-lab.luau` → `tools/expand-robot-lab.luau`, 고물상 `tools/build-junkyard.luau`. 백업: `ServerStorage/ObbyServer_backup`, `StagesBackup`, `RobotLabV1Backup` |
 | 게임 공개 상태 | 확인하지 않았고 바꾸지 않았다. AI는 Publish하지 않는다 (AGENTS.md §8 규칙 9) |
 
 ---
@@ -193,7 +193,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 **클라이언트 (`JunkyardHud`)**: 패널에 `🛒 상점` 버튼과 열차 남은 시간 줄. 상점 창(탭 ⚡방해/🛡방어/💪도움, 행마다 설명·현재→다음 값·가격 버튼, 돈 부족하면 빨간 버튼). 경보 알림을 받으면 침입자 캐릭터를 6초 동안 빨간 Highlight(벽 너머 보임). EMP 기절 표시. 장갑 착용 시 남의 받침대 프롬프트 HoldDuration을 0.6으로.
 
-**3-1 테스트 상태 (F ⑱)**: 1인 Play에서 에러 없음, 열차 남은 시간 표시, 받침대 11~14 잠김 표시, 돈 부족 시 업그레이드·EMP 거절은 확인. **실제 구매 성공·EMP 효과·장갑·경보기·울타리·신발 속도·방어막 강화·받침대 확장·업그레이드 저장·열차 실제 운행·누르기 시간 검증(정상 팔기/훔치기가 여전히 되는지)은 아직 실행 확인 안 함.**
+**3-1 테스트 상태:** F의 Codex 추가 검증 참고. 팔기·2인 훔치기·상점 5종 1단계 구매와 복원·EMP·장갑·경보기·울타리·열차 확인. 모바일 상점 UI와 최고 단계는 미검증.
 
 ### B-10. 로봇 작업장 (꼬마 로봇 연구소 확장, 2026-11-17)
 
@@ -290,6 +290,18 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 ---
 
 ## F. 테스트 상태
+
+### 2026-11-17 Codex 3-1 추가 검증
+
+- 실제 팔기 프롬프트를 1.8초 눌렀을 때 서버 `PromptButtonHoldBegan` 1회와 `Triggered`를 관찰했다. 로봇이 판매되고 돈이 12 늘었다. 팔기 이벤트 연결은 정상이다.
+- Studio 전용 서버 훅을 `Junkyard`에 추가했다. 서버에서 `DebugMoneyUserId`를 대상 UserId로 설정하고 `DebugGiveMoney`를 양의 정수(최대 100만)로 설정하면 해당 플레이어에게 지급한다. 서버 속성 변경만 사용하며 실서버에서는 연결하지 않는다.
+- 사용자 본인에게 테스트 돈 40000을 지급하고 업그레이드 5종을 각 1단계 구매했다. 받침대 12칸, WalkSpeed 19, 방어막 남은 시간 89.6초를 확인했다.
+- Play 종료 후 재접속해 업그레이드 5종 모두 1단계 복원, WalkSpeed 19, Pad12 사용 가능, SaveOff false를 확인했다. 판매 결과와 테스트 자금·구매 내역은 사용자 본인의 `Junkyard_v1`에 남는다.
+- 사용자가 2인 로컬 서버를 실행했다. 각 테스트 인스턴스에서 Place ID를 먼저 확인했다. 일반 훔치기(1.8초 입력), 장갑 사용 후 HoldDuration 약 0.6초와 훔치기 성공, 도둑 사망 후 원래 받침대 복귀를 확인했다.
+- EMP는 상대 속도 0, 훔친 로봇 반환, 약 30초 쿨타임, 연속 요청 시 추가 차감 없음, 3초 후 속도 16 복구를 확인했다. 경보기는 주인에게 침입자 UserId 알림과 빨간 Highlight, 울타리는 침입자 속도 8을 확인했다.
+- DebugTrainNow로 30초 열차를 실행해 희귀 이상 30개, 마지막 출현 간격 1.001초, 종료 알림을 확인했다. 기존 벨트의 일반 로봇은 그대로 흘러가며 새 출현분만 열차 등급을 적용한다.
+- 준비 단계의 벨트 항목 조회 및 소수값 정확 비교로 테스트 명령 assertion이 발생했다. 실제 벨트 Snapshot을 받아 구매하고 장갑 시간을 오차 허용으로 검사한 재시험은 통과했다. 게임 스크립트 런타임 오류는 관찰되지 않았다.
+- 수정한 Junkyard는 41136 B, 체크섬 19761485로 Studio Edit와 src가 일치한다. 모바일 상점 UI, 업그레이드 최고 단계, 모든 엣지 케이스는 미검증이다.
 
 ### 실제로 실행한 테스트
 

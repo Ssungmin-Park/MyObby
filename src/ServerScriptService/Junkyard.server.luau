@@ -1047,6 +1047,24 @@ Players.PlayerRemoving:Connect(function(player)
 	states[player] = nil
 end)
 
+-- Studio 서버에서만 테스트 자금을 지급한다. 클라이언트 속성 변경은 서버에 복제되지 않는다.
+if game:GetService("RunService"):IsStudio() then
+	workspace:GetAttributeChangedSignal("DebugGiveMoney"):Connect(function()
+		local amount = workspace:GetAttribute("DebugGiveMoney")
+		local userId = workspace:GetAttribute("DebugMoneyUserId")
+		workspace:SetAttribute("DebugGiveMoney", nil)
+		if typeof(amount) ~= "number" or amount ~= amount or amount <= 0 or amount > 1000000
+			or amount ~= math.floor(amount) or typeof(userId) ~= "number" then
+			return
+		end
+		for player, state in states do
+			if player.UserId == userId and not state.loading then
+				setMoney(state, state.money + amount)
+			end
+		end
+	end)
+end
+
 -- 0.2초마다: 배치, 붙잡기, 방어막 / 1초마다: 수입 -------------------------------------
 task.spawn(function()
 	local incomeTimer = 0
