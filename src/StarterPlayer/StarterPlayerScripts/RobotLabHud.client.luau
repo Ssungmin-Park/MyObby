@@ -264,6 +264,8 @@ local function render()
 		return
 	end
 	local elapsed = os.clock() - stateTime
+	-- 불러오기에 실패한 접속이면 진행이 저장되지 않는다는 것을 항상 보여 준다
+	title.Text = if state.saving == false then "로봇 작업장  ⚠ 저장 안 됨" else "로봇 작업장"
 
 	local owned = 0
 	for _ in (state.robots or {}) :: { [string]: number } do

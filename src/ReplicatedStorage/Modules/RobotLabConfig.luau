@@ -71,7 +71,7 @@ Config.Zones = {
 
 Config.PileRespawn = 12 -- 주운 부품 더미가 다시 생기는 시간(초)
 Config.SignalDelay = 8 -- 로봇을 맡긴 뒤 다음 신호까지(초)
-Config.StorageCapMinutes = 60 -- 보관함은 최대 "분당 수입 × 60분"까지 쌓인다
+Config.StorageCapMinutes = 240 -- 보관함은 최대 "분당 수입 × 4시간"까지 쌓인다 (접속하지 않은 동안 포함)
 Config.StorageMinCap = 30
 Config.CollectRange = 10 -- 서버가 허용하는 줍기 거리(스터드). 이동 중 위치 지연을 감안해 넉넉히
 Config.PickUpRange = 10
@@ -113,6 +113,20 @@ function Config.robotIncome(id: string, level: number): number
 		return 0
 	end
 	return Config.Rarities[robot.rarity].income * (1 + Config.LevelIncomeBonus * (level - 1))
+end
+
+-- 가진 로봇 전체의 분당 수입
+function Config.incomeRate(robots: { [string]: number }): number
+	local total = 0
+	for id, level in robots do
+		total += Config.robotIncome(id, level)
+	end
+	return total
+end
+
+-- 보관함 상한
+function Config.storageCap(robots: { [string]: number }): number
+	return math.max(Config.StorageMinCap, Config.incomeRate(robots) * Config.StorageCapMinutes)
 end
 
 function Config.upgradeValue(id: string, level: number): number

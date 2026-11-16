@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("RobotLabConfig"))
+local RobotLabSave = require(script.Parent:WaitForChild("RobotLabSave"))
 
 local lab = workspace:WaitForChild("RobotLab")
 local interactions = lab:WaitForChild("Interactions")
@@ -21,22 +22,15 @@ local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local stateRemote = remotes:WaitForChild("RobotLabState") :: RemoteEvent
 local actionRemote = remotes:WaitForChild("RobotLabAction") :: RemoteEvent
 
--- 저장 대상 데이터 (3단계에서 DataStore에 저장할 예정. 필드 이름을 함부로 바꾸지 않는다)
-type Repair = { robotId: string, finishAt: number } -- finishAt = os.time() 기준
-type Data = {
-	parts: number,
-	storage: number, -- 도우미 로봇이 모은 부품 (수거함에서 받는다)
-	robots: { [string]: number }, -- 로봇 id → 레벨
-	repairs: { Repair },
-	upgrades: { [string]: number }, -- 업그레이드 id → 레벨 (1 = 기본)
-	zones: { [string]: boolean }, -- 열린 구역
-	tutorialDone: boolean,
-}
+-- 저장 대상 데이터 형식은 RobotLabSave에 있다 (필드 이름을 바꾸지 않는다)
+type Data = RobotLabSave.Data
 -- 접속 중에만 쓰는 상태
 type Pile = { id: number, zone: string, point: BasePart, value: number }
 type Signal = { robotId: string, zone: string, point: BasePart }
 type Session = {
 	data: Data,
+	loading: boolean, -- 저장된 데이터를 불러오는 중 (이때는 입장 불가)
+	saveEnabled: boolean, -- 불러오기에 성공해야 true (실패하면 이번 접속은 저장하지 않음)
 	active: boolean, -- 연구소 안에 있는지
 	bag: number,
 	carrying: string?,
@@ -52,33 +46,8 @@ type Session = {
 }
 local sessions: { [Player]: Session } = {}
 
-local function newData(): Data
-	local upgrades = {}
-	for _, id in Config.UpgradeOrder do
-		upgrades[id] = 1
-	end
-	local zones = {}
-	for _, id in Config.ZoneOrder do
-		zones[id] = Config.Zones[id].unlockCost == 0
-	end
-	return { parts = 0, storage = 0, robots = {}, repairs = {}, upgrades = upgrades, zones = zones, tutorialDone = false }
-end
-
 local function upgradeValue(session: Session, id: string): number
 	return Config.upgradeValue(id, session.data.upgrades[id] or 1)
-end
-
--- 분당 수입 합계
-local function incomeRate(data: Data): number
-	local total = 0
-	for robotId, level in data.robots do
-		total += Config.robotIncome(robotId, level)
-	end
-	return total
-end
-
-local function storageCap(data: Data): number
-	return math.max(Config.StorageMinCap, incomeRate(data) * Config.StorageCapMinutes)
 end
 
 local function zonePoints(zone: string): { BasePart }
@@ -219,8 +188,9 @@ local function sendState(player: Player, session: Session)
 		active = true,
 		parts = math.floor(session.data.parts),
 		storage = math.floor(session.data.storage),
-		storageCap = math.floor(storageCap(session.data)),
-		rate = incomeRate(session.data),
+		storageCap = math.floor(Config.storageCap(session.data.robots)),
+		rate = Config.incomeRate(session.data.robots),
+		saving = session.saveEnabled,
 		bag = session.bag,
 		bagMax = upgradeValue(session, "Bag"),
 		detector = upgradeValue(session, "Detector"),
@@ -278,6 +248,8 @@ local function startRepair(session: Session)
 	session.data.parts -= cost
 	table.insert(session.data.repairs, { robotId = robotId, finishAt = os.time() + repairDuration(session, robotId) })
 	session.carrying = nil
+	-- 운반 중인 로봇은 저장되지 않으므로, 튜토리얼은 수리대에 맡겼을 때 끝난 것으로 저장한다
+	session.data.tutorialDone = true
 	session.signalAt = os.clock() + Config.SignalDelay
 	local robot = Config.getRobot(robotId)
 	say(session, ("%s 수리 시작! (%s)"):format(robot and robot.name or robotId, Config.formatTime(repairDuration(session, robotId))))
@@ -365,7 +337,7 @@ local function handlePrompt(player: Player, prompt: ProximityPrompt)
 	local action = point.Name
 	if action == "Enter" or action == "EnterAtExit" then
 		-- 기존 오비의 첫 리스폰 처리와 입장이 겹치지 않게 leaderstats가 생긴 뒤에만 입장한다
-		if not player:FindFirstChild("leaderstats") or session.active then
+		if not player:FindFirstChild("leaderstats") or session.active or session.loading then
 			return
 		end
 		session.active = true
@@ -449,7 +421,6 @@ actionRemote.OnServerEvent:Connect(function(player: Player, action: unknown, arg
 		end
 		session.carrying = signal.robotId
 		session.signal = nil
-		session.data.tutorialDone = true
 		local robot = Config.getRobot(signal.robotId)
 		local rarity = robot and Config.Rarities[robot.rarity]
 		say(session, ("%s 로봇 %s을(를) 찾았어요! 연구실 수리대로 가져가세요."):format(rarity and rarity.name or "", robot and robot.name or ""))
@@ -460,15 +431,16 @@ actionRemote.OnServerEvent:Connect(function(player: Player, action: unknown, arg
 end)
 
 -- 1초마다: 수리 완료, 도우미 수입, 부품 더미·신호 재생성 ----------------------
-local function completeRepairs(session: Session): boolean
+-- 끝난 수리를 처리하고 완료된 로봇 이름 목록을 돌려준다
+local function completeRepairs(session: Session): { string }
 	local now = os.time()
-	local changed = false
+	local finished = {}
 	local remaining = {}
 	for _, repair in session.data.repairs do
 		if repair.finishAt <= now then
-			changed = true
 			local robot = Config.getRobot(repair.robotId)
 			local name = robot and robot.name or repair.robotId
+			table.insert(finished, name)
 			local level = session.data.robots[repair.robotId] or 0
 			if level == 0 then
 				session.data.robots[repair.robotId] = 1
@@ -487,15 +459,18 @@ local function completeRepairs(session: Session): boolean
 		end
 	end
 	session.data.repairs = remaining
-	return changed
+	return finished
 end
 
 local function tick(player: Player, session: Session, dt: number)
+	if session.loading then
+		return
+	end
 	completeRepairs(session)
 
-	local rate = incomeRate(session.data)
+	local rate = Config.incomeRate(session.data.robots)
 	if rate > 0 then
-		session.data.storage = math.min(storageCap(session.data), session.data.storage + rate * dt / 60)
+		session.data.storage = math.min(Config.storageCap(session.data.robots), session.data.storage + rate * dt / 60)
 	end
 
 	local now = os.clock()
@@ -518,9 +493,51 @@ local function tick(player: Player, session: Session, dt: number)
 	end
 end
 
+-- 저장된 데이터를 불러와 세션에 넣는다. 떠나 있던 동안의 수입과 끝난 수리를 정리해 알려 준다.
+local function loadSession(player: Player, session: Session)
+	local status, loaded, lastSeen = RobotLabSave.loadAsync(player.UserId)
+	if player.Parent == nil then
+		-- 불러오는 사이에 나갔다: 남긴 lock만 풀고 끝낸다
+		if loaded then
+			RobotLabSave.saveAsync(player.UserId, loaded, true)
+		end
+		return
+	end
+	if loaded then
+		session.data = loaded
+		session.saveEnabled = true
+		local gained = RobotLabSave.applyOffline(loaded, lastSeen, os.time())
+		local finished = completeRepairs(session)
+		local notes = {}
+		if gained >= 1 then
+			table.insert(notes, ("부품 +%d (보관함)"):format(math.floor(gained)))
+		end
+		if #finished > 0 then
+			table.insert(notes, "수리 완료: " .. table.concat(finished, ", "))
+		end
+		if #notes > 0 then
+			say(session, "떠나 있는 동안 " .. table.concat(notes, " · "))
+		end
+		RobotLabSave.track(player, loaded)
+	else
+		session.saveEnabled = false
+		say(session, if status == "locked"
+			then "다른 서버에서 아직 저장 중이라 이번 접속의 진행은 저장되지 않아요."
+			else "저장된 진행을 불러오지 못해 이번 접속의 진행은 저장되지 않아요.")
+	end
+	for _, zone in Config.ZoneOrder do
+		if session.data.zones[zone] then
+			fillZone(session, zone)
+		end
+	end
+	session.loading = false
+end
+
 local function onPlayerAdded(player: Player)
 	local session: Session = {
-		data = newData(),
+		data = RobotLabSave.newData(),
+		loading = true,
+		saveEnabled = false,
 		active = false,
 		bag = 0,
 		carrying = nil,
@@ -534,12 +551,8 @@ local function onPlayerAdded(player: Player)
 		actionCount = 0,
 		actionWindow = 0,
 	}
-	for _, zone in Config.ZoneOrder do
-		if session.data.zones[zone] then
-			fillZone(session, zone)
-		end
-	end
 	sessions[player] = session
+	task.spawn(loadSession, player, session)
 	player.CharacterRemoving:Connect(function()
 		-- 죽거나 캐릭터가 바뀌면 Respawn 스크립트가 오비 체크포인트로 보낸다
 		if session.active then
@@ -549,6 +562,7 @@ local function onPlayerAdded(player: Player)
 	end)
 end
 
+RobotLabSave.start()
 Players.PlayerAdded:Connect(onPlayerAdded)
 for _, player in Players:GetPlayers() do
 	task.spawn(onPlayerAdded, player)

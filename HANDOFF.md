@@ -11,9 +11,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — 연구소를 장시간 플레이용 "로봇 작업장" 루프로 확장(1단계). 그 전: Codex (연구소 첫 버전) |
+| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — 로봇 작업장 1단계(핵심 루프) + 2단계(저장·오프라인 수입). 그 전: Codex (연구소 첫 버전) |
 | 작업 시점 | 2026-11-17 |
-| 다음 작업 AI | Codex 또는 Claude Code. G의 "로봇 작업장 2단계 — 저장과 오프라인 수입"부터. 저장 형식은 사용자 승인 후 확정 |
+| 다음 작업 AI | Codex 또는 Claude Code. ① Studio API 접근이 풀리면 실제 저장 재접속 테스트(오비·작업장) ② G의 "3단계 — 실제 플레이 확인과 다듬기" |
 | 게임 이름 | 마이오비 (Studio place 이름) / 실험실 탈출 오비와 꼬마 로봇 연구소 |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -22,10 +22,10 @@
 | Studio 모드 | 작업 종료 시 **Edit 모드** (Play 테스트 종료함) |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-17 Claude Code: 로봇 작업장 확장. `ReplicatedStorage/Modules/RobotLabConfig`(신규), `Remotes/RobotLabState`·`RobotLabAction`(신규), `ServerScriptService/RobotLab`·`RobotLabHud` 교체, `Workspace/RobotLab`에 폐품 처리장·`SpawnPoints`·장치 7개 추가. v1 스크립트와 고정 로봇·상점 장치는 `ServerStorage/RobotLabV1Backup`으로 옮김(삭제 없음). 모두 ChangeHistoryService 기록(Ctrl+Z 가능) |
-| Studio 저장 상태 | `persistedToCloud = true`인 클라우드 place다. **이번 확장의 클라우드 저장(Ctrl+S) 여부는 미확인** — 사용자에게 저장을 요청했다 |
+| 마지막 게임 수정 | 2026-11-17 Claude Code: **저장 추가** — `ServerScriptService/RobotLabSave`(신규 ModuleScript), `RobotLab`(불러오기·저장 연결), `RobotLabHud`("저장 안 됨" 표시), `RobotLabConfig`(보관함 상한 4시간, 수입 함수 공용화). 그 전: 로봇 작업장 확장. `ReplicatedStorage/Modules/RobotLabConfig`(신규), `Remotes/RobotLabState`·`RobotLabAction`(신규), `ServerScriptService/RobotLab`·`RobotLabHud` 교체, `Workspace/RobotLab`에 폐품 처리장·`SpawnPoints`·장치 7개 추가. v1 스크립트와 고정 로봇·상점 장치는 `ServerStorage/RobotLabV1Backup`으로 옮김(삭제 없음). 모두 ChangeHistoryService 기록(Ctrl+Z 가능) |
+| Studio 저장 상태 | `persistedToCloud = true`인 클라우드 place다. **로봇 작업장 확장·저장 추가의 클라우드 저장(Ctrl+S) 여부는 미확인** — 사용자에게 저장을 요청했다 |
 | Studio API 접근 | 마지막 Play 테스트에서 `Progress_v1` 읽기가 Error code 7 (`Studio access to APIs is not allowed`)로 거부됐다. 전환 점검은 Edit 구조 확인으로 진행했다. Security 탭에서 API 접근 설정의 실제 저장 여부를 확인해야 한다 |
-| 백업 상태 | 스크립트 10개는 `src/`에서 관리하고 Studio와 체크섬 일치. 연구소 맵은 `tools/build-robot-lab.luau`(v1) → `tools/expand-robot-lab.luau`(확장) 순서로 다시 만들 수 있다. 연구소 v1은 `ServerStorage/RobotLabV1Backup`, 오비 옛 버전은 `ServerStorage`에 있다 |
+| 백업 상태 | 스크립트 11개는 `src/`에서 관리하고 Studio와 체크섬 일치. 연구소 맵은 `tools/build-robot-lab.luau`(v1) → `tools/expand-robot-lab.luau`(확장) 순서로 다시 만들 수 있다. 연구소 v1은 `ServerStorage/RobotLabV1Backup`, 오비 옛 버전은 `ServerStorage`에 있다 |
 | 게임 공개 상태 | 확인하지 않았고 바꾸지 않았다. AI는 Publish하지 않는다 (AGENTS.md §8 규칙 9) |
 
 ---
@@ -37,7 +37,7 @@
 - **오비 구조 (기존):** 시작 발판(Stage 0) → 체크포인트 1~10 → 체크포인트 11(EXIT) = 탈출. 죽으면 마지막 체크포인트에서 1초 뒤 부활. 리더보드에 Stage 표시.
 - **개발 목표:** 출시 가능한 게임 + 공개 GitHub 저장소를 포트폴리오로 활용.
 - **단계:** 1단계 그레이박스(재미 검증) → 2단계 시스템(저장, 수익화) → 3단계 비주얼.
-- **현재 완성도:** 오비 그레이박스 + 로봇 작업장 1단계(핵심 루프·업그레이드)를 플레이할 수 있다. 오비 진행 저장은 구현했고 실제 DataStore 검증이 남았다. **로봇 작업장은 아직 저장되지 않는다**(서버에서 나가면 초기화) — 다음 단계.
+- **현재 완성도:** 오비 그레이박스 + 로봇 작업장 1단계(핵심 루프·업그레이드)를 플레이할 수 있다. 오비 진행 저장은 구현했고 실제 DataStore 검증이 남았다. 로봇 작업장 저장(`RobotLab_v1`)과 오프라인 수입을 구현했고 가짜 저장소로 검증했다. **실제 DataStore 재접속은 Studio API 접근 거부로 미검증.**
 
 ### 코스 배치 (Studio 실측)
 | 체크포인트 | 위치 (X, Y, Z) | 구간 |
@@ -126,7 +126,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 ```
 
 ### B-8. 데이터 저장 및 플레이어 진행
-- **DataStore `Progress_v1`을 쓴다** (B-1b). `DataStoreService`를 쓰는 곳은 `ProgressSave` 하나뿐이다.
+- **DataStore 2개:** 오비 `Progress_v1` (`ProgressSave`, B-1b), 로봇 작업장 `RobotLab_v1` (`RobotLabSave`, B-10). `DataStoreService`를 쓰는 곳은 이 두 모듈뿐이다.
 - 확인한 Studio 테스트에서는 API 접근 거부로 쓰기가 발생하지 않았다. 운영 저장소의 실제 데이터 유무는 미확인이다.
 - 키 이름·데이터 형식은 이제부터 바꾸지 않는다. 바꿔야 하면 마이그레이션 계획을 먼저 승인받는다 (AGENTS.md §7).
 
@@ -167,13 +167,21 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 - 업그레이드·구역·수리대 프롬프트 문구에 이 플레이어의 비용을 표시(클라이언트에서만 바뀜).
 
 **Remote**: `ReplicatedStorage/Remotes/RobotLabState`(서버→클라이언트), `RobotLabAction`(클라이언트→서버, 서버에서 검증).
-**저장: 아직 없음.** 서버에서 나가면 초기화된다.
+**저장 `ServerScriptService/RobotLabSave`** (ModuleScript, 2026-11-17)
+- **저장 형식 (바꾸지 말 것):** DataStore `RobotLab_v1`, 키 `Player_<UserId>`, 값 `{ version = 1, data = Data, lastSeen = os.time(), lock = { job, at } 또는 없음 }`. `Data` = parts, storage, robots{id→레벨}, repairs{robotId, finishAt}, upgrades{id→레벨}, zones{id→true}, tutorialDone.
+- **세션 잠금:** 불러올 때 `UpdateAsync`로 이 서버의 lock을 남긴다. 다른 서버의 lock이 120초 안에 갱신됐으면 5초 간격으로 최대 30초 기다리고, 그래도 잠겨 있으면 이번 접속은 저장하지 않는다. 120초 넘은 lock은 꺼진 서버의 것으로 보고 가져온다. 60초 자동 저장이 lock을 갱신한다. 저장할 때 lock이 다른 서버로 넘어가 있으면 쓰지 않고 그 플레이어 저장을 멈춘다(`lostLock`).
+- **불러오기 실패·잠김·알 수 없는 형식(표가 아님, version > 1):** 기본 데이터로 플레이는 되지만 저장하지 않는다. HUD 제목에 "⚠ 저장 안 됨". 알 수 없는 형식은 덮어쓰지 않는다.
+- **정리(sanitize):** 없는 로봇·업그레이드·구역 id 제거, 레벨·단계를 허용 범위로, 음수·NaN 부품은 0, 수리 목록은 수리대 수까지, 보관함은 상한까지.
+- **저장 시점:** 60초 자동, 퇴장(lock 해제), 서버 종료 `BindToClose`(최대 25초 대기, 진행 중 저장 수 `inFlight`까지 기다림). 요청 오류는 3회 재시도.
+- **오프라인:** 불러올 때 `(지금 − lastSeen) × 분당 수입`을 보관함 상한(분당 수입 × 240분)까지 더하고, 그사이 끝난 수리를 처리해 "떠나 있는 동안 …" 메시지로 알려 준다.
+- **저장하지 않는 것:** 가방 속 부품, 운반 중인 로봇, 부품 더미 위치(접속할 때 새로 생김). 튜토리얼 완료는 삐삐를 수리대에 맡길 때 기록한다(운반 중에 나가면 다음 접속에 다시 나타나게).
+- 오비 `ProgressSave`·`Progress_v1`은 바꾸지 않았다.
 
 ---
 
 ## C. 진행 중인 개발
 
-- **로봇 작업장 (3단계 계획 중 1단계 완료):** 핵심 루프와 업그레이드를 구현·자동 테스트했다(F ⑪). 사용자 승인 계획은 ① 핵심 루프 → ② 업그레이드 → ③ 저장이었고, 업그레이드는 1단계에 함께 넣었다. **남은 것: 저장과 오프라인 수입, 실제 걷기·모바일 확인, 밸런스 조정.**
+- **로봇 작업장:** 1단계(핵심 루프·업그레이드, F ⑪)와 2단계(저장·오프라인 수입, F ⑫) 구현·자동 테스트 완료. **남은 것: 실제 DataStore 재접속 검증(Studio API 접근 필요), 실제 걷기·모바일 확인, 밸런스·연출(3단계).**
 - **기존 오비:** `ProgressSave` 구현 및 모의 저장소 검증 완료(`0eceb0d`). 실제 저장·재접속 검증은 Studio API 접근 거부로 중단돼 있다.
 - **보류:** 오비 스테이지 스킵, Robux 상품·보상형 광고, 출시용 비주얼과 사운드.
 
@@ -301,10 +309,20 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 | 클라이언트·서버 에러 | 없음 (기존 DataStore 접근 거부 경고만) |
 | Studio ↔ `src/` 스크립트 10개 크기·체크섬 | 일치 |
 
+**⑫ 2026-11-17 로봇 작업장 저장 테스트 (Claude Code, Play)**
+
+가짜 저장소를 넣은 `RobotLabSave` 복제본으로 실행(실제 DataStore는 건드리지 않음). 16항목 모두 PASS:
+새 플레이어(기본 데이터·lock 남김), 저장 후 같은 값 복원(부품·레벨·업그레이드·구역·튜토리얼·수리 목록·lastSeen), 퇴장 저장 시 lock 해제, 다른 서버 lock → 기다린 뒤 locked·데이터 그대로, lock 빼앗긴 뒤 저장 → lostLock·덮어쓰지 않음, 120초 넘은 lock 가져오기, 표가 아닌 값 → 불러오기·저장 모두 failed·그대로, version 2 → failed, 망가진 필드 정리(음수 부품·NaN·레벨 99·없는 로봇·문자열 값·수리 목록 초과), 오프라인 10분 → +40(분당 4), 하루 → 상한 240에서 멈춤, lastSeen 없음 → 0, 요청 2번 실패 후 성공, 3번 실패 → failed·쓰기 없음.
+
+실제 게임 흐름(API 접근 거부 상태): 불러오기 3회 실패 → HUD "⚠ 저장 안 됨", 튜토리얼·수집·수리·수거함·도감 등록 정상, 오비 진행·낙사 리스폰(거리 0.00) 정상, 클라이언트 에러 0. 콘솔에는 예상한 접근 거부·테스트 경고만. Studio ↔ `src/` 스크립트 11개 체크섬 일치.
+
+**아직 안 한 것:** 실제 DataStore로 저장 → 재접속 복원, 두 서버 사이 이동, 실제 오프라인 시간 경과.
+
 검증 한계: 이동은 순간이동과 `Humanoid:MoveTo`로 했다. 에픽·전설 로봇(20분·90분 수리), 온실·처리장 열기 성공, 레벨업·최고 레벨 환급, 여러 플레이어 동시 접속은 아직 직접 확인하지 않았다.
 
 ### 아직 테스트하지 않은 항목
 - 실제 모바일 기기 터치 조작, 저사양 기기 성능
+- 로봇 작업장 실제 DataStore 저장·재접속·서버 이동(세션 잠금), 실제 오프라인 수입
 - 로봇 작업장: 실제 플레이어의 걷기 동선과 안내 이해도, 장시간 밸런스(업그레이드·구역 비용), 에픽·전설 수리, 구역 열기 성공, 레벨업, 여러 명 동시 접속
 - 오비 실제 DataStore 저장과 재접속 복원, Stage 11 복원 시 메시지 재표시 여부, 60초 자동 저장
 - 여러 플레이어가 동시에 접속했을 때 (Mover 발판 동시 탑승, 리더보드)
@@ -318,7 +336,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 **참고한 장르 사례 (Codex 조사):** 성장으로 탐색 범위를 넓히는 Bee Swarm Simulator, 구역 탐색·수집의 Find the Chomiks, 실시간 성장으로 재접속 목표를 주는 Grow a Garden. 메커니즘만 참고하고 이름·캐릭터·맵은 오리지널로 유지한다.
 
-**A. 2단계 — 저장과 오프라인 수입 (다음 할 일, 계획 먼저 승인)**
+**A. 2단계 — 저장과 오프라인 수입 ✅ 구현 완료 (2026-11-17, B-10 저장 참고). 실제 DataStore 검증만 남음. 아래는 당시 계획 기록**
 - 목표: 나갔다 와도 부품·도감·레벨·업그레이드·구역·수리 중인 로봇이 유지되고, 떠나 있던 동안 도우미 수입이 쌓인다.
 - 방향: 새 ModuleScript(예: `ServerScriptService/RobotLabSave`), 새 DataStore(예: `RobotLab_v1`, 키 `Player_<UserId>`). 오비 `Progress_v1`과 **분리**한다. 저장 대상은 `RobotLab`의 `Data` 타입 그대로 + `lastSeen`(os.time). `ProgressSave`와 같은 안전 원칙(pcall 재시도, 불러오기 실패 시 저장 안 함, 서버 종료 시 저장). 다만 부품은 **쓰면 줄어드는 값**이라 "큰 값만 저장" 규칙은 쓸 수 없다 → 세션 잠금 또는 버전 번호 방식 검토.
 - 오프라인 수입: `(지금 − lastSeen) × 분당 수입`을 보관함 상한까지. 상한(현재 60분)은 오프라인용으로 따로 둘지 결정(예: 8시간).
@@ -338,12 +356,12 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
   3. **Codex라면 Roblox Studio MCP 연결부터 확인한다** (E-8). 없으면 사용자에게 알리고 Studio 작업은 하지 않는다 (AGENTS.md §6 "Studio MCP를 쓸 수 없을 때").
   4. `list_roblox_studios`로 인스턴스 ID를 새로 받고 placeId `77293997616106`을 확인한다.
   5. Studio에는 체크포인트 10 라벨이 올바르게 표시된다. 마지막 클라우드 저장 여부는 사용자에게 확인한다 (E-1).
-  6. 스크립트 10개 크기(또는 체크섬)가 `src/`와 같은지 확인한다 (`ReplicatedStorage/Modules/RobotLabConfig` 포함).
+  6. 스크립트 11개 크기(또는 체크섬)가 `src/`와 같은지 확인한다 (`ReplicatedStorage/Modules/RobotLabConfig` 포함).
 - **완료 조건:** 위 항목에서 이상이 없거나, 이상한 점을 사용자에게 보고함.
 
 ### 1순위 — 진행 저장 실제 검증 (구현은 완료, B-1b)
 - **목표:** 실제 DataStore로 "저장 → 재접속 → 이어하기"를 확인하고 진행 저장을 완료로 기록.
-- **먼저 할 일:** 사용자와 함께 API 접근 설정을 확인한다. 확인 방법: Play 중 Server에서 `DataStoreService:GetDataStore("Progress_v1"):GetAsync("Player_0")`을 `pcall`로 호출해 Error code 7이 사라졌는지 본다 (읽기만, 쓰기 없음). 계속 막히면 스크린샷으로 "Enable Studio Access to API Services" 스위치와 Save 여부를 확인한다.
+- **먼저 할 일:** 사용자와 함께 API 접근 설정을 확인한다. 확인 방법: Play 중 Server에서 `DataStoreService:GetDataStore("Progress_v1"):GetAsync("Player_0")`을 `pcall`로 호출해 (작업장 `RobotLab_v1`도 같은 방법으로 함께 검증. 테스트 키는 사용자 본인 키만) Error code 7이 사라졌는지 본다 (읽기만, 쓰기 없음). 계속 막히면 스크린샷으로 "Enable Studio Access to API Services" 스위치와 Save 여부를 확인한다.
 - **전제:** Studio Game Settings → Security → "Enable Studio Access to API Services" 설정을 사용자와 확인한다. Studio는 실제 게임과 같은 저장소를 쓰며 현재 데이터 유무는 미확인이다. 아래 시나리오는 쓰기 후 Stage가 남는 테스트이므로 대상 키와 예상 최종 값을 먼저 사용자와 확인한다.
 - **테스트 순서:**
   1. Play → 로그에 불러오기 경고 없음, Stage 0(또는 이전 저장값) 확인.

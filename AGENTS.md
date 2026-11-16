@@ -52,6 +52,8 @@ src/           Studio 스크립트의 거울 (Studio 경로 그대로)
   ServerScriptService/
     Leaderstats.server.luau   리더보드 leaderstats.Stage 생성 + 저장된 진행 불러오기
     ProgressSave.luau         진행 저장 모듈 (DataStore Progress_v1)
+    RobotLab.server.luau      로봇 작업장 판정
+    RobotLabSave.luau         로봇 작업장 저장 모듈 (DataStore RobotLab_v1, 세션 잠금)
     Checkpoints.server.luau   체크포인트 진행 판정 (바로 다음 번호만 인정)
     Respawn.server.luau       KillZone 낙사 + 마지막 체크포인트 리스폰 (RespawnTime 1초)
     Hazards.server.luau       태그 기반 장애물 구동 (KillPart/Spinner/Mover/TimedDoor)
@@ -146,6 +148,7 @@ ServerStorage/
 
 ### DataStore 안전 원칙 (2단계부터 적용)
 - **현재 사용 중인 저장 형식 (바꾸지 않는다):** DataStore `Progress_v1`, 키 `Player_<UserId>`, 값 `{ Stage = 정수 }`. DataStore는 `ServerScriptService/ProgressSave` 한 곳에서만 다룬다. 새 저장 항목이 필요하면 이 모듈을 확장하고, 형식 변경은 마이그레이션 계획을 먼저 승인받는다.
+- **로봇 작업장 저장 형식 (바꾸지 않는다):** DataStore `RobotLab_v1`, 키 `Player_<UserId>`, 값 `{ version = 1, data, lastSeen, lock }`. `ServerScriptService/RobotLabSave`에서만 다룬다. 부품은 줄어드는 값이라 "큰 값만 저장"이 아니라 **세션 잠금(lock)**으로 동시 저장을 막는다. 필드를 추가할 때는 `sanitize`에 기본값을 넣어 옛 데이터도 읽히게 하고, 형식을 크게 바꿀 때는 `version`을 올리고 마이그레이션 계획을 먼저 승인받는다.
 - 진행은 늘어나기만 한다는 전제로 "저장된 값보다 클 때만 저장"한다. 진행을 낮추는 기능을 넣을 때는 이 규칙을 함께 고친다.
 - 저장은 `UpdateAsync` 또는 `SetAsync`를 `pcall`로 감싸고 재시도한다. 불러오기에 실패한 플레이어의 데이터는 **덮어쓰지 않는다**(빈 값으로 저장하면 진행이 사라진다).
 - 퇴장(`PlayerRemoving`)과 서버 종료(`game:BindToClose`) 때 저장한다.
