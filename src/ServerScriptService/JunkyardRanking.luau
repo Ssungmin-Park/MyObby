@@ -268,6 +268,45 @@ end
 
 -- 시작 ------------------------------------------------------------------------------
 -- boardParts: { Rebirth = 파트, Earned = 파트 }, getScores: 지금 올릴 플레이어 점수 (불러오기 성공한 사람만)
+-- 같은 서버 플레이어의 지금 점수를 저장소 순위에 섞는다.
+-- 저장소의 정렬 결과는 몇 초~1분 늦게 바뀌므로, 이 서버에서 방금 환생한 사람도 바로 보이게 한다
+local function mergeLive(board: Board, entries: { Entry }, live: { [Player]: Scores }): { Entry }
+	local list: { Entry } = {}
+	local byUser: { [number]: Entry } = {}
+	for _, entry in entries do
+		local copy = { rank = 0, userId = entry.userId, score = entry.score }
+		byUser[entry.userId] = copy
+		table.insert(list, copy)
+	end
+	for player, scores in live do
+		local userId = player.UserId
+		if userId > 0 then
+			local value = if board.id == "Rebirth" then Ranking.rebirthScore(scores.rebirth, scores.earned) else Ranking.earnedScore(scores.earned)
+			local found = byUser[userId]
+			if found then
+				found.score = math.max(found.score, value)
+			else
+				table.insert(list, { rank = 0, userId = userId, score = value })
+			end
+		end
+	end
+	table.sort(list, function(a, b)
+		return a.score > b.score
+	end)
+	local top: { Entry } = {}
+	for index = 1, math.min(#list, Ranking.TopCount) do
+		list[index].rank = index
+		table.insert(top, list[index])
+	end
+	return top
+end
+
+-- 환생처럼 순위가 크게 바뀌면 다음 갱신을 기다리지 않고 바로 다시 그린다
+local refreshRequested = false
+function Ranking.refreshSoon()
+	refreshRequested = true
+end
+
 local started = false
 function Ranking.start(boardParts: { [string]: BasePart }, getScores: () -> { [Player]: Scores })
 	if started then
@@ -282,16 +321,23 @@ function Ranking.start(boardParts: { [string]: BasePart }, getScores: () -> { [P
 	end
 	task.spawn(function()
 		while true do
-			for player, scores in getScores() do
+			refreshRequested = false
+			local live = getScores()
+			for player, scores in live do
 				Ranking.submit(player.UserId, scores)
 			end
 			for _, board in Ranking.Boards do
 				local part = boardParts[board.id]
 				if part then
-					Ranking.render(part, board, Ranking.fetchTop(board))
+					local entries = Ranking.fetchTop(board)
+					Ranking.render(part, board, if entries then mergeLive(board, entries, live) else nil)
 				end
 			end
-			task.wait(Ranking.Interval)
+			-- Interval초 기다리되, refreshSoon이 불리면 바로 다시 돈다
+			local waited = 0
+			while waited < Ranking.Interval and not refreshRequested do
+				waited += task.wait(1)
+			end
 		end
 	end)
 end

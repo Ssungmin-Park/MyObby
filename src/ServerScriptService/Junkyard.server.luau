@@ -907,6 +907,7 @@ local function rebirth(state: State)
 	syncRebirth(state)
 	refreshIncome(state)
 	applyTitle(state)
+	JunkyardRanking.refreshSoon() -- 순위판에 환생을 바로 반영
 	local unlock = ""
 	for _, variantId in Config.VariantOrder do
 		local variant = Config.Variants[variantId]

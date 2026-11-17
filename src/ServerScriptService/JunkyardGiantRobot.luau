@@ -196,7 +196,14 @@ function Robot.donate(player: Player, tier: unknown)
 	end
 	entry.amount += amount
 	-- "Donate" 알림은 화면 가운데에 크게 뜬다 (JunkyardHud)
-	callbacks.notify(player, "Donate", ("🔧 +%s 기부!\n거대 로봇 조립 %d%%"):format(Config.formatMoney(amount), math.min(100, math.floor(progress / goal * 100))))
+	local percent = math.min(100, math.floor(progress / goal * 100))
+	callbacks.notify(player, "Donate", ("🔧 +%s 기부!\n거대 로봇 조립 %d%%"):format(Config.formatMoney(amount), percent))
+	-- 다른 사람들에게도 누가 얼마 기부했는지 알린다 (기부한 사람은 위의 큰 연출을 본다)
+	for _, other in Players:GetPlayers() do
+		if other ~= player then
+			callbacks.notify(other, "Global", ("🔧 %s님이 거대 로봇에 %s 기부! (조립 %d%%)"):format(player.DisplayName, Config.formatMoney(amount), percent))
+		end
+	end
 	if progress >= goal then
 		complete()
 	else
