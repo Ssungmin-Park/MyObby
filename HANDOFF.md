@@ -11,9 +11,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — 맵 꾸미기(B-20) 확인·렉 측정·혼자 Play 회귀. 장식은 Codex가 만듦 |
+| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — 맵 2차 꾸미기(B-20): 바깥 흙바닥·고물 산, 기지 사이 상자·드럼통, 가로등, 기지 벽 재질, HUD 패널 배경 진하게 |
 | 작업 시점 | 2026-11-17 |
-| 다음 작업 AI | ① 사용자 스크린샷 4장 → `docs/screenshots/` + README 맨 위 교체 ② 2인 로컬 회귀(훔치기·방어막 밀어내기·도둑 떨어짐) ③ **소리**(계획 먼저) → 협력 거대 로봇 → 공개 준비 |
+| 다음 작업 AI | ① 사용자 화면 확인(2차 꾸미기) → 스크린샷 교체(선택) ② 2인 로컬 회귀(훔치기·붙잡기·방어막 밀어내기) ③ **소리**(계획 먼저) → 협력 거대 로봇 → 공개 준비 |
 | 게임 이름 | 마이오비(Studio Place 이름) / **로봇 고물상 타이쿤 단독 운영**. 오비와 로봇 작업장은 `ServerStorage/ArchivedModes`에 보관 |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -22,7 +22,7 @@
 | Studio 모드 | **Edit 모드**(2026-11-17 MCP 확인) |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-17 Codex. `JunkyardConfig`·`Junkyard`·`JunkyardHud`에 도감 완성 배수·칭호·축하 효과 및 도감 설명을 추가 |
+| 마지막 게임 수정 | 2026-11-17 Claude Code: `Workspace/Junkyard/Decor/Phase2` 509파트(tools/decorate-junkyard-2.luau), 기지 벽 40개 색·재질(원래 값은 속성 OrigColor·OrigMaterial), `JunkyardHud` 패널·대회 패널 BackgroundTransparency 0.12→0.04(38932 B / 706360997, Studio 일치) |
 | Studio 저장 상태 | 대회 변경은 사용자가 Ctrl+S로 저장한 뒤 재시작까지 확인했다. 도감 완성 보상은 Studio Edit에 반영했고 클라우드 저장 여부는 미확인 |
 | 휴대폰 미리보기 | 사용자 직접 확인(2026-11-17). Studio 휴대폰 미리보기에서 상점·도감·대회 상자·안내 띠에 문제 없음 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
@@ -188,7 +188,15 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 - 혼자 Play 회귀: 기지 배정·Mode·SaveOff 정상, 벨트 구매(투입구 근처 로봇은 첫 시도 실패 → 다음 로봇 성공, 장식과 무관한 시험 타이밍으로 판단), 받침대 배치 5→6, 금고 수령, 방어막 90초, 떨어짐 복귀 0.9초, 순위판 GUI, 안내 화살표(벨트), `DebugContestNow` 수집왕 10초 시작·표시·종료, 서버·클라이언트 오류·경고 0. 시험 후 안내 단계는 0으로 되돌림.
 - 스크린샷: MCP `screen_capture`가 흰 화면만 돌려줘 사용자가 직접 찍어 보냄 → `docs/screenshots/06-junkyard-overview.webp`, `07-junkyard-base.webp`, `08-junkyard-belt.webp`, `09-junkyard-ranking.png`, README 고물상 소개 아래에 추가(옛 오비 사진은 보관 섹션에 유지).
 - 스크린샷에서 본 개선 후보(사용자와 상의): ① 외곽 울타리 너머로 회색 Baseplate 바닥과 빈 수평선이 넓게 보인다(바깥 배경 보강 필요) ② 맵 안쪽이 넓은 평지라 비어 보인다 ③ 기지 벽은 아직 회색 상자 느낌 ④ 왼쪽 위 패널 아래 대회 줄이 기지 간판과 겹쳐 보임(화면 위치는 정상, 배경과 겹침).
-- **미검증·남은 일:** 2인 회귀(훔치기·주인 붙잡기·방어막 밀어내기·도둑 떨어짐), 사용자의 콘셉트 만족 여부.
+**2차 꾸미기 (2026-11-17, Claude Code, 사용자 요청 "2차 꾸미기 해줘")** — `tools/decorate-junkyard-2.luau`, `Decor/Phase2` 509파트(전체 장식 1070, 예산 1500 안)
+- `OuterGround/DustGround`: 1600×1 흙바닥(윗면 Y 39.5, 고물상 바닥보다 1 낮음, 부딪히지 않음 → 떨어지면 그대로 지나가 Y<30 복귀 동작 유지) — 회색 Baseplate를 가린다.
+- `ScrapHills`: 맵을 둘러싼 고물 산 두 겹(안쪽 X 225~615·Z −70~270 간격 42, 바깥 X 160~680·Z −140~340 간격 64), 산 하나 = 덩어리 5 + 고철 막대 2.
+- `InnerScrap`: 기지 사이 틈(X 370·430·490, 기지 줄 Z 26~54·146~174)과 서쪽 구석(X 303~311)에 상자·드럼통.
+- `Lamps`: 가로등 6개(X 370·430·490 × Z 79·121), Neon 머리 + PointLight(범위 24, 밝기 1.2, 그림자 없음).
+- 기지 벽(`Bases/*/Wall` 40개): 재질 CorrodedMetal·색 (104,98,90). 위치·크기·이름 그대로, 원래 값은 각 벽 속성 `OrigColor`·`OrigMaterial`.
+- HUD: 왼쪽 위 패널·대회 패널 배경 투명도 0.12 → 0.04(뒤 간판과 겹쳐 읽기 어려움 해소).
+- 확인: 보호 구역(받침대·금고·버튼·입구·기지 내부·벨트 구매 통로 Z 88~112·시작 발판·순위판 앞) 겹침 0, 놀이 바닥 안으로 들어온 산 0. 혼자 Play: 파트 1366, FPS 60.2/60.0(최장 19ms, 산 방향 포함), 떨어짐 복귀 0.7초, 서버·클라이언트 오류·경고 0. ChangeHistory 기록이 시작되지 않는 상태가 남아 있어(이전부터) Ctrl+Z로 되돌릴 수 없을 수 있다 → 되돌리려면 `Decor/Phase2`를 ServerStorage로 옮기고 벽은 OrigColor·OrigMaterial로 복원.
+- **미검증·남은 일:** 사용자 화면 확인, 2인 회귀(훔치기·주인 붙잡기·방어막 밀어내기·도둑 떨어짐), 저사양 휴대폰 성능.
 
 ### B-19. 도감 완성 보상 (2026-11-17, 사용자 승인 · Studio 2인 검증)
 

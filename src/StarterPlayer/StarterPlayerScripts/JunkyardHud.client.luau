@@ -71,7 +71,7 @@ local panel = Instance.new("Frame")
 panel.Position = UDim2.fromOffset(12, 10)
 panel.Size = UDim2.fromOffset(250, 150)
 panel.BackgroundColor3 = dark
-panel.BackgroundTransparency = 0.12
+panel.BackgroundTransparency = 0.04 -- 뒤의 간판·장식이 비쳐 글씨가 안 읽히지 않게 진하게
 panel.Parent = gui
 corner(panel, 10)
 
@@ -87,7 +87,7 @@ contestPanel.Name = "ContestPanel"
 contestPanel.Position = UDim2.fromOffset(12, 166)
 contestPanel.Size = UDim2.fromOffset(250, 30)
 contestPanel.BackgroundColor3 = dark
-contestPanel.BackgroundTransparency = 0.12
+contestPanel.BackgroundTransparency = 0.04
 contestPanel.Parent = gui
 corner(contestPanel, 10)
 local contestHeader = label(contestPanel, UDim2.fromOffset(12, 4), UDim2.new(1, -24, 0, 22), 13, Color3.fromRGB(255, 210, 120))
