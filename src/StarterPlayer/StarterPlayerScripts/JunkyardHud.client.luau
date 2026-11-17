@@ -510,7 +510,7 @@ local function toast(kind: string, text: string)
 end
 notifyRemote.OnClientEvent:Connect(function(kind: unknown, text: unknown, userId: unknown)
 	if typeof(kind) == "string" and typeof(text) == "string" then
-		toast(if kind == "Alarm" then "Alert" else kind, text)
+		toast(if kind == "Alarm" or kind == "Stolen" then "Alert" else kind, text)
 		if kind == "Alarm" and typeof(userId) == "number" then
 			highlightIntruder(userId)
 		end
@@ -975,8 +975,8 @@ gui:GetPropertyChangedSignal("Enabled"):Connect(applySoundMode)
 notifyRemote.OnClientEvent:Connect(function(kind: unknown)
 	if kind == "Money" then
 		play("Collect")
-	elseif kind == "Alarm" then
-		play("Alarm")
+	elseif kind == "Alarm" or kind == "Stolen" then
+		play("Alarm") -- 경보기(침입)와 도둑맞은 순간
 	end
 end)
 -- 속성 변화로 고르는 소리 (접속 직후 불러오기 중에는 내지 않는다)

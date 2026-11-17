@@ -732,7 +732,8 @@ local function steal(state: State, base: Base, padIndex: number)
 		refreshIncome(states[base.owner])
 	end
 	notify(state.player, "Info", ("%s을(를) 훔쳤어요! 주인에게 잡히기 전에 내 기지로!"):format(robotLabel(robotId)))
-	notify(base.owner, "Alert", ("⚠ %s님이 내 %s을(를) 훔쳐 가요! 쫓아가서 붙잡으세요!"):format(state.player.DisplayName, robotLabel(robotId)))
+	-- "Stolen": 화면에서는 빨간 알림 + 경보음 (경보기 업그레이드 없이도 도둑맞는 순간엔 울린다)
+	notify(base.owner, "Stolen", ("⚠ %s님이 내 %s을(를) 훔쳐 가요! 쫓아가서 붙잡으세요!"):format(state.player.DisplayName, robotLabel(robotId)))
 end
 
 -- 상점 ------------------------------------------------------------------------
