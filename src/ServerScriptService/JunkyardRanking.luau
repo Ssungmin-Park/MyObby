@@ -301,6 +301,13 @@ local function mergeLive(board: Board, entries: { Entry }, live: { [Player]: Sco
 	return top
 end
 
+-- 마지막으로 그린 순위 (CCTV가 1위를 알아낼 때 쓴다)
+local latest: { [string]: { Entry } } = {}
+function Ranking.topUserId(boardId: string): number?
+	local entries = latest[boardId]
+	return if entries and entries[1] then entries[1].userId else nil
+end
+
 -- 환생처럼 순위가 크게 바뀌면 다음 갱신을 기다리지 않고 바로 다시 그린다
 local refreshRequested = false
 function Ranking.refreshSoon()
@@ -330,7 +337,11 @@ function Ranking.start(boardParts: { [string]: BasePart }, getScores: () -> { [P
 				local part = boardParts[board.id]
 				if part then
 					local entries = Ranking.fetchTop(board)
-					Ranking.render(part, board, if entries then mergeLive(board, entries, live) else nil)
+					local merged = if entries then mergeLive(board, entries, live) else nil
+					if merged then
+						latest[board.id] = merged
+					end
+					Ranking.render(part, board, merged)
 				end
 			end
 			-- Interval초 기다리되, refreshSoon이 불리면 바로 다시 돈다

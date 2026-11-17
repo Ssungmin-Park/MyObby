@@ -1319,6 +1319,43 @@ local function syncSnatchPrompts()
 		end
 	end
 end
+-- 순위판 위 CCTV 화면: 카메라를 천천히 돌리고, LIVE 깜빡임·시계 (화면 속 기지 모형은 서버가 만든다)
+task.spawn(function()
+	local rankings = workspace:WaitForChild("Junkyard"):WaitForChild("Rankings", 30)
+	local cctv = rankings and rankings:WaitForChild("CCTV", 30)
+	local screen = cctv and cctv:WaitForChild("Screen", 30)
+	local cctvGui = screen and screen:WaitForChild("CCTVGui", 60)
+	if not cctvGui then
+		return
+	end
+	local view = cctvGui:WaitForChild("View") :: ViewportFrame
+	local live = cctvGui:WaitForChild("Live") :: TextLabel
+	local clock = cctvGui:WaitForChild("Clock") :: TextLabel
+	local lastSecond = -1
+	RunService.RenderStepped:Connect(function()
+		-- 화면 카메라는 서버에서 넘어오지 않을 수 있어 내 화면에서 만든다
+		local camera = view.CurrentCamera
+		if not camera then
+			camera = view:FindFirstChildOfClass("Camera") or Instance.new("Camera")
+			camera.FieldOfView = 45
+			camera.Parent = view
+			view.CurrentCamera = camera
+		end
+		local focus = view:GetAttribute("Focus")
+		local radius = view:GetAttribute("Radius")
+		if camera and typeof(focus) == "Vector3" and typeof(radius) == "number" then
+			local angle = os.clock() * 0.2
+			camera.CFrame = CFrame.lookAt(focus + Vector3.new(math.sin(angle) * radius, radius * 0.55, math.cos(angle) * radius), focus)
+		end
+		local second = math.floor(os.clock() * 2)
+		if second ~= lastSecond then
+			lastSecond = second
+			live.TextTransparency = if second % 2 == 0 then 0 else 1
+			clock.Text = "CAM 01  " .. os.date("%H:%M:%S")
+		end
+	end)
+end)
+
 -- 새로 생긴 버튼은 바로 맞춘다 (1초 주기를 기다리지 않게)
 workspace.DescendantAdded:Connect(function(object)
 	if object.Name == "SnatchPrompt" and object:IsA("ProximityPrompt") then

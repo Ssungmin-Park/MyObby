@@ -18,6 +18,7 @@ local Belt = require(script.Parent:WaitForChild("JunkyardBelt"))
 local JunkyardSave = require(script.Parent:WaitForChild("JunkyardSave"))
 local JunkyardStore = require(script.Parent:WaitForChild("JunkyardStore"))
 local JunkyardRanking = require(script.Parent:WaitForChild("JunkyardRanking"))
+local JunkyardCCTV = require(script.Parent:WaitForChild("JunkyardCCTV"))
 local JunkyardContest = require(script.Parent:WaitForChild("JunkyardContest"))
 local JunkyardGiantRobot = require(script.Parent:WaitForChild("JunkyardGiantRobot"))
 
@@ -1316,6 +1317,28 @@ do
 		end
 		return scores
 	end)
+	-- 순위판 위 CCTV: 전체 서버 환생 1위의 기지 생중계
+	local cctv = rankings and rankings:FindFirstChild("CCTV")
+	local screen = cctv and cctv:FindFirstChild("Screen")
+	if screen and screen:IsA("BasePart") then
+		JunkyardCCTV.start(screen, {
+			liveLayout = function(userId: number): JunkyardCCTV.Layout?
+				for player, state in states do
+					if player.UserId == userId and state.base and not state.loading then
+						local pads: { [number]: string } = {}
+						for index, robotId in state.base.robots do
+							pads[index] = robotId
+						end
+						return { userId = userId, name = player.DisplayName, rebirth = state.rebirth, expand = state.expand, pads = pads, live = true }
+					end
+				end
+				return nil
+			end,
+			makeRobot = function(key: string): Model
+				return makeRobotModel(key, true)
+			end,
+		})
+	end
 end
 
 -- Robux 상품 (3-2) -------------------------------------------------------------

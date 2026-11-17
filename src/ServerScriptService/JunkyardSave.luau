@@ -241,6 +241,20 @@ function JunkyardSave.loadAsync(userId: number): (LoadStatus, Data?, number?)
 end
 
 -- 저장. release가 true면 lock을 지운다(퇴장·서버 종료).
+-- 다른 플레이어의 저장 데이터를 읽기만 한다 (CCTV 화면용). 잠금·저장은 건드리지 않는다. 실패하면 nil
+function JunkyardSave.peekAsync(userId: number): Data?
+	local ok, raw = pcall(function()
+		return getStore():GetAsync(JunkyardSave.keyFor(userId))
+	end)
+	if ok and typeof(raw) == "table" and typeof(raw.data) == "table" then
+		return JunkyardSave.sanitize(raw.data)
+	end
+	if not ok then
+		warn("[JunkyardSave] 읽기 전용 불러오기 실패 " .. tostring(userId) .. ": " .. tostring(raw))
+	end
+	return nil
+end
+
 function JunkyardSave.saveAsync(userId: number, data: Data, release: boolean): SaveStatus
 	local key = JunkyardSave.keyFor(userId)
 	local copy = snapshot(data)
