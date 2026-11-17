@@ -59,3 +59,4 @@
 - 사용자가 게임 패스 판매를 켜고(관리형 가격 끔) 패스·상품 이미지 6장을 올렸다.
 - 게임 아이콘(docs/icons/game-icon.png, tools/game-icon.html)을 만들었다.
 - 사용자가 공개 이름·설명·아이콘·성숙도 설문을 마쳤다. 남은 것은 썸네일과 친구와 먼저 해 보기.
+- 썸네일 4장(1920×1080)을 만들었다. Studio Edit 캡처에 촬영용 임시 로봇(실제 모양과 같음)과 거대 로봇 완성 모습을 잠깐 연출하고 찍은 뒤 모두 되돌렸다(tools/thumbnails.html, 원본 docs/thumbnails/source).
