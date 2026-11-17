@@ -137,10 +137,59 @@ contestPanel.BackgroundTransparency = 0.04
 contestPanel.Parent = gui
 corner(contestPanel, 10)
 hudScale(contestPanel)
-local contestHeader = label(contestPanel, UDim2.fromOffset(12, 4), UDim2.new(1, -24, 0, 22), 13, Color3.fromRGB(255, 210, 120))
-local contestTop = label(contestPanel, UDim2.fromOffset(12, 26), UDim2.new(1, -24, 0, 54), 12, white)
+local contestHeader = label(contestPanel, UDim2.fromOffset(12, 4), UDim2.new(1, -48, 0, 22), 13, Color3.fromRGB(255, 210, 120))
+local contestGoal = label(contestPanel, UDim2.fromOffset(12, 26), UDim2.new(1, -24, 0, 30), 11, Color3.fromRGB(150, 230, 255)) -- 지금 대회에서 할 일 한 줄
+contestGoal.TextWrapped = true
+local contestTop = label(contestPanel, UDim2.fromOffset(12, 58), UDim2.new(1, -24, 0, 54), 12, white)
 contestTop.TextYAlignment = Enum.TextYAlignment.Top
-local contestOwn = label(contestPanel, UDim2.fromOffset(12, 80), UDim2.new(1, -24, 0, 22), 12, muted)
+local contestOwn = label(contestPanel, UDim2.fromOffset(12, 112), UDim2.new(1, -24, 0, 22), 12, muted)
+-- ❓ 대회 규칙 설명 창
+local contestHelpButton = button(contestPanel, "❓", UDim2.new(1, -32, 0, 4), UDim2.fromOffset(24, 22), Color3.fromRGB(70, 82, 96))
+contestHelpButton.TextSize = 12
+local contestHelp = Instance.new("Frame")
+contestHelp.Name = "ContestHelp"
+contestHelp.AnchorPoint = Vector2.new(0.5, 0.5)
+contestHelp.Position = UDim2.fromScale(0.5, 0.5)
+contestHelp.Size = UDim2.fromOffset(470, 300)
+contestHelp.BackgroundColor3 = dark
+contestHelp.BackgroundTransparency = 0.03
+contestHelp.Visible = false
+contestHelp.ZIndex = 20
+contestHelp.Parent = gui
+corner(contestHelp, 12)
+hudScale(contestHelp)
+local contestHelpText = label(contestHelp, UDim2.fromOffset(16, 12), UDim2.new(1, -60, 1, -24), 14, white)
+contestHelpText.TextWrapped = true
+contestHelpText.TextYAlignment = Enum.TextYAlignment.Top
+contestHelpText.ZIndex = 21
+do
+	local points = {}
+	for _, rarityId in Config.RarityOrder do
+		table.insert(points, ("%s %d"):format(Config.Rarities[rarityId].name, Config.Contest.RarityPoints[rarityId]))
+	end
+	local rewards = Config.Contest.Rewards
+	contestHelpText.Text = table.concat({
+		("🏆 서버 대회 — %d분마다 %d분 동안 열려요"):format(Config.Contest.Interval // 60, Config.Contest.Duration // 60),
+		("· 서버에 %d명 이상 있을 때 열리고, 시작할 때 있던 사람이 참가해요"):format(Config.Contest.MinPlayers),
+		"",
+		"💰 수입왕: 처음보다 수입을 얼마나 키웠나 겨뤄요",
+		"   점수 = 대회 동안 번 돈 ÷ 시작할 때 내 초당 수입",
+		"   → 부자가 아니어도 1등 가능! 좋은 로봇을 빨리 더 놓으세요",
+		"",
+		"🛒 수집왕: 벨트에서 산 로봇 등급만큼 점수",
+		"   " .. table.concat(points, " · "),
+		"",
+		("🎁 보상 (내 초당 수입 기준): 1위 %d초어치 + 무료 EMP + 칭호 · 2위 %d초 · 3위 %d초 · 그 밖에 점수를 낸 사람 %d초"):format(rewards[1].seconds, rewards[2].seconds, rewards[3].seconds, Config.Contest.ParticipationSeconds),
+	}, "\n")
+end
+local contestHelpClose = button(contestHelp, "X", UDim2.new(1, -46, 0, 10), UDim2.fromOffset(36, 30), Color3.fromRGB(120, 60, 60))
+contestHelpClose.ZIndex = 21
+contestHelpClose.Activated:Connect(function()
+	contestHelp.Visible = false
+end)
+contestHelpButton.Activated:Connect(function()
+	contestHelp.Visible = not contestHelp.Visible
+end)
 local lastContestTop: string? = nil
 
 local function renderContest(t: number)
@@ -150,7 +199,8 @@ local function renderContest(t: number)
 	local running = contest ~= nil and endsAt > t
 	contestTop.Visible = running
 	contestOwn.Visible = running
-	contestPanel.Size = UDim2.fromOffset(250, if running then 108 else 30)
+	contestGoal.Visible = running
+	contestPanel.Size = UDim2.fromOffset(250, if running then 140 else 30)
 	if not contest or not running then
 		local left = math.max(0, math.ceil(((workspace:GetAttribute("NextContestAt") or 0) :: number) - t))
 		contestHeader.Text = ("🏆 다음 서버 대회 %d:%02d"):format(left // 60, left % 60)
@@ -159,6 +209,7 @@ local function renderContest(t: number)
 
 	local left = math.ceil(endsAt - t)
 	contestHeader.Text = ("%s %s · %d:%02d 남음"):format(contest.mark, contest.name, left // 60, left % 60)
+	contestGoal.Text = contest.goal
 	local encoded = (workspace:GetAttribute("ContestTop") or "[]") :: string
 	if encoded ~= lastContestTop then
 		lastContestTop = encoded
@@ -1274,6 +1325,11 @@ workspace:GetAttributeChangedSignal("ContestType"):Connect(function()
 	local kind = workspace:GetAttribute("ContestType")
 	if ready() and typeof(kind) == "string" and kind ~= "" then
 		play("Fanfare") -- 서버 대회 시작
+		local contest = Config.Contest.Types[kind]
+		if contest then
+			-- 시작할 때 화면 가운데에 크게 무엇을 하면 되는지 알린다
+			showDonateBurst(("%s %s 대회 시작!\n%s"):format(contest.mark, contest.name, contest.goal))
+		end
 	end
 end)
 workspace:GetAttributeChangedSignal("GiantState"):Connect(function()
