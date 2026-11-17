@@ -217,11 +217,20 @@ local pageButton = button(catalog, "기본 ▶", UDim2.new(1, -150, 0, 8), UDim2
 pageButton.Activated:Connect(function()
 	catalogPage = (catalogPage + 1) % (#Config.VariantOrder + 1)
 end)
+-- 로봇 칸은 스크롤 영역에 3열로 (종류가 많아서)
+local catalogGrid = Instance.new("ScrollingFrame")
+catalogGrid.Position = UDim2.fromOffset(0, 42)
+catalogGrid.Size = UDim2.new(1, 0, 0, 264)
+catalogGrid.BackgroundTransparency = 1
+catalogGrid.BorderSizePixel = 0
+catalogGrid.ScrollBarThickness = 6
+catalogGrid.CanvasSize = UDim2.fromOffset(0, math.ceil(#Config.Robots / 3) * 44 + 4)
+catalogGrid.Parent = catalog
 local catalogRows: { TextLabel } = {}
 for i in Config.Robots do
 	local column = (i - 1) % 3
 	local row = (i - 1) // 3
-	catalogRows[i] = label(catalog, UDim2.new(column / 3, 12, 0, 42 + row * 44), UDim2.new(1 / 3, -14, 0, 40), 13, muted)
+	catalogRows[i] = label(catalogGrid, UDim2.new(column / 3, 12, 0, row * 44), UDim2.new(1 / 3, -16, 0, 40), 13, muted)
 end
 local bonusLabel = label(catalog, UDim2.fromOffset(14, 312), UDim2.new(1, -28, 0, 100), 12, muted)
 catalogButton.Activated:Connect(function()
@@ -661,11 +670,19 @@ local function makeBeltRobot(id: number, robotId: string): Model
 	for _, dx in { -0.5, 0.5 } do
 		piece("Eye", Vector3.new(0.3, 0.3, 0.1), Vector3.new(dx, 1.85, -0.98), dark)
 	end
+	-- 로봇마다 다른 머리 장식 (기운 머리를 따라 기운다)
+	local style = if robot and robot.style then Config.RobotStyles[robot.style] else nil
+	if style then
+		for _, spec in style do
+			local part = piece(spec.name, spec.size, Vector3.zero, color:Lerp(Color3.new(0, 0, 0), 0.35))
+			part.CFrame = head.CFrame * CFrame.new(spec.offset * size)
+		end
+	end
 	model.PrimaryPart = body
 
 	local prompt = Instance.new("ProximityPrompt")
-	prompt.ObjectText = if robot and rarity then ("%s [%s] · 초당 %s"):format(robot.name, rarity.name, Config.formatMoney(rarity.income)) else robotId
-	prompt.ActionText = if rarity then ("구매 %s"):format(Config.formatMoney(rarity.price)) else "구매"
+	prompt.ObjectText = if robot and rarity then ("%s [%s] · 초당 %s"):format(robot.name, rarity.name, Config.formatMoney(Config.robotIncome(robotId))) else robotId
+	prompt.ActionText = if rarity then ("구매 %s"):format(Config.formatMoney(Config.robotValue(robotId))) else "구매"
 	prompt.MaxActivationDistance = 10
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = body
@@ -685,7 +702,7 @@ local function makeBeltRobot(id: number, robotId: string): Model
 	text.TextSize = 14
 	text.TextStrokeTransparency = 0.3
 	text.TextColor3 = color
-	text.Text = if robot and rarity then ("%s [%s]\n💰 %s"):format(robot.name, rarity.name, Config.formatMoney(rarity.price)) else robotId
+	text.Text = if robot and rarity then ("%s [%s] 초당 %s\n💰 %s"):format(robot.name, rarity.name, Config.formatMoney(Config.robotIncome(robotId)), Config.formatMoney(Config.robotValue(robotId))) else robotId
 	text.Parent = billboard
 	model.Parent = beltFolder
 	return model
@@ -895,7 +912,7 @@ local function render()
 		then ("%s %s 도감 %d/%d%s"):format(variant.mark, variant.name, pageCount, #Config.Robots,
 			if level < variant.minRebirth then (" (환생 %d번부터)"):format(variant.minRebirth) else "")
 		else ("로봇 도감 %d/%d"):format(count, #Config.Robots)
-	local lines = { "세트 보너스 (등급의 로봇 3종을 모두 모으면 수입 증가):" }
+	local lines = { "세트 (등급의 로봇을 모두 모으면 수입 증가 + 즉시 보상):" }
 	for _, rarityId in Config.RarityOrder do
 		local rarity = Config.Rarities[rarityId]
 		local have = 0
@@ -904,13 +921,14 @@ local function render()
 				have += 1
 			end
 		end
-		table.insert(lines, ("%s %s %d/3 → +%d%%"):format(if have >= 3 then "✓" else "·", rarity.name, have, math.floor(rarity.setBonus * 100)))
+		local total = Config.robotCount(rarityId)
+		table.insert(lines, ("%s %s %d/%d → +%d%% · 🎁%s"):format(if have >= total then "✓" else "·", rarity.name, have, total, math.floor(rarity.setBonus * 100), Config.formatMoney(rarity.setReward)))
 	end
 	if variant and variantId then
 		table.insert(lines, ("%s %s · +%d%%"):format(if pageCount == #Config.Robots then "✓ 획득" else "완성 보상",
 			Config.VariantPageTitles[variantId], math.round(variant.pageBonus * 100)))
 	else
-		table.insert(lines, ("%s %s · +%d%%"):format(if count == #Config.Robots then "✓ 획득" else "18종 완성",
+		table.insert(lines, ("%s %s · +%d%%"):format(if count == #Config.Robots then "✓ 획득" else ("%d종 완성"):format(#Config.Robots),
 			Config.FullCatalogTitle, math.round(Config.FullCatalogBonus * 100)))
 	end
 	bonusLabel.Text = table.concat(lines, "   ")

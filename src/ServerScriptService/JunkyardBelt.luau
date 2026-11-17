@@ -104,13 +104,7 @@ local function rollRobot(forceMythic: boolean): string
 			end
 		end
 	end
-	local candidates = {}
-	for _, robot in Config.Robots do
-		if robot.rarity == rarity then
-			table.insert(candidates, robot.id)
-		end
-	end
-	return candidates[math.random(#candidates)]
+	return Config.pickRobot(rarity) -- 같은 등급 안에서는 수입이 높은 로봇일수록 드물다
 end
 
 -- 벨트를 돌린다. announce는 희귀 로봇이 나왔을 때 서버 전체 알림을 보내는 함수.

@@ -144,6 +144,13 @@ local function makeRobotModel(robotId: string, anchored: boolean): Model
 	for _, dx in { -0.5, 0.5 } do
 		piece("Eye", Vector3.new(0.3, 0.3, 0.1), Vector3.new(dx, 2.85, -0.98), Color3.fromRGB(30, 34, 40))
 	end
+	-- 로봇마다 다른 머리 장식 (Config.RobotStyles)
+	local style = if robot and robot.style then Config.RobotStyles[robot.style] else nil
+	if style then
+		for _, spec in style do
+			piece(spec.name, spec.size, Vector3.new(0, 2.75, 0) + spec.offset, color:Lerp(Color3.new(0, 0, 0), 0.35))
+		end
+	end
 	model.PrimaryPart = body
 	if variant then
 		local sparkles = Instance.new("Sparkles")
@@ -366,7 +373,11 @@ local function addToCatalog(state: State, robotKey: string)
 		state.player:SetAttribute("Catalog", HttpService:JSONEncode(ids))
 		local robot = Config.getRobot(robotId)
 		if robot and Config.isCatalogComplete(state.catalog, robot.rarity) then
-			table.insert(milestones, Config.Rarities[robot.rarity].name .. " 세트")
+			local rarity = Config.Rarities[robot.rarity]
+			table.insert(milestones, rarity.name .. " 세트")
+			-- 세트 완성 즉시 보상 (도감은 환생해도 남으므로 한 번만 받는다)
+			setMoney(state, state.money + rarity.setReward)
+			notify(state.player, "Money", ("🎁 %s 세트 완성 보상 +%s"):format(rarity.name, Config.formatMoney(rarity.setReward)))
 		end
 		if Config.isCatalogComplete(state.catalog) then
 			table.insert(milestones, Config.FullCatalogTitle)
@@ -642,15 +653,16 @@ local function buy(state: State, itemId: number)
 	if not rarity then
 		return
 	end
-	if state.money < rarity.price then
-		notify(state.player, "Alert", ("돈이 %s 부족해요."):format(Config.formatMoney(rarity.price - state.money)))
+	local price = Config.robotValue(item.robotId) -- 로봇마다 가격이 다르다 (벨트 로봇은 변종이 아니다)
+	if state.money < price then
+		notify(state.player, "Alert", ("돈이 %s 부족해요."):format(Config.formatMoney(price - state.money)))
 		return
 	end
 	if not Belt.take(itemId) then
 		notify(state.player, "Alert", "아쉬워요! 다른 사람이 먼저 샀어요.")
 		return
 	end
-	setMoney(state, state.money - rarity.price)
+	setMoney(state, state.money - price)
 	-- 환생한 사람은 살 때 변종(금색·다이아·무지개)이 나올 수 있다. 벨트에 보이는 로봇은 모두에게 같다
 	local variantId = Config.rollVariant(state.rebirth)
 	local robotKey = if variantId then item.robotId .. "@" .. variantId else item.robotId
@@ -1201,13 +1213,7 @@ local function rollRainGift(): string
 			end
 		end
 	end
-	local candidates = {}
-	for _, robot in Config.Robots do
-		if robot.rarity == rarity then
-			table.insert(candidates, robot.id)
-		end
-	end
-	return candidates[math.random(#candidates)]
+	return Config.pickRobot(rarity)
 end
 
 -- 개발자 상품 지급 (JunkyardStore가 영수증 중복을 막은 뒤 부른다). 지급하면 true

@@ -10,44 +10,85 @@ export type Rarity = {
 	size: number, -- 모형 크기 배수 (희귀할수록 크게)
 	color: Color3,
 	setBonus: number, -- 이 등급 로봇을 도감에 모두 모으면 수입 +비율 (0.1 = +10%)
+	setReward: number, -- 이 등급 세트를 처음 완성하는 순간 한 번 주는 돈
+	payback: number, -- 로봇 가격 = 초당 수입 × 이 값 (본전 찾는 데 걸리는 초)
 }
-export type Robot = { id: string, name: string, rarity: string }
+export type Robot = { id: string, name: string, rarity: string, income: number?, weight: number?, style: number? }
 
 local Config = {}
 
 Config.RarityOrder = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic" }
 Config.Rarities = {
-	Common = { name = "일반", weight = 290, price = 25, income = 1, size = 1, color = Color3.fromRGB(176, 186, 196), setBonus = 0.05 },
-	Uncommon = { name = "고급", weight = 300, price = 100, income = 4, size = 1.1, color = Color3.fromRGB(120, 210, 120), setBonus = 0.1 },
-	Rare = { name = "희귀", weight = 220, price = 500, income = 15, size = 1.2, color = Color3.fromRGB(100, 165, 250), setBonus = 0.15 },
-	Epic = { name = "에픽", weight = 120, price = 2500, income = 60, size = 1.35, color = Color3.fromRGB(190, 120, 245), setBonus = 0.25 },
-	Legendary = { name = "전설", weight = 50, price = 15000, income = 300, size = 1.5, color = Color3.fromRGB(250, 196, 80), setBonus = 0.4 },
-	Mythic = { name = "신화", weight = 20, price = 100000, income = 1500, size = 1.7, color = Color3.fromRGB(255, 90, 120), setBonus = 1 },
+	Common = { name = "일반", weight = 290, price = 25, income = 1, size = 1, color = Color3.fromRGB(176, 186, 196), setBonus = 0.05, setReward = 1000, payback = 60 },
+	Uncommon = { name = "고급", weight = 300, price = 100, income = 4, size = 1.1, color = Color3.fromRGB(120, 210, 120), setBonus = 0.1, setReward = 5000, payback = 75 },
+	Rare = { name = "희귀", weight = 220, price = 500, income = 15, size = 1.2, color = Color3.fromRGB(100, 165, 250), setBonus = 0.15, setReward = 30000, payback = 90 },
+	Epic = { name = "에픽", weight = 120, price = 2500, income = 60, size = 1.35, color = Color3.fromRGB(190, 120, 245), setBonus = 0.25, setReward = 200000, payback = 120 },
+	Legendary = { name = "전설", weight = 50, price = 15000, income = 300, size = 1.5, color = Color3.fromRGB(250, 196, 80), setBonus = 0.4, setReward = 1500000, payback = 150 },
+	Mythic = { name = "신화", weight = 20, price = 100000, income = 1500, size = 1.7, color = Color3.fromRGB(255, 90, 120), setBonus = 1, setReward = 10000000, payback = 180 },
 } :: { [string]: Rarity }
 
--- 도감 순서 = 이 목록 순서. 등급마다 3종.
+-- 도감 순서 = 이 목록 순서. 등급이 높을수록 종류가 적다 (일반 8 · 고급 7 · 희귀 6 · 에픽 5 · 전설 4 · 신화 3).
+-- income = 초당 수입, weight = 같은 등급 안에서 나올 비율(수입이 높을수록 드물다), style = 머리 장식(RobotStyles).
+-- 가격 = income × 등급의 payback(본전 찾는 초). id는 저장 키라 바꾸지 않는다.
 Config.Robots = {
-	{ id = "Pippi", name = "삐삐", rarity = "Common" },
-	{ id = "Nut", name = "너트", rarity = "Common" },
-	{ id = "Sponge", name = "스펀지", rarity = "Common" },
-	{ id = "Volt", name = "볼트", rarity = "Uncommon" },
-	{ id = "Coil", name = "코일", rarity = "Uncommon" },
-	{ id = "Wiper", name = "와이퍼", rarity = "Uncommon" },
-	{ id = "Lumi", name = "루미", rarity = "Rare" },
-	{ id = "Spring", name = "스프링", rarity = "Rare" },
-	{ id = "Radar", name = "레이더", rarity = "Rare" },
-	{ id = "GearKing", name = "기어킹", rarity = "Epic" },
-	{ id = "Holo", name = "홀로", rarity = "Epic" },
-	{ id = "Press", name = "프레스", rarity = "Epic" },
-	{ id = "Nova", name = "노바", rarity = "Legendary" },
-	{ id = "Atlas", name = "아틀라스", rarity = "Legendary" },
-	{ id = "Titan", name = "타이탄", rarity = "Legendary" },
-	{ id = "Omega", name = "오메가", rarity = "Mythic" },
-	{ id = "Zenith", name = "제니스", rarity = "Mythic" },
-	{ id = "Quasar", name = "퀘이사", rarity = "Mythic" },
+	{ id = "Pippi", name = "삐삐", rarity = "Common", income = 1, weight = 30, style = 0 },
+	{ id = "Nut", name = "너트", rarity = "Common", income = 1, weight = 30, style = 1 },
+	{ id = "Sponge", name = "스펀지", rarity = "Common", income = 1, weight = 30, style = 2 },
+	{ id = "Tin", name = "깡통이", rarity = "Common", income = 1, weight = 30, style = 3 },
+	{ id = "Clip", name = "클립", rarity = "Common", income = 2, weight = 16, style = 4 },
+	{ id = "Bucket", name = "버킷", rarity = "Common", income = 2, weight = 16, style = 5 },
+	{ id = "Rusty", name = "녹슬이", rarity = "Common", income = 2, weight = 16, style = 1 },
+	{ id = "Scrappy", name = "스크래피", rarity = "Common", income = 3, weight = 8, style = 4 },
+	{ id = "Volt", name = "볼트", rarity = "Uncommon", income = 3, weight = 30, style = 1 },
+	{ id = "Coil", name = "코일", rarity = "Uncommon", income = 3, weight = 30, style = 0 },
+	{ id = "Wiper", name = "와이퍼", rarity = "Uncommon", income = 4, weight = 24, style = 3 },
+	{ id = "Magnet", name = "마그넷", rarity = "Uncommon", income = 4, weight = 24, style = 2 },
+	{ id = "Fan", name = "팬돌이", rarity = "Uncommon", income = 5, weight = 18, style = 5 },
+	{ id = "Drill", name = "드릴", rarity = "Uncommon", income = 6, weight = 12, style = 4 },
+	{ id = "Hopper", name = "호퍼", rarity = "Uncommon", income = 7, weight = 8, style = 2 },
+	{ id = "Lumi", name = "루미", rarity = "Rare", income = 10, weight = 30, style = 1 },
+	{ id = "Spring", name = "스프링", rarity = "Rare", income = 12, weight = 26, style = 0 },
+	{ id = "Radar", name = "레이더", rarity = "Rare", income = 14, weight = 22, style = 3 },
+	{ id = "Prism", name = "프리즘", rarity = "Rare", income = 16, weight = 16, style = 4 },
+	{ id = "Turbo", name = "터보", rarity = "Rare", income = 18, weight = 10, style = 5 },
+	{ id = "Sonar", name = "소나", rarity = "Rare", income = 22, weight = 6, style = 2 },
+	{ id = "GearKing", name = "기어킹", rarity = "Epic", income = 40, weight = 30, style = 4 },
+	{ id = "Holo", name = "홀로", rarity = "Epic", income = 48, weight = 24, style = 3 },
+	{ id = "Press", name = "프레스", rarity = "Epic", income = 56, weight = 18, style = 5 },
+	{ id = "Forge", name = "포지", rarity = "Epic", income = 65, weight = 12, style = 2 },
+	{ id = "Rocket", name = "로켓", rarity = "Epic", income = 80, weight = 6, style = 1 },
+	{ id = "Nova", name = "노바", rarity = "Legendary", income = 180, weight = 30, style = 1 },
+	{ id = "Atlas", name = "아틀라스", rarity = "Legendary", income = 220, weight = 22, style = 5 },
+	{ id = "Titan", name = "타이탄", rarity = "Legendary", income = 260, weight = 14, style = 4 },
+	{ id = "Orion", name = "오리온", rarity = "Legendary", income = 320, weight = 6, style = 3 },
+	{ id = "Omega", name = "오메가", rarity = "Mythic", income = 900, weight = 30, style = 4 },
+	{ id = "Zenith", name = "제니스", rarity = "Mythic", income = 1100, weight = 20, style = 1 },
+	{ id = "Quasar", name = "퀘이사", rarity = "Mythic", income = 1400, weight = 10, style = 2 },
 } :: { Robot }
 
-Config.StartMoney = 50
+-- 머리 장식 모양 (머리 중심 기준 크기·위치, 로봇 크기 배수를 곱해 쓴다). 0 = 장식 없음
+export type RobotPart = { name: string, size: Vector3, offset: Vector3 }
+Config.RobotStyles = {
+	[1] = { -- 안테나
+		{ name = "Antenna", size = Vector3.new(0.2, 0.9, 0.2), offset = Vector3.new(0, 1.2, 0) },
+		{ name = "AntennaTip", size = Vector3.new(0.45, 0.45, 0.45), offset = Vector3.new(0, 1.75, 0) },
+	},
+	[2] = { -- 귀
+		{ name = "Ear", size = Vector3.new(0.4, 0.8, 0.8), offset = Vector3.new(-1.4, 0, 0) },
+		{ name = "Ear", size = Vector3.new(0.4, 0.8, 0.8), offset = Vector3.new(1.4, 0, 0) },
+	},
+	[3] = { -- 고글
+		{ name = "Visor", size = Vector3.new(2, 0.35, 0.15), offset = Vector3.new(0, 0.1, -1) },
+	},
+	[4] = { -- 볏
+		{ name = "Crest", size = Vector3.new(0.3, 0.6, 1.6), offset = Vector3.new(0, 1.05, 0) },
+	},
+	[5] = { -- 턱
+		{ name = "Jaw", size = Vector3.new(1.8, 0.4, 0.4), offset = Vector3.new(0, -0.85, -0.85) },
+	},
+} :: { [number]: { RobotPart } }
+
+Config.StartMoney = 100 -- 가장 싼 로봇(60)을 바로 살 수 있게
 
 -- 컨베이어 벨트
 Config.BeltInterval = 2.5 -- 새 로봇이 나오는 간격(초)
@@ -270,18 +311,55 @@ function Config.isValidKey(key: string): boolean
 	return robotById[id] ~= nil and (variant == nil or Config.Variants[variant] ~= nil)
 end
 
--- 초당 수입 (변종이면 배수)
+-- 초당 수입 (로봇마다 다르다. 변종이면 배수)
 function Config.robotIncome(key: string): number
+	local robot = Config.getRobot(key)
 	local rarity = Config.rarityOf(key)
 	local variant = Config.variantOf(key)
-	return (if rarity then rarity.income else 0) * (if variant then variant.income else 1)
+	local base = if robot and robot.income then robot.income elseif rarity then rarity.income else 0
+	return base * (if variant then variant.income else 1)
 end
 
--- 가치 (판매·환급 기준). 변종이면 수입 배수만큼 비싸다
+-- 가치 = 벨트 가격 (판매·환급 기준). 초당 수입 × 등급 payback. 변종이면 수입 배수만큼 비싸다
 function Config.robotValue(key: string): number
+	local robot = Config.getRobot(key)
 	local rarity = Config.rarityOf(key)
 	local variant = Config.variantOf(key)
-	return (if rarity then rarity.price else 0) * (if variant then variant.income else 1)
+	local base = if robot and robot.income and rarity then robot.income * rarity.payback elseif rarity then rarity.price else 0
+	return base * (if variant then variant.income else 1)
+end
+
+-- 한 등급의 로봇 수 (rarityId가 없으면 전체)
+function Config.robotCount(rarityId: string?): number
+	local count = 0
+	for _, robot in Config.Robots do
+		if rarityId == nil or robot.rarity == rarityId then
+			count += 1
+		end
+	end
+	return count
+end
+
+-- 등급 안에서 로봇 하나를 고른다 (로봇의 weight 비율로)
+function Config.pickRobot(rarityId: string): string
+	local total = 0
+	for _, robot in Config.Robots do
+		if robot.rarity == rarityId then
+			total += robot.weight or 1
+		end
+	end
+	local roll = math.random() * total
+	local last = ""
+	for _, robot in Config.Robots do
+		if robot.rarity == rarityId then
+			last = robot.id
+			roll -= robot.weight or 1
+			if roll <= 0 then
+				return robot.id
+			end
+		end
+	end
+	return last
 end
 
 -- 화면에 보이는 이름: "✨ 금색 삐삐" / "삐삐"
@@ -358,7 +436,7 @@ function Config.highestVariantPage(variantCatalog: { [string]: boolean }): strin
 	return nil
 end
 
--- 변종 도감 페이지(18종)를 다 모으면 주는 수입 보너스 합
+-- 변종 도감 페이지(전체 종류)를 다 모으면 주는 수입 보너스 합
 function Config.variantPageBonus(variantCatalog: { [string]: boolean }): number
 	local bonus = 0
 	for _, variantId in Config.VariantOrder do
