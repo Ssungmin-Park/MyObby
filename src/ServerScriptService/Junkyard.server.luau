@@ -80,6 +80,8 @@ type State = {
 	totalEarned: number, -- 로봇이 벌어 준 누적 수입 (저장됨, 환생해도 유지, 전체 서버 순위표)
 	tutorial: number, -- 첫 접속 안내 단계 (1~5, 0 = 끝남, 저장됨)
 	expand: number, -- 기지 확장 단계 (저장됨, 환생해도 유지)
+	titles: { [string]: boolean }, -- 영구 획득한 칭호
+	selectedTitle: string, -- 표시할 칭호
 }
 
 local bases: { Base } = {}
@@ -317,14 +319,10 @@ local function applyTitle(state: State)
 	if not head or not head:IsA("BasePart") then
 		return
 	end
-	local _, best = Config.catalogMultiplier(state.catalog)
-	local fullCatalog = Config.isCatalogComplete(state.catalog)
-	local variantPage = Config.highestVariantPage(state.variantCatalog)
+	local chosen = Config.TitleNames[state.selectedTitle]
 	local vip = state.passes.VipBase == true
-	local contestTitle = state.player:GetAttribute("ContestTitle")
-	local robotTitle = state.player:GetAttribute("RobotTitle") -- 거대 로봇 최고 기부자
 	local tag = head:FindFirstChild("TitleTag") :: BillboardGui?
-	if not best and not vip and state.rebirth <= 0 and typeof(contestTitle) ~= "string" and typeof(robotTitle) ~= "string" then
+	if not chosen and not vip and state.rebirth <= 0 then
 		if tag then
 			tag:Destroy()
 		end
@@ -333,55 +331,83 @@ local function applyTitle(state: State)
 	if not tag then
 		local newTag = Instance.new("BillboardGui")
 		newTag.Name = "TitleTag"
-		newTag.Size = UDim2.fromOffset(160, 24)
 		newTag.StudsOffsetWorldSpace = Vector3.new(0, 2.6, 0)
 		newTag.MaxDistance = 80
-		local label = Instance.new("TextLabel")
-		label.Name = "Label"
-		label.Size = UDim2.fromScale(1, 1)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.GothamBold
-		label.TextSize = 14
-		label.TextStrokeTransparency = 0.3
-		label.Parent = newTag
+		local text = Instance.new("TextLabel")
+		text.Name = "Label"
+		text.Size = UDim2.fromScale(1, 1)
+		text.BackgroundTransparency = 1
+		text.Font = Enum.Font.GothamBold
+		text.TextSize = 16
+		text.TextWrapped = true
+		text.TextStrokeTransparency = 0.3
+		text.TextColor3 = Color3.fromRGB(255, 215, 90)
+		text.Parent = newTag
 		newTag.Parent = head
 		tag = newTag
 	end
-	local rarity = if best then Config.Rarities[best] else nil
-	local label = (tag :: BillboardGui):FindFirstChild("Label") :: TextLabel
 	local words = {}
-	if typeof(contestTitle) == "string" then
-		table.insert(words, contestTitle)
-	end
-	if typeof(robotTitle) == "string" then
-		table.insert(words, robotTitle)
-	end
 	if state.rebirth > 0 then
 		table.insert(words, Config.rebirthMark(state.rebirth))
 	end
 	if vip then
 		table.insert(words, "[👑 VIP]")
 	end
-	if fullCatalog then
-		table.insert(words, Config.FullCatalogTitle)
-	elseif rarity then
-		table.insert(words, ("[%s 수집가]"):format(rarity.name))
+	if chosen then
+		table.insert(words, chosen)
 	end
-	local mainTitle = table.concat(words, " ")
-	tag.Size = UDim2.fromOffset(220, if variantPage then 42 else 24)
-	label.Text = if variantPage then mainTitle .. "\n" .. Config.VariantPageTitles[variantPage] else mainTitle
-	label.TextColor3 = if rarity then rarity.color else Color3.fromRGB(255, 215, 90)
+	tag.Size = UDim2.fromOffset(240, 42)
+	local text = tag:FindFirstChild("Label") :: TextLabel
+	text.Text = table.concat(words, " ")
 end
 
 -- 도감 배수에는 기본 도감과 변종 도감 보너스를 각각 한 번 더한다.
 local function recomputeMultiplier(state: State)
-	state.multiplier = Config.catalogMultiplier(state.catalog) + Config.variantPageBonus(state.variantCatalog)
+	-- 기존 플레이어도 완성한 도감에 해당하는 칭호를 접속 즉시 받는다.
+	for _, rarityId in Config.RarityOrder do
+		if Config.isCatalogComplete(state.catalog, rarityId) then
+			state.titles["Set_" .. rarityId] = true
+		end
+	end
+	if Config.isCatalogComplete(state.catalog) then
+		state.titles.FullCatalog = true
+	end
+	for _, variantId in Config.VariantOrder do
+		if Config.isVariantPageComplete(state.variantCatalog, variantId) then
+			state.titles["Page_" .. variantId] = true
+		end
+	end
+	local titles = {}
+	for _, id in Config.TitleOrder do
+		if state.titles[id] then
+			table.insert(titles, id)
+		end
+	end
+	if state.selectedTitle == "" and #titles > 0 then
+		state.selectedTitle = titles[#titles]
+	end
+	state.player:SetAttribute("OwnedTitles", HttpService:JSONEncode(titles))
+	state.player:SetAttribute("SelectedTitle", state.selectedTitle)
+	state.player:SetAttribute("TitleBonus", Config.titleBonus(state.titles))
+	state.multiplier = Config.catalogMultiplier(state.catalog) + Config.variantPageBonus(state.variantCatalog) + Config.titleBonus(state.titles)
 	state.player:SetAttribute("Multiplier", state.multiplier)
 	local keys = {}
 	for key in state.variantCatalog do
 		table.insert(keys, key)
 	end
 	state.player:SetAttribute("VariantCatalog", HttpService:JSONEncode(keys))
+end
+
+local function grantTitle(state: State, id: string)
+	if state.titles[id] then
+		return
+	end
+	state.titles[id] = true
+	recomputeMultiplier(state)
+	refreshIncome(state)
+	applyTitle(state)
+	notify(state.player, "Info", ("🏅 칭호 획득 · %s! 영구 수입 +1%%"):format(Config.TitleNames[id]))
+	JunkyardSave.saveNow(state.player)
 end
 
 local function addToCatalog(state: State, robotKey: string)
@@ -856,7 +882,7 @@ local function snapshot(state: State): JunkyardSave.Data
 			money += Config.robotValue(carry.robotId)
 		end
 	end
-	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades), empCharges = state.empCharges, rebirth = state.rebirth, variantCatalog = table.clone(state.variantCatalog), totalEarned = math.floor(state.totalEarned), tutorial = state.tutorial, expand = state.expand }
+	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades), empCharges = state.empCharges, rebirth = state.rebirth, variantCatalog = table.clone(state.variantCatalog), totalEarned = math.floor(state.totalEarned), tutorial = state.tutorial, expand = state.expand, titles = table.clone(state.titles), selectedTitle = state.selectedTitle }
 end
 
 -- 첫 접속 안내 (튜토리얼) ------------------------------------------------------------
@@ -1433,6 +1459,13 @@ actionRemote.OnServerEvent:Connect(function(player: Player, action: unknown, arg
 		rebirth(state)
 	elseif action == "Tutorial" and (arg == "Shop" or arg == "Catalog") then
 		advanceTutorial(state, arg :: string) -- 화면을 연 단계만 (보상 없음, 순서가 맞을 때만)
+	elseif action == "Title" and typeof(arg) == "string" and not state.loading then
+		if arg == "None" or state.titles[arg] == true then
+			state.selectedTitle = arg
+			player:SetAttribute("SelectedTitle", arg)
+			applyTitle(state)
+			JunkyardSave.saveNow(player)
+		end
 	elseif action == "Donate" then
 		JunkyardGiantRobot.donate(player, arg) -- 버튼 번호만 받고 금액·거리·돈은 모듈이 검사
 	elseif action == "TutorialSkip" and state.tutorial ~= 0 then
@@ -1537,7 +1570,11 @@ JunkyardContest.start({
 		local state = states[player]
 		if state then
 			player:SetAttribute("ContestTitle", title)
-			applyTitle(state)
+			for _, kind in { "Income", "Collect" } do
+				if title == Config.TitleNames["Contest_" .. kind] then
+					grantTitle(state, "Contest_" .. kind)
+				end
+			end
 		end
 	end,
 	notifyAll = notifyAll,
@@ -1572,7 +1609,9 @@ JunkyardGiantRobot.start({
 		local state = states[player]
 		if state then
 			player:SetAttribute("RobotTitle", title)
-			applyTitle(state)
+			if title then
+				grantTitle(state, "Mechanic")
+			end
 		end
 	end,
 	onBoostChanged = function()
@@ -1688,6 +1727,8 @@ local function loadPlayer(state: State)
 		return
 	end
 	if data then
+		state.titles = data.titles
+		state.selectedTitle = data.selectedTitle
 		setMoney(state, data.money)
 		state.totalEarned = data.totalEarned
 		player:SetAttribute("Newbie", isNewbie(state))
@@ -1782,6 +1823,8 @@ local function onPlayerAdded(player: Player)
 		totalEarned = 0,
 		tutorial = 0,
 		expand = 0,
+		titles = {},
+		selectedTitle = "",
 	}
 	player:SetAttribute("Expand", 0)
 	for _, id in Config.UpgradeOrder do

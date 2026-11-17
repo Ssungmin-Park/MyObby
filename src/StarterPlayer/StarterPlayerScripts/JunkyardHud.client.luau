@@ -82,7 +82,7 @@ end)
 local panel = Instance.new("Frame")
 panel.AnchorPoint = Vector2.new(1, 0)
 panel.Position = UDim2.new(1, -12, 0, 10)
-panel.Size = UDim2.fromOffset(250, 150)
+panel.Size = UDim2.fromOffset(250, 188)
 panel.BackgroundColor3 = dark
 panel.BackgroundTransparency = 0.04 -- 뒤의 간판·장식이 비쳐 글씨가 안 읽히지 않게 진하게
 panel.Parent = gui
@@ -663,7 +663,16 @@ burstPadding.Parent = donateBurst
 local burstScale = Instance.new("UIScale")
 burstScale.Parent = donateBurst
 local burstToken = 0
-local function showDonateBurst(text: string)
+local burstProtectedUntil = 0
+local pendingDonation: string? = nil
+local function showDonateBurst(text: string, seconds: number?)
+	if not seconds and os.clock() < burstProtectedUntil then
+		pendingDonation = text -- 대회 설명이 끝나면 가장 최근 기부를 보여 준다
+		return
+	end
+	if seconds then
+		burstProtectedUntil = os.clock() + seconds + 0.85
+	end
 	burstToken += 1
 	local token = burstToken
 	donateBurst.Text = text
@@ -674,7 +683,7 @@ local function showDonateBurst(text: string)
 	donateBurst.Visible = true
 	burstScale.Scale = 0.4
 	TweenService:Create(burstScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-	task.delay(1.8, function()
+	task.delay(seconds or 2.5, function()
 		if token ~= burstToken then
 			return
 		end
@@ -684,6 +693,12 @@ local function showDonateBurst(text: string)
 		task.delay(0.45, function()
 			if token == burstToken then
 				donateBurst.Visible = false
+				local pending = pendingDonation
+				pendingDonation = nil
+				if pending then
+					burstProtectedUntil = 0
+					showDonateBurst(pending)
+				end
 			end
 		end)
 	end)
@@ -710,7 +725,7 @@ local beltFolder = Instance.new("Folder")
 beltFolder.Name = "JunkyardBeltLocal"
 beltFolder.Parent = workspace
 
-type BeltVisual = { model: Model, spawnTime: number, height: number }
+type BeltVisual = { model: Model, spawnTime: number, height: number, dir: number }
 local beltVisuals: { [number]: BeltVisual } = {}
 
 local function makeBeltRobot(id: number, robotId: string): Model
@@ -784,6 +799,7 @@ local function addBeltItem(item: any)
 	beltVisuals[item.id] = {
 		model = makeBeltRobot(item.id, item.robotId),
 		spawnTime = item.spawnTime,
+		dir = if item.dir == -1 then -1 else 1,
 		height = if rarity then rarity.size else 1,
 	}
 end
@@ -809,11 +825,12 @@ beltRemote.OnClientEvent:Connect(function(kind: unknown, payload: any)
 end)
 beltRemote:FireServer("Sync")
 
-local facing = CFrame.lookAt(Vector3.zero, Vector3.new(0, 0, 1)) -- 북쪽 기지 쪽을 보게
 RunService.RenderStepped:Connect(function()
 	local now = workspace:GetServerTimeNow()
 	for _, visual in beltVisuals do
-		local position = startPos + direction * Config.BeltSpeed * (now - visual.spawnTime)
+		local origin = if visual.dir == -1 then endPos else startPos
+		local position = origin + direction * visual.dir * Config.BeltSpeed * (now - visual.spawnTime)
+		local facing = CFrame.lookAt(Vector3.zero, direction * visual.dir)
 		visual.model:PivotTo(CFrame.new(position + Vector3.new(0, visual.height, 0)) * facing)
 	end
 end)
@@ -1106,7 +1123,7 @@ local function fitWindows()
 		object.Scale = hud
 	end
 	local panelWidth = 250 * hud
-	contestPanel.Position = UDim2.new(1, -12, 0, 10 + 150 * hud + 6)
+	contestPanel.Position = UDim2.new(1, -12, 0, 10 + 188 * hud + 6)
 	toastArea.Position = UDim2.new(0.5, -(panelWidth + 24) / 2, 0, 96)
 	toastArea.Size = UDim2.new(1, -(panelWidth + 36), 0, 200)
 	-- 상점은 큰 화면에서 최대 2배까지 키운다 (기본 440×400)
@@ -1327,7 +1344,7 @@ workspace:GetAttributeChangedSignal("ContestType"):Connect(function()
 		local contest = Config.Contest.Types[kind]
 		if contest then
 			-- 시작할 때 화면 가운데에 크게 무엇을 하면 되는지 알린다
-			showDonateBurst(("%s %s 대회 시작!\n%s"):format(contest.mark, contest.name, contest.goal))
+			showDonateBurst(("%s %s 대회 시작!\n%s"):format(contest.mark, contest.name, contest.goal), 5)
 		end
 	end
 end)
@@ -1579,3 +1596,101 @@ task.spawn(function()
 	end
 end)
 render()
+
+-- 칭호 모음: 획득 여부와 선택은 서버 속성으로 표시하고, 선택 요청만 보낸다.
+do
+	local open = button(panel, "🏅 칭호 모음", UDim2.fromOffset(12, 152), UDim2.fromOffset(226, 28), Color3.fromRGB(80, 66, 110))
+	open.Name = "TitlesButton"
+	local window = Instance.new("Frame")
+	window.Name = "TitlesWindow"
+	window.AnchorPoint = Vector2.new(0.5, 0.5)
+	window.Position = UDim2.fromScale(0.5, 0.5)
+	window.Size = UDim2.fromScale(0.9, 0.75)
+	window.BackgroundColor3 = dark
+	window.Visible = false
+	window.Parent = gui
+	corner(window, 12)
+	local limit = Instance.new("UISizeConstraint")
+	limit.MaxSize = Vector2.new(480, 500)
+	limit.Parent = window
+	local heading = label(window, UDim2.fromOffset(14, 8), UDim2.new(1, -70, 0, 28), 20, white)
+	heading.Text = "🏅 칭호 모음"
+	local close = button(window, "X", UDim2.new(1, -46, 0, 8), UDim2.fromOffset(32, 28), Color3.fromRGB(120, 60, 60))
+	local info = label(window, UDim2.fromOffset(14, 42), UDim2.new(1, -28, 0, 60), 14, muted)
+	local list = Instance.new("ScrollingFrame")
+	list.Position = UDim2.fromOffset(14, 110)
+	list.Size = UDim2.new(1, -28, 1, -124)
+	list.BackgroundTransparency = 1
+	list.BorderSizePixel = 0
+	list.ScrollBarThickness = 6
+	list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	list.CanvasSize = UDim2.new()
+	list.Parent = window
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 6)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = list
+	local function updateTitles()
+		local owned = {}
+		local raw = player:GetAttribute("OwnedTitles")
+		if typeof(raw) == "string" then
+			local ok, ids = pcall(HttpService.JSONDecode, HttpService, raw)
+			if ok and typeof(ids) == "table" then
+				for _, id in ids do
+					owned[id] = true
+				end
+			end
+		end
+		local selected = player:GetAttribute("SelectedTitle")
+		local bonus = math.round(((player:GetAttribute("TitleBonus") or 0) :: number) * 100)
+		open.Text = ("🏅 칭호 모음 · 영구 수입 +%d%%"):format(bonus)
+		info.Text = ("획득한 칭호마다 영구 수입 +1%% · 현재 +%d%% / 최대 +13%%\n표시할 칭호 하나를 고르세요. 숨겨도 혜택은 유지돼요."):format(bonus)
+		for _, child in list:GetChildren() do
+			if child:IsA("TextButton") then
+				child:Destroy()
+			end
+		end
+		local hide = button(list, if selected == "None" then "✓ 칭호 숨김" else "칭호 숨기기", UDim2.new(), UDim2.new(1, -10, 0, 40), Color3.fromRGB(65, 75, 88))
+		hide.LayoutOrder = 0
+		hide.Activated:Connect(function()
+			actionRemote:FireServer("Title", "None")
+		end)
+		for index, id in Config.TitleOrder do
+			local has = owned[id] == true
+			local prefix = if selected == id then "✓ " elseif has then "선택 · " else "🔒 "
+			local row = button(list, prefix .. Config.TitleNames[id], UDim2.new(), UDim2.new(1, -10, 0, 40), if has then Color3.fromRGB(75, 63, 100) else Color3.fromRGB(43, 49, 58))
+			row.Name = id
+			row.LayoutOrder = index
+			row.AutoButtonColor = has
+			row.TextColor3 = if has then white else muted
+			row.Activated:Connect(function()
+				if has then
+					actionRemote:FireServer("Title", id)
+				end
+			end)
+		end
+	end
+	open.Activated:Connect(function()
+		window.Visible = not window.Visible
+		if window.Visible then
+			catalog.Visible = false
+			shop.Visible = false
+			donateWindow.Visible = false
+			updateTitles()
+		end
+	end)
+	close.Activated:Connect(function()
+		window.Visible = false
+	end)
+	for _, other in { catalog, shop, donateWindow } do
+		other:GetPropertyChangedSignal("Visible"):Connect(function()
+			if other.Visible then
+				window.Visible = false
+			end
+		end)
+	end
+	for _, attribute in { "OwnedTitles", "SelectedTitle", "TitleBonus" } do
+		player:GetAttributeChangedSignal(attribute):Connect(updateTitles)
+	end
+	updateTitles()
+end

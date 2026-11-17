@@ -13,7 +13,7 @@ local endPos = beltPart:GetAttribute("EndPos") :: Vector3
 local direction = (endPos - startPos).Unit
 local lifetime = (endPos - startPos).Magnitude / Config.BeltSpeed -- 벨트 끝까지 걸리는 시간
 
-export type Item = { id: number, robotId: string, spawnTime: number }
+export type Item = { id: number, robotId: string, spawnTime: number, dir: number }
 
 local Belt = {}
 local items: { [number]: Item } = {}
@@ -23,7 +23,9 @@ local lastSync: { [Player]: number } = {}
 
 -- 지금(서버 시간 now) 이 로봇이 벨트 위 어디에 있는지
 function Belt.position(item: Item, now: number): Vector3
-	return startPos + direction * Config.BeltSpeed * (now - item.spawnTime)
+	local dir = item.dir or 1 -- 방향 필드가 없는 기존 항목도 정방향으로 계산한다
+	local origin = if dir == -1 then endPos else startPos
+	return origin + direction * dir * Config.BeltSpeed * (now - item.spawnTime)
 end
 
 function Belt.get(id: number): Item?
@@ -130,9 +132,42 @@ function Belt.start(beltRemote: RemoteEvent, announce: (robotId: string) -> ())
 	local mythicDueAt = workspace:GetServerTimeNow() + Config.MythicPitySeconds
 	workspace:SetAttribute("MythicDueAt", mythicDueAt)
 
+	-- 전환은 새 항목에만 적용한다. 이미 나온 로봇은 저장한 방향으로 끝까지 간다.
+	local beltDir = 1
+	local flipAt = workspace:GetServerTimeNow() + Config.BeltFlipSeconds
+	local warned = false
+	local notifyRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("JunkyardNotify") :: RemoteEvent
+	workspace:SetAttribute("BeltDir", beltDir)
+	workspace:SetAttribute("BeltFlipAt", flipAt)
+	local function updateDirection(now: number)
+		if now >= flipAt then
+			-- 서버가 오래 멈췄어도 원래 주기와 방향을 유지한다.
+			local elapsed = math.floor((now - flipAt) / Config.BeltFlipSeconds) + 1
+			if elapsed % 2 == 1 then
+				beltDir = -beltDir
+			end
+			flipAt += elapsed * Config.BeltFlipSeconds
+			warned = false
+			workspace:SetAttribute("BeltDir", beltDir)
+			workspace:SetAttribute("BeltFlipAt", flipAt)
+			notifyRemote:FireAllClients("Global", ("↔ 벨트 방향이 바뀌었어요! 이제 %s에서 나와요"):format(if beltDir == -1 then "동쪽(7·8번 기지 쪽)" else "서쪽(1·4번 기지 쪽)"))
+		elseif not warned and now >= flipAt - Config.BeltFlipWarn then
+			warned = true
+			notifyRemote:FireAllClients("Info", "↔ 벨트 방향이 곧 바뀌어요! 이미 나온 로봇은 계속 가요")
+		end
+	end
+	-- 로봇 생성 간격과 별도로 확인해 열차 중에도 같은 시각에 전환한다.
+	task.spawn(function()
+		while true do
+			updateDirection(workspace:GetServerTimeNow())
+			task.wait(0.25)
+		end
+	end)
+
 	task.spawn(function()
 		while true do
 			local now = workspace:GetServerTimeNow()
+			updateDirection(now)
 			for id, item in items do
 				if now - item.spawnTime > lifetime then
 					items[id] = nil
@@ -140,7 +175,7 @@ function Belt.start(beltRemote: RemoteEvent, announce: (robotId: string) -> ())
 				end
 			end
 			nextId += 1
-			local item = { id = nextId, robotId = rollRobot(now >= mythicDueAt), spawnTime = now }
+			local item = { id = nextId, robotId = rollRobot(now >= mythicDueAt), spawnTime = now, dir = beltDir }
 			items[nextId] = item
 			beltRemote:FireAllClients("Add", item)
 			local robot = Config.getRobot(item.robotId)

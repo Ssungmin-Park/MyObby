@@ -96,6 +96,8 @@ Config.BeltInterval = 2.5 -- 새 로봇이 나오는 간격(초)
 Config.MythicPitySeconds = 180
 Config.MythicWarnSeconds = 60
 Config.BeltSpeed = 4 -- 초당 스터드
+Config.BeltFlipSeconds = 180 -- 새로 나오는 로봇의 방향을 바꾸는 간격(초)
+Config.BeltFlipWarn = 10 -- 방향 전환을 미리 알리는 시간(초)
 Config.BeltBuyRange = 14 -- 서버가 허용하는 구매 거리
 Config.AnnounceRarities = { Legendary = true, Mythic = true } -- 나오면 서버 전체에 알림
 
@@ -518,7 +520,7 @@ Config.GiantRobot = {
 	BoostSeconds = 600, -- 완성 뒤 수입 2배 시간
 	RestSeconds = 300, -- 2배가 끝나고 다시 조립을 시작하기까지
 	DonateRange = 12, -- 기부 단말기에서 이 거리 안에서만 기부
-	TopTitle = "🔧 정비왕", -- 최고 기부자 칭호 (다음 완성 때까지)
+	TopTitle = "🔧 정비왕", -- 마지막 기부로 완성한 사람이 영구 획득
 }
 
 -- 소리 (2026-11-17): Roblox 공식 라이브러리(Pro Sound Effects 효과음, APM Music 음악)만 쓴다.
@@ -533,5 +535,39 @@ Config.Sounds = {
 	Shield = { asset = 9042544754, volume = 0.45 }, -- 짧은 전자음 (APM "Do Me A Solid - Tag2")
 	Fanfare = { asset = 9047102381, volume = 0.55 }, -- 짧은 승리 연주 (APM "Game Day Warrior Sting 1")
 }
+
+-- 칭호는 처음 획득할 때마다 보너스를 한 번만 더한다. 표시할 칭호와 혜택은 독립적이다.
+Config.TitleBonus = 0.01
+Config.TitleOrder = {} :: { string }
+Config.TitleNames = {} :: { [string]: string }
+for _, rarityId in Config.RarityOrder do
+	local id = "Set_" .. rarityId
+	table.insert(Config.TitleOrder, id)
+	Config.TitleNames[id] = Config.Rarities[rarityId].name .. " 수집가"
+end
+Config.TitleNames.FullCatalog = Config.FullCatalogTitle
+table.insert(Config.TitleOrder, "FullCatalog")
+for _, variantId in Config.VariantOrder do
+	local id = "Page_" .. variantId
+	table.insert(Config.TitleOrder, id)
+	Config.TitleNames[id] = Config.VariantPageTitles[variantId]
+end
+for _, kind in { "Income", "Collect" } do
+	local id = "Contest_" .. kind
+	table.insert(Config.TitleOrder, id)
+	Config.TitleNames[id] = "👑 " .. Config.Contest.Types[kind].name
+end
+table.insert(Config.TitleOrder, "Mechanic")
+Config.TitleNames.Mechanic = Config.GiantRobot.TopTitle
+
+function Config.titleBonus(titles: { [string]: boolean }): number
+	local count = 0
+	for _, id in Config.TitleOrder do
+		if titles[id] == true then
+			count += 1
+		end
+	end
+	return count * Config.TitleBonus
+end
 
 return Config

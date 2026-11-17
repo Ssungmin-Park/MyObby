@@ -31,7 +31,6 @@ local boostUntil = 0
 local nextAt = 0
 local donors: { [number]: { name: string, amount: number } } = {}
 local lastDonate: { [Player]: number } = {}
-local titleHolder: Player? = nil
 
 local function now(): number
 	return workspace:GetServerTimeNow()
@@ -132,30 +131,19 @@ local function startRound()
 	render()
 end
 
-local function complete()
+local function complete(finisher: Player?)
 	local callbacks = cb :: Callbacks
 	status = "Active"
 	boostUntil = now() + G.BoostSeconds
-	-- 가장 많이 기부한 사람에게 칭호 (다음 완성 때까지)
 	local list = topDonors()
 	local top = list[1]
-	if titleHolder and titleHolder.Parent then
-		callbacks.setTitle(titleHolder, nil)
+	if finisher then
+		callbacks.setTitle(finisher, G.TopTitle)
 	end
-	titleHolder = nil
-	if top then
-		for userId, entry in donors do
-			if entry == top then
-				local player = Players:GetPlayerByUserId(userId)
-				if player then
-					titleHolder = player
-					callbacks.setTitle(player, G.TopTitle)
-				end
-			end
-		end
-	end
-	callbacks.notifyAll(("🤖 거대 로봇이 깨어났어요! %d분 동안 서버 전체 수입 x%d!%s"):format(
-		math.floor(G.BoostSeconds / 60), G.BoostMultiplier, if top then (" 최고 기부자 %s님은 %s"):format(top.name, G.TopTitle) else ""))
+	local finishedBy = if finisher then (" %s님이 마지막 부품을 조립해 %s 칭호 획득!"):format(finisher.DisplayName, G.TopTitle) else ""
+	local topText = if top then (" 최고 기부자 %s님, 감사합니다!"):format(top.name) else ""
+	callbacks.notifyAll(("🤖 거대 로봇이 깨어났어요! %d분 동안 서버 전체 수입 x%d!%s%s"):format(
+		math.floor(G.BoostSeconds / 60), G.BoostMultiplier, finishedBy, topText))
 	callbacks.onBoostChanged()
 	render()
 end
@@ -201,11 +189,11 @@ function Robot.donate(player: Player, tier: unknown)
 	-- 다른 사람들에게도 누가 얼마 기부했는지 알린다 (기부한 사람은 위의 큰 연출을 본다)
 	for _, other in Players:GetPlayers() do
 		if other ~= player then
-			callbacks.notify(other, "Global", ("🔧 %s님이 거대 로봇에 %s 기부! (조립 %d%%)"):format(player.DisplayName, Config.formatMoney(amount), percent))
+			callbacks.notify(other, "Donate", ("🔧 %s님이 %s 기부!\n거대 로봇 조립 %d%%"):format(player.DisplayName, Config.formatMoney(amount), percent))
 		end
 	end
 	if progress >= goal then
-		complete()
+		complete(player)
 	else
 		render()
 	end
@@ -250,9 +238,6 @@ function Robot.start(callbacks: Callbacks)
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		lastDonate[player] = nil
-		if titleHolder == player then
-			titleHolder = nil
-		end
 	end)
 	startRound()
 	task.spawn(function()

@@ -45,6 +45,8 @@ export type Data = {
 	totalEarned: number, -- 누적 수입 (전체 서버 순위표용)
 	tutorial: number, -- 첫 접속 안내 단계 (1~5, 0 = 끝남)
 	expand: number, -- 기지 확장 단계 (0~3, 환생해도 유지. 옛 데이터는 0)
+	titles: { [string]: boolean }, -- 영구 획득한 칭호 (옛 데이터는 빈 목록)
+	selectedTitle: string, -- 표시할 칭호 id, 빈 문자열이면 아직 선택하지 않음, None이면 숨김
 }
 export type LoadStatus = "new" | "ok" | "failed" | "locked"
 export type SaveStatus = "ok" | "failed" | "lostLock"
@@ -85,12 +87,12 @@ local function defaultUpgrades(): { [string]: number }
 end
 
 function JunkyardSave.newData(): Data
-	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 1, expand = 0 }
+	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 1, expand = 0, titles = {}, selectedTitle = "" }
 end
 
 -- 저장소에서 읽은 값을 허용 범위로 정리해서 항상 올바른 Data를 돌려준다.
 function JunkyardSave.sanitize(raw: any): Data
-	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 0, expand = 0 }
+	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 0, expand = 0, titles = {}, selectedTitle = "" }
 	if typeof(raw) ~= "table" then
 		return JunkyardSave.newData()
 	end
@@ -160,6 +162,16 @@ function JunkyardSave.sanitize(raw: any): Data
 			end
 		end
 	end
+	if typeof(raw.titles) == "table" then
+		for _, id in Config.TitleOrder do
+			if raw.titles[id] == true then
+				data.titles[id] = true
+			end
+		end
+	end
+	if typeof(raw.selectedTitle) == "string" and (raw.selectedTitle == "None" or data.titles[raw.selectedTitle] == true) then
+		data.selectedTitle = raw.selectedTitle
+	end
 	return data
 end
 
@@ -176,6 +188,8 @@ local function snapshot(data: Data): Data
 		totalEarned = math.floor(data.totalEarned),
 		tutorial = math.floor(data.tutorial),
 		expand = math.floor(data.expand),
+		titles = table.clone(data.titles),
+		selectedTitle = data.selectedTitle,
 	}
 end
 
