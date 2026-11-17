@@ -74,7 +74,7 @@ function Belt.rainActive(): boolean
 	return workspace:GetServerTimeNow() < rainUntil
 end
 
-local function rollRobot(): string
+local function rollRobot(forceMythic: boolean): string
 	local train = Belt.trainActive()
 	local rain = Belt.rainActive()
 	local function allowed(id: string): boolean
@@ -92,6 +92,10 @@ local function rollRobot(): string
 	local roll = math.random() * total
 	local rarity = if train then "Rare" else Config.RarityOrder[1]
 	for _, id in Config.RarityOrder do
+		if forceMythic then
+			rarity = "Mythic" -- 신화 보장 시간이 다 됐다
+			break
+		end
 		if allowed(id) then
 			roll -= weightOf(id)
 			if roll <= 0 then
@@ -128,6 +132,10 @@ function Belt.start(beltRemote: RemoteEvent, announce: (robotId: string) -> ())
 		lastSync[player] = nil
 	end)
 
+	-- 신화 보장 시각: 신화가 나올 때마다 뒤로 미룬다. 클라이언트는 이 속성으로 예보를 띄운다
+	local mythicDueAt = workspace:GetServerTimeNow() + Config.MythicPitySeconds
+	workspace:SetAttribute("MythicDueAt", mythicDueAt)
+
 	task.spawn(function()
 		while true do
 			local now = workspace:GetServerTimeNow()
@@ -138,10 +146,14 @@ function Belt.start(beltRemote: RemoteEvent, announce: (robotId: string) -> ())
 				end
 			end
 			nextId += 1
-			local item = { id = nextId, robotId = rollRobot(), spawnTime = now }
+			local item = { id = nextId, robotId = rollRobot(now >= mythicDueAt), spawnTime = now }
 			items[nextId] = item
 			beltRemote:FireAllClients("Add", item)
 			local robot = Config.getRobot(item.robotId)
+			if robot and robot.rarity == "Mythic" then
+				mythicDueAt = now + Config.MythicPitySeconds
+				workspace:SetAttribute("MythicDueAt", mythicDueAt)
+			end
 			if robot and Config.AnnounceRarities[robot.rarity] then
 				announce(item.robotId)
 			end

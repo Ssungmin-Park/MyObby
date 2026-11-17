@@ -38,6 +38,14 @@ local function corner(parent: Instance, radius: number)
 	object.Parent = parent
 end
 
+-- 화면 크기에 맞춰 함께 커지는 HUD 조각들 (fitWindows가 배율을 정한다)
+local hudScales: { UIScale } = {}
+local function hudScale(parent: Instance)
+	local object = Instance.new("UIScale")
+	object.Parent = parent
+	table.insert(hudScales, object)
+end
+
 local function label(parent: Instance, position: UDim2, size: UDim2, textSize: number, color: Color3): TextLabel
 	local object = Instance.new("TextLabel")
 	object.Position = position
@@ -67,37 +75,68 @@ local function button(parent: Instance, text: string, position: UDim2, size: UDi
 	return object
 end
 
+-- 오른쪽 위 패널. 기본 리더보드가 같은 자리를 쓰므로 끈다 (돈·초당·환생은 이 패널과 맵의 순위판에서 본다)
+pcall(function()
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+end)
 local panel = Instance.new("Frame")
-panel.Position = UDim2.fromOffset(12, 10)
+panel.AnchorPoint = Vector2.new(1, 0)
+panel.Position = UDim2.new(1, -12, 0, 10)
 panel.Size = UDim2.fromOffset(250, 150)
 panel.BackgroundColor3 = dark
 panel.BackgroundTransparency = 0.04 -- 뒤의 간판·장식이 비쳐 글씨가 안 읽히지 않게 진하게
 panel.Parent = gui
 corner(panel, 10)
+hudScale(panel)
 
 local moneyLabel = label(panel, UDim2.fromOffset(12, 6), UDim2.new(1, -24, 0, 30), 24, Color3.fromRGB(255, 220, 100))
 local incomeLabel = label(panel, UDim2.fromOffset(12, 36), UDim2.new(1, -24, 0, 18), 13, white)
 local carryLabel = label(panel, UDim2.fromOffset(12, 56), UDim2.new(1, -24, 0, 30), 12, muted)
-local lockButton = button(panel, "방어막", UDim2.fromOffset(12, 92), UDim2.fromOffset(110, 32), Color3.fromRGB(60, 120, 170))
--- 상점 버튼은 왼쪽 위(채팅창에 가려짐) 대신 화면 오른쪽에 크게 둔다. 맨 위는 기본 리더보드 자리라 그 아래쪽
-local shopButton = button(gui, "🛒 상점", UDim2.new(1, -12, 0.38, 0), UDim2.fromOffset(124, 60), Color3.fromRGB(170, 120, 40))
-shopButton.AnchorPoint = Vector2.new(1, 0.5)
-shopButton.TextSize = 22
-local shopButtonStroke = Instance.new("UIStroke")
-shopButtonStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-shopButtonStroke.Color = Color3.fromRGB(255, 214, 120)
-shopButtonStroke.Thickness = 2
-shopButtonStroke.Parent = shopButton
-local catalogButton = button(panel, "도감", UDim2.fromOffset(126, 92), UDim2.fromOffset(112, 32), Color3.fromRGB(70, 82, 96))
+local lockButton = button(panel, "방어막", UDim2.fromOffset(12, 92), UDim2.fromOffset(74, 32), Color3.fromRGB(60, 120, 170))
+local shopButton = button(panel, "🛒 상점", UDim2.fromOffset(90, 92), UDim2.fromOffset(80, 32), Color3.fromRGB(170, 120, 40))
+shopButton.TextSize = 15
+local catalogButton = button(panel, "도감", UDim2.fromOffset(174, 92), UDim2.fromOffset(64, 32), Color3.fromRGB(70, 82, 96))
 local trainLabel = label(panel, UDim2.fromOffset(12, 128), UDim2.new(1, -24, 0, 18), 12, Color3.fromRGB(255, 210, 120))
+-- 신화 타이머: 화면 위쪽 가운데에 신화 보장까지 남은 시간을 늘 보여 준다.
+-- 마지막 1분은 커지면서 매초 튀고, 마지막 10초는 더 크고 빨개진다
+local mythicBanner = Instance.new("TextLabel")
+mythicBanner.Name = "MythicBanner"
+mythicBanner.AnchorPoint = Vector2.new(0.5, 0)
+mythicBanner.Position = UDim2.new(0.5, 0, 0, 8)
+mythicBanner.Size = UDim2.fromOffset(300, 40)
+mythicBanner.BackgroundColor3 = Color3.fromRGB(90, 20, 40)
+mythicBanner.BackgroundTransparency = 0.1
+mythicBanner.Font = Enum.Font.GothamBlack
+mythicBanner.TextScaled = true
+mythicBanner.TextColor3 = Color3.fromRGB(255, 200, 215)
+mythicBanner.TextStrokeTransparency = 0.3
+mythicBanner.Visible = false
+mythicBanner.Parent = gui
+corner(mythicBanner, 12)
+local mythicScale = Instance.new("UIScale")
+mythicScale.Parent = mythicBanner
+local mythicLastSecond = -1
+local mythicBannerStroke = Instance.new("UIStroke")
+mythicBannerStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+mythicBannerStroke.Color = Color3.fromRGB(255, 90, 120)
+mythicBannerStroke.Thickness = 3
+mythicBannerStroke.Parent = mythicBanner
+local mythicBannerPadding = Instance.new("UIPadding")
+mythicBannerPadding.PaddingTop = UDim.new(0, 6)
+mythicBannerPadding.PaddingBottom = UDim.new(0, 6)
+mythicBannerPadding.PaddingLeft = UDim.new(0, 12)
+mythicBannerPadding.PaddingRight = UDim.new(0, 12)
+mythicBannerPadding.Parent = mythicBanner
 local contestPanel = Instance.new("Frame")
 contestPanel.Name = "ContestPanel"
-contestPanel.Position = UDim2.fromOffset(12, 166)
+contestPanel.AnchorPoint = Vector2.new(1, 0)
+contestPanel.Position = UDim2.new(1, -12, 0, 166) -- 세로 위치는 fitWindows가 패널 배율에 맞춰 고친다
 contestPanel.Size = UDim2.fromOffset(250, 30)
 contestPanel.BackgroundColor3 = dark
 contestPanel.BackgroundTransparency = 0.04
 contestPanel.Parent = gui
 corner(contestPanel, 10)
+hudScale(contestPanel)
 local contestHeader = label(contestPanel, UDim2.fromOffset(12, 4), UDim2.new(1, -24, 0, 22), 13, Color3.fromRGB(255, 210, 120))
 local contestTop = label(contestPanel, UDim2.fromOffset(12, 26), UDim2.new(1, -24, 0, 54), 12, white)
 contestTop.TextYAlignment = Enum.TextYAlignment.Top
@@ -461,8 +500,8 @@ end
 -- 알림 (위쪽 가운데에 잠깐 떴다 사라짐)
 local toastArea = Instance.new("Frame")
 toastArea.AnchorPoint = Vector2.new(0.5, 0)
--- 왼쪽 위 패널(폭 250) 오른쪽 영역의 가운데, 안내 배너 아래 (휴대폰에서 패널을 가리지 않게)
-toastArea.Position = UDim2.new(0.5, 131, 0, 70)
+-- 오른쪽 위 패널의 왼쪽 영역 가운데, 신화 타이머 아래. 위치·폭은 fitWindows가 패널 배율에 맞춰 고친다
+toastArea.Position = UDim2.new(0.5, -131, 0, 96)
 toastArea.Size = UDim2.new(1, -286, 0, 200)
 toastArea.BackgroundTransparency = 1
 toastArea.Parent = gui
@@ -752,6 +791,36 @@ local function render()
 	end
 
 	local t = workspace:GetServerTimeNow()
+	local mythicDue = workspace:GetAttribute("MythicDueAt")
+	local mythicLeft = (if typeof(mythicDue) == "number" then mythicDue else 0) - t
+	if typeof(mythicDue) ~= "number" then
+		mythicBanner.Visible = false
+	elseif mythicLeft > 0 then
+		local left = math.ceil(mythicLeft)
+		local warn = left <= Config.MythicWarnSeconds
+		local final = left <= 10
+		mythicBanner.Text = if warn
+			then ("⚠ 신화 로봇 등장까지 %d:%02d · 벨트로!"):format(left // 60, left % 60)
+			else ("💎 신화 보장까지 %d:%02d"):format(left // 60, left % 60)
+		mythicBanner.Visible = true
+		mythicBanner.BackgroundColor3 = if final then Color3.fromRGB(150, 20, 40) elseif warn then Color3.fromRGB(90, 20, 40) else Color3.fromRGB(30, 34, 44)
+		mythicBannerStroke.Transparency = if warn and left % 2 == 0 then 0 elseif warn then 0.5 else 0.7
+		local size = if final then 1.8 elseif warn then 1.4 else 1
+		if warn and left ~= mythicLastSecond then
+			-- 매초 톡 튀었다가 제자리로
+			mythicScale.Scale = size * 1.15
+			TweenService:Create(mythicScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = size }):Play()
+		elseif not warn then
+			mythicScale.Scale = size
+		end
+		mythicLastSecond = left
+	elseif mythicLeft > -4 then
+		mythicBanner.Text = "🔥 신화 로봇 등장!"
+		mythicBanner.Visible = true
+		mythicScale.Scale = 1.8
+	else
+		mythicBanner.Visible = false
+	end
 	local trainUntil = (workspace:GetAttribute("TrainUntil") or 0) :: number
 	local nextTrain = (workspace:GetAttribute("NextTrainAt") or 0) :: number
 	local rainUntil = (workspace:GetAttribute("RainUntil") or 0) :: number
@@ -858,13 +927,16 @@ local tutorialTexts = {
 	"📖 [도감]을 열어 앞으로 모을 로봇을 확인해 보세요",
 }
 local tutorialBar = Instance.new("Frame")
-tutorialBar.Position = UDim2.fromOffset(274, 10) -- 왼쪽 위 패널(폭 250) 오른쪽에 붙여 겹치지 않게
-tutorialBar.Size = UDim2.new(1, -286, 0, 52)
+-- 화면 아래 가운데 (위쪽은 채팅창·패널·신화 타이머 자리)
+tutorialBar.AnchorPoint = Vector2.new(0.5, 1)
+tutorialBar.Position = UDim2.new(0.5, 0, 1, -16)
+tutorialBar.Size = UDim2.fromOffset(520, 52)
 tutorialBar.BackgroundColor3 = Color3.fromRGB(150, 110, 20)
 tutorialBar.BackgroundTransparency = 0.08
 tutorialBar.Visible = false
 tutorialBar.Parent = gui
 corner(tutorialBar, 10)
+hudScale(tutorialBar)
 local tutorialMax = Instance.new("UISizeConstraint")
 tutorialMax.MaxSize = Vector2.new(560, 52)
 tutorialMax.Parent = tutorialBar
@@ -939,8 +1011,18 @@ local function fitWindows()
 		return
 	end
 	local size = camera.ViewportSize
-	local scale = math.clamp(math.min((size.Y - 70) / 420, (size.X - 20) / 440), 0.55, 1)
+	local scale = math.clamp(math.min((size.Y - 70) / 420, (size.X - 20) / 440), 0.55, 1.6)
 	catalogScale.Scale = scale
+	-- 패널·대회·안내·기부 창: 큰 화면에서 글씨가 작지 않게 키운다 (휴대폰은 0.85까지 줄임)
+	local hud = math.clamp(math.min(size.X / 760, size.Y / 540), 0.85, 1.45)
+	for _, object in hudScales do
+		object.Scale = hud
+	end
+	local panelWidth = 250 * hud
+	contestPanel.Position = UDim2.new(1, -12, 0, 10 + 150 * hud + 6)
+	toastArea.Position = UDim2.new(0.5, -(panelWidth + 24) / 2, 0, 96)
+	mythicBanner.Position = UDim2.new(0.5, -(panelWidth + 24) / 2, 0, 8) -- 커져도 오른쪽 패널에 닿지 않게
+	toastArea.Size = UDim2.new(1, -(panelWidth + 36), 0, 200)
 	-- 상점은 큰 화면에서 최대 2배까지 키운다 (기본 440×400)
 	shopScale.Scale = math.clamp(math.min((size.Y - 80) / 400, (size.X - 40) / 440), 0.55, 2)
 end
@@ -995,6 +1077,7 @@ donateWindow.BackgroundTransparency = 0.04
 donateWindow.Visible = false
 donateWindow.Parent = gui
 corner(donateWindow, 12)
+hudScale(donateWindow)
 local donateTitle = label(donateWindow, UDim2.fromOffset(14, 8), UDim2.new(1, -64, 0, 24), 16, white)
 donateTitle.Text = "🔧 거대 로봇 부품 기부"
 local donateInfo = label(donateWindow, UDim2.fromOffset(14, 34), UDim2.new(1, -28, 0, 36), 12, muted)

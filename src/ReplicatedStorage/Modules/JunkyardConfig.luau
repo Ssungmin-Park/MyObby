@@ -17,12 +17,12 @@ local Config = {}
 
 Config.RarityOrder = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic" }
 Config.Rarities = {
-	Common = { name = "일반", weight = 300, price = 25, income = 1, size = 1, color = Color3.fromRGB(176, 186, 196), setBonus = 0.05 },
+	Common = { name = "일반", weight = 290, price = 25, income = 1, size = 1, color = Color3.fromRGB(176, 186, 196), setBonus = 0.05 },
 	Uncommon = { name = "고급", weight = 300, price = 100, income = 4, size = 1.1, color = Color3.fromRGB(120, 210, 120), setBonus = 0.1 },
 	Rare = { name = "희귀", weight = 220, price = 500, income = 15, size = 1.2, color = Color3.fromRGB(100, 165, 250), setBonus = 0.15 },
 	Epic = { name = "에픽", weight = 120, price = 2500, income = 60, size = 1.35, color = Color3.fromRGB(190, 120, 245), setBonus = 0.25 },
 	Legendary = { name = "전설", weight = 50, price = 15000, income = 300, size = 1.5, color = Color3.fromRGB(250, 196, 80), setBonus = 0.4 },
-	Mythic = { name = "신화", weight = 10, price = 100000, income = 1500, size = 1.7, color = Color3.fromRGB(255, 90, 120), setBonus = 1 },
+	Mythic = { name = "신화", weight = 20, price = 100000, income = 1500, size = 1.7, color = Color3.fromRGB(255, 90, 120), setBonus = 1 },
 } :: { [string]: Rarity }
 
 -- 도감 순서 = 이 목록 순서. 등급마다 3종.
@@ -51,6 +51,9 @@ Config.StartMoney = 50
 
 -- 컨베이어 벨트
 Config.BeltInterval = 2.5 -- 새 로봇이 나오는 간격(초)
+-- 신화 보장: 이 시간(초) 동안 벨트에 신화가 한 번도 안 나오면 다음 로봇은 무조건 신화. 남은 시간이 MythicWarnSeconds 이하면 화면에 예보
+Config.MythicPitySeconds = 180
+Config.MythicWarnSeconds = 60
 Config.BeltSpeed = 4 -- 초당 스터드
 Config.BeltBuyRange = 14 -- 서버가 허용하는 구매 거리
 Config.AnnounceRarities = { Legendary = true, Mythic = true } -- 나오면 서버 전체에 알림
