@@ -11,9 +11,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Codex**(사용량 소진으로 중단) — 맵 꾸미기(B-20) **진행 중**. Studio에는 장식이 이미 들어가 있음. 2026-11-17 Claude Code가 상태만 확인·기록 |
+| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — 맵 꾸미기(B-20) 확인·렉 측정·혼자 Play 회귀. 장식은 Codex가 만듦 |
 | 작업 시점 | 2026-11-17 |
-| 다음 작업 AI | **B-20 맵 꾸미기 마무리**: 사용자 화면 확인 → 회귀 2인 테스트·렉 측정·스크린샷·README → 커밋. 그다음 소리 → 협력 거대 로봇 → 공개 준비 |
+| 다음 작업 AI | ① 사용자 스크린샷 4장 → `docs/screenshots/` + README 맨 위 교체 ② 2인 로컬 회귀(훔치기·방어막 밀어내기·도둑 떨어짐) ③ **소리**(계획 먼저) → 협력 거대 로봇 → 공개 준비 |
 | 게임 이름 | 마이오비(Studio Place 이름) / **로봇 고물상 타이쿤 단독 운영**. 오비와 로봇 작업장은 `ServerStorage/ArchivedModes`에 보관 |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -178,15 +178,15 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 **클라이언트 `StarterPlayerScripts/JunkyardHud`** — 잠긴 기지마다 위에 "🛡 방어막 N초" 빌보드(모두에게 보임, 300스터드), 왼쪽 위 패널(돈, 초당·도감 배수, 운반 상태, 방어막 버튼, 도감 버튼), 도감 창(18칸 + 세트 보너스 진행), 위쪽 알림, 벨트 로봇 직접 그리기와 구매 프롬프트, 받침대 버튼 문구(내 기지 "팔기 +금액" / 남의 기지 "훔치기"). Mode가 Junkyard일 때만 보인다.
 
-### B-20. 맵 꾸미기 (2026-11-17, **진행 중 — Codex 작업이 중간에 끊김**)
+### B-20. 맵 꾸미기 (2026-11-17, Codex 제작 · Claude Code 확인 — 스크린샷·2인 회귀 남음)
 
-**Claude Code 상태 확인 (2026-11-17)**
-- Studio(`59d3aea7-…`, Edit)에 `Workspace/Junkyard/Decor` 있음: 파트 561개 — Perimeter 148, ScrapAndContainers 200, MagnetCrane 68, YardMarkings 50, BeltTrim 38, BaseAndYardSigns 57. 콘셉트 "노을빛 고물상".
-- Lighting 변경: ClockTime 16.6, Brightness 2.65, `Lighting/JunkyardGrade`(색 보정) 추가, Atmosphere 색·밀도 조정, Sky SunAngularSize 19, DepthOfField 끔. `Junkyard/Floor` 재질 Concrete·색 (143,132,109).
-- 게임 객체 정상: 기지 8/8(Pads·Vault·Spawn), Belt, Rankings, JunkyardSpawn. 스크립트 9개 Studio ↔ `src/` 체크섬 일치(꾸미기는 코드 변경 없음).
-- 생성 스크립트 `tools/decorate-junkyard.luau`(307줄)를 이 커밋에 포함. 기존 Decor·JunkyardGrade가 있으면 멈추게 되어 있다.
-- **남은 일:** 사용자 화면 확인(콘셉트 승인 여부 불명), 꾸미기 전후 렉 측정, 2인 로컬 회귀(구매·배치·금고·훔치기·방어막·떨어짐·안내 화살표·순위판·대회), 휴대폰 미리보기 밝기, 스크린샷 `docs/screenshots/` + README, 이 섹션 완성, NOTES.
-- 주의: Studio에 이름 없는 인스턴스 3개가 함께 잡혔다(테스트 창이 남아 있는 것으로 보임). 화면 캡처는 흰 화면만 나왔다. ChangeHistory 기록이 또 진행 중 상태(`IsRecordingInProgress = true`).
+**내용 (Codex, `tools/decorate-junkyard.luau`)**: 콘셉트 "노을빛 고물상". `Workspace/Junkyard/Decor` 561파트 — Perimeter 148(외곽 울타리·외벽), ScrapAndContainers 200(고물 더미·컨테이너·폐차), MagnetCrane 68(동쪽 자석 크레인), YardMarkings 50(바닥 표시), BeltTrim 38(벨트 옆 덮개·표면 화살표 무늬), BaseAndYardSigns 57(기지 번호·고유 색 간판). 모두 Anchored, CanCollide/CanTouch/CanQuery=false, CastShadow=false. Lighting: ClockTime 16.6, Brightness 2.65, Exposure 0.1, `Lighting/JunkyardGrade`(ColorCorrection 밝기 0.04·대비 0.05·채도 −0.09), Atmosphere(밀도 0.24·Haze 1.25), Sky SunAngularSize 19, DepthOfField 끔. `Junkyard/Floor` 재질 Concrete. 스크립트 코드 변경 없음(9개 체크섬 일치).
+
+**확인 (2026-11-17, Claude Code, 사용자는 테스트 창을 닫고 Ctrl+S 저장함)**
+- 렉: 같은 PC·혼자 Play, 맵 전체가 보이는 카메라 2곳에서 5초씩. 장식 있음 클라이언트 파트 837개 FPS 60.2/60.0(최장 프레임 19ms), 장식 없음(잠시 ServerStorage로 옮김 → 원위치 확인) 파트 288개 FPS 60.0/60.0(19ms). Studio FPS 상한 60이라 이 PC에서는 차이 없음. 접속 직후 첫 측정은 로딩 때문에 9FPS(최장 1.8초)였고 이후 정상. 저사양 휴대폰 성능은 미검증.
+- 겹침 계산(AABB): 받침대 위 6스터드·금고·잠금 버튼·기지 입구 통로·기지 내부·시작 발판·순위판 앞과 겹치는 장식 0. 벨트 위와 겹치는 36개는 벨트 표면 무늬·옆 덮개(부딪히지 않음, 의도된 것).
+- 혼자 Play 회귀: 기지 배정·Mode·SaveOff 정상, 벨트 구매(투입구 근처 로봇은 첫 시도 실패 → 다음 로봇 성공, 장식과 무관한 시험 타이밍으로 판단), 받침대 배치 5→6, 금고 수령, 방어막 90초, 떨어짐 복귀 0.9초, 순위판 GUI, 안내 화살표(벨트), `DebugContestNow` 수집왕 10초 시작·표시·종료, 서버·클라이언트 오류·경고 0. 시험 후 안내 단계는 0으로 되돌림.
+- **미검증·남은 일:** 2인 회귀(훔치기·주인 붙잡기·방어막 밀어내기·도둑 떨어짐), 휴대폰 밝기(사용자가 이전에 휴대폰 미리보기는 확인), 사용자의 콘셉트 만족 여부, **스크린샷**: MCP `screen_capture`가 이 Studio에서 흰 화면만 돌려줘 AI가 찍지 못함 → 사용자가 찍어 보내면 `docs/screenshots/`에 넣고 README 맨 위 사진(현재 옛 오비 사진)을 교체.
 
 ### B-19. 도감 완성 보상 (2026-11-17, 사용자 승인 · Studio 2인 검증)
 
