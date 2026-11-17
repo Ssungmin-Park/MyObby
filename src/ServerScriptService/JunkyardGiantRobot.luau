@@ -195,7 +195,8 @@ function Robot.donate(player: Player, tier: unknown)
 		donors[player.UserId] = entry
 	end
 	entry.amount += amount
-	callbacks.notify(player, "Info", ("🔧 부품 %s 기부! 고마워요."):format(Config.formatMoney(amount)))
+	-- "Donate" 알림은 화면 가운데에 크게 뜬다 (JunkyardHud)
+	callbacks.notify(player, "Donate", ("🔧 +%s 기부!\n거대 로봇 조립 %d%%"):format(Config.formatMoney(amount), math.min(100, math.floor(progress / goal * 100))))
 	if progress >= goal then
 		complete()
 	else

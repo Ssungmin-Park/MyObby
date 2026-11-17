@@ -508,9 +508,70 @@ local function toast(kind: string, text: string)
 		end
 	end)
 end
+-- 기부 큰 연출: 화면 가운데 위쪽에 크게 띄웠다가 사라진다 (계속 기부하면 다시 커진다)
+local donateBurst = Instance.new("TextLabel")
+donateBurst.Name = "DonateBurst"
+donateBurst.AnchorPoint = Vector2.new(0.5, 0.5)
+donateBurst.Position = UDim2.fromScale(0.5, 0.26)
+donateBurst.Size = UDim2.fromScale(0.6, 0.2)
+donateBurst.BackgroundColor3 = Color3.fromRGB(40, 28, 12)
+donateBurst.BackgroundTransparency = 0.15
+donateBurst.Font = Enum.Font.GothamBlack
+donateBurst.TextScaled = true
+donateBurst.TextColor3 = Color3.fromRGB(255, 214, 90)
+donateBurst.TextStrokeColor3 = Color3.fromRGB(28, 18, 10)
+donateBurst.TextStrokeTransparency = 0
+donateBurst.ZIndex = 50
+donateBurst.Visible = false
+donateBurst.Parent = gui
+corner(donateBurst, 18)
+local burstStroke = Instance.new("UIStroke")
+burstStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+burstStroke.Color = Color3.fromRGB(255, 190, 60)
+burstStroke.Thickness = 4
+burstStroke.Parent = donateBurst
+local burstPadding = Instance.new("UIPadding")
+burstPadding.PaddingTop = UDim.new(0, 10)
+burstPadding.PaddingBottom = UDim.new(0, 10)
+burstPadding.PaddingLeft = UDim.new(0, 16)
+burstPadding.PaddingRight = UDim.new(0, 16)
+burstPadding.Parent = donateBurst
+local burstScale = Instance.new("UIScale")
+burstScale.Parent = donateBurst
+local burstToken = 0
+local function showDonateBurst(text: string)
+	burstToken += 1
+	local token = burstToken
+	donateBurst.Text = text
+	donateBurst.BackgroundTransparency = 0.15
+	donateBurst.TextTransparency = 0
+	donateBurst.TextStrokeTransparency = 0
+	burstStroke.Transparency = 0
+	donateBurst.Visible = true
+	burstScale.Scale = 0.4
+	TweenService:Create(burstScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	task.delay(1.8, function()
+		if token ~= burstToken then
+			return
+		end
+		local fade = TweenInfo.new(0.4)
+		TweenService:Create(donateBurst, fade, { BackgroundTransparency = 1, TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+		TweenService:Create(burstStroke, fade, { Transparency = 1 }):Play()
+		task.delay(0.45, function()
+			if token == burstToken then
+				donateBurst.Visible = false
+			end
+		end)
+	end)
+end
+
 notifyRemote.OnClientEvent:Connect(function(kind: unknown, text: unknown, userId: unknown)
 	if typeof(kind) == "string" and typeof(text) == "string" then
-		toast(if kind == "Alarm" or kind == "Stolen" then "Alert" else kind, text)
+		if kind == "Donate" then
+			showDonateBurst(text)
+		else
+			toast(if kind == "Alarm" or kind == "Stolen" then "Alert" else kind, text)
+		end
 		if kind == "Alarm" and typeof(userId) == "number" then
 			highlightIntruder(userId)
 		end
@@ -1042,6 +1103,8 @@ notifyRemote.OnClientEvent:Connect(function(kind: unknown)
 		play("Collect")
 	elseif kind == "Alarm" or kind == "Stolen" then
 		play("Alarm") -- 경보기(침입)와 도둑맞은 순간
+	elseif kind == "Donate" then
+		play("Collect")
 	end
 end)
 -- 속성 변화로 고르는 소리 (접속 직후 불러오기 중에는 내지 않는다)

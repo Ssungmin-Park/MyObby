@@ -17,12 +17,12 @@ local Config = {}
 
 Config.RarityOrder = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic" }
 Config.Rarities = {
-	Common = { name = "일반", weight = 600, price = 25, income = 1, size = 1, color = Color3.fromRGB(176, 186, 196), setBonus = 0.05 },
-	Uncommon = { name = "고급", weight = 250, price = 100, income = 4, size = 1.1, color = Color3.fromRGB(120, 210, 120), setBonus = 0.1 },
-	Rare = { name = "희귀", weight = 100, price = 500, income = 15, size = 1.2, color = Color3.fromRGB(100, 165, 250), setBonus = 0.15 },
-	Epic = { name = "에픽", weight = 40, price = 2500, income = 60, size = 1.35, color = Color3.fromRGB(190, 120, 245), setBonus = 0.25 },
-	Legendary = { name = "전설", weight = 9, price = 15000, income = 300, size = 1.5, color = Color3.fromRGB(250, 196, 80), setBonus = 0.4 },
-	Mythic = { name = "신화", weight = 1, price = 100000, income = 1500, size = 1.7, color = Color3.fromRGB(255, 90, 120), setBonus = 1 },
+	Common = { name = "일반", weight = 300, price = 25, income = 1, size = 1, color = Color3.fromRGB(176, 186, 196), setBonus = 0.05 },
+	Uncommon = { name = "고급", weight = 300, price = 100, income = 4, size = 1.1, color = Color3.fromRGB(120, 210, 120), setBonus = 0.1 },
+	Rare = { name = "희귀", weight = 220, price = 500, income = 15, size = 1.2, color = Color3.fromRGB(100, 165, 250), setBonus = 0.15 },
+	Epic = { name = "에픽", weight = 120, price = 2500, income = 60, size = 1.35, color = Color3.fromRGB(190, 120, 245), setBonus = 0.25 },
+	Legendary = { name = "전설", weight = 50, price = 15000, income = 300, size = 1.5, color = Color3.fromRGB(250, 196, 80), setBonus = 0.4 },
+	Mythic = { name = "신화", weight = 10, price = 100000, income = 1500, size = 1.7, color = Color3.fromRGB(255, 90, 120), setBonus = 1 },
 } :: { [string]: Rarity }
 
 -- 도감 순서 = 이 목록 순서. 등급마다 3종.
