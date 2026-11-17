@@ -15,6 +15,16 @@
 
 그 밖에: Robux 상품(즉시 방어막·EMP·희귀 로봇 비), 10분마다 희귀 로봇 열차, **환생**(영구 수입 보너스 + 금색·다이아·무지개 변종), **전체 서버 순위표**(환생·누적 수입 상위 10명).
 
+### 스크린샷 (2026-11-17, 맵 꾸미기 1차)
+
+![고물상 전체 — 가운데 컨베이어 벨트와 기지 8개, 자석 크레인](docs/screenshots/06-junkyard-overview.webp)
+
+| 내 기지와 화면(돈·상점·도감·대회) | 컨베이어 벨트의 로봇 |
+|---|---|
+| ![내 기지](docs/screenshots/07-junkyard-base.webp) | ![벨트](docs/screenshots/08-junkyard-belt.webp) |
+
+![전체 서버 환생 순위판](docs/screenshots/09-junkyard-ranking.png)
+
 ## 이전 프로토타입 (보관됨)
 
 아래 두 모드는 처음에 만든 프로토타입입니다. 2026-11-17부터 게임은 로봇 고물상 하나에 집중하고, 두 모드는 Studio의 `ServerStorage/ArchivedModes`에 보관했습니다(코드는 `src/ServerStorage/ArchivedModes`).
