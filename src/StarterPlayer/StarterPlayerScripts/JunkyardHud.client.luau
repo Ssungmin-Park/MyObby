@@ -684,7 +684,11 @@ local function render()
 	local trainUntil = (workspace:GetAttribute("TrainUntil") or 0) :: number
 	local nextTrain = (workspace:GetAttribute("NextTrainAt") or 0) :: number
 	local rainUntil = (workspace:GetAttribute("RainUntil") or 0) :: number
-	if t < rainUntil then
+	local giantUntil = (workspace:GetAttribute("GiantBoostUntil") or 0) :: number
+	if t < giantUntil then
+		local left = math.ceil(giantUntil - t)
+		trainLabel.Text = ("🤖 거대 로봇 가동! 수입 x%d · %d:%02d"):format(Config.GiantRobot.BoostMultiplier, left // 60, left % 60)
+	elseif t < rainUntil then
 		trainLabel.Text = ("✨ 희귀 로봇 비! %d초"):format(math.ceil(rainUntil - t))
 	elseif t < trainUntil then
 		trainLabel.Text = ("🚂 희귀 로봇 열차 운행 중! %d초"):format(math.ceil(trainUntil - t))
@@ -907,6 +911,65 @@ local function syncShieldTimers()
 	end
 end
 
+-- 거대 로봇 기부 창 (2026-11-17) --------------------------------------------------------
+-- 단말기 버튼을 누르면 열린다. 금액은 화면에 보여 주기만 하고, 실제 금액은 서버가 같은 식으로 다시 계산한다
+local donateWindow = Instance.new("Frame")
+donateWindow.Name = "DonateWindow"
+donateWindow.AnchorPoint = Vector2.new(0.5, 0.5)
+donateWindow.Position = UDim2.fromScale(0.5, 0.55)
+donateWindow.Size = UDim2.fromOffset(320, 190)
+donateWindow.BackgroundColor3 = dark
+donateWindow.BackgroundTransparency = 0.04
+donateWindow.Visible = false
+donateWindow.Parent = gui
+corner(donateWindow, 12)
+local donateTitle = label(donateWindow, UDim2.fromOffset(14, 8), UDim2.new(1, -64, 0, 24), 16, white)
+donateTitle.Text = "🔧 거대 로봇 부품 기부"
+local donateInfo = label(donateWindow, UDim2.fromOffset(14, 34), UDim2.new(1, -28, 0, 36), 12, muted)
+local donateClose = button(donateWindow, "X", UDim2.new(1, -46, 0, 8), UDim2.fromOffset(36, 30), Color3.fromRGB(120, 60, 60))
+donateClose.Activated:Connect(function()
+	donateWindow.Visible = false
+end)
+local donateButtons: { TextButton } = {}
+for tier, info in Config.GiantRobot.Tiers do
+	local tierButton = button(donateWindow, info.name, UDim2.new((tier - 1) / 3, 10, 0, 78), UDim2.new(1 / 3, -14, 0, 96), Color3.fromRGB(170, 120, 40))
+	tierButton.TextSize = 13
+	tierButton.TextWrapped = true
+	tierButton.Activated:Connect(function()
+		actionRemote:FireServer("Donate", tier)
+	end)
+	donateButtons[tier] = tierButton
+end
+local function renderDonate()
+	if not donateWindow.Visible then
+		return
+	end
+	local income = (player:GetAttribute("Income") or 0) :: number
+	for tier, info in Config.GiantRobot.Tiers do
+		local amount = math.max(info.min, math.floor(income * info.seconds))
+		donateButtons[tier].Text = ("%s\n초당 수입 %d초어치\n💰 %s"):format(info.name, info.seconds, Config.formatMoney(amount))
+	end
+	local goal = (workspace:GetAttribute("GiantGoal") or 0) :: number
+	local progress = (workspace:GetAttribute("GiantProgress") or 0) :: number
+	local state = workspace:GetAttribute("GiantState")
+	donateInfo.Text = if state == "Building" and goal > 0
+		then ("조립 %d%% (%s / %s) · 완성하면 서버 전체 수입 x%d!"):format(math.floor(progress / goal * 100), Config.formatMoney(progress), Config.formatMoney(goal), Config.GiantRobot.BoostMultiplier)
+		else "지금은 조립 중이 아니에요. 로봇 머리 위 안내를 보세요."
+end
+task.spawn(function()
+	local robot = junkyard:WaitForChild("GiantRobot", 30)
+	local terminal = robot and robot:WaitForChild("Terminal", 10)
+	local prompt = terminal and terminal:WaitForChild("DonatePrompt", 10)
+	if prompt and prompt:IsA("ProximityPrompt") then
+		prompt.Triggered:Connect(function()
+			donateWindow.Visible = true
+			shop.Visible = false
+			catalog.Visible = false
+			renderDonate()
+		end)
+	end
+end)
+
 -- 소리 (2026-11-17) ----------------------------------------------------------------
 -- 소리는 이 화면에서만 재생한다(서버는 알림·속성만 보낸다). 오디오 번호는 JunkyardConfig.Sounds.
 -- 🔊 버튼: 모두 켬 → 음악 끔 → 모두 끔 (이번 접속 동안만 기억)
@@ -1020,6 +1083,11 @@ workspace:GetAttributeChangedSignal("ContestType"):Connect(function()
 		play("Fanfare") -- 서버 대회 시작
 	end
 end)
+workspace:GetAttributeChangedSignal("GiantState"):Connect(function()
+	if ready() and workspace:GetAttribute("GiantState") == "Active" then
+		play("Fanfare") -- 거대 로봇 완성
+	end
+end)
 task.delay(2, applySoundMode)
 
 local acc = 0
@@ -1034,6 +1102,7 @@ RunService.Heartbeat:Connect(function(dt)
 	renderShop()
 	renderTutorial()
 	fitWindows()
+	renderDonate()
 end)
 task.spawn(function()
 	while true do

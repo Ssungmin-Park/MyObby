@@ -377,6 +377,22 @@ function Config.formatMoney(value: number): string
 	return tostring(value)
 end
 
+-- 협력 거대 로봇 (2026-11-17): 서버 사람들이 돈을 기부해 완성하면 서버 전체 수입이 잠시 2배
+Config.GiantRobot = {
+	GoalSeconds = 600, -- 목표 = 접속한 사람들 초당 수입 합 × 이 초 (최소 MinGoal)
+	MinGoal = 5000,
+	Tiers = { -- 기부 버튼: 내 초당 수입 × seconds (최소 min)
+		{ name = "소", seconds = 30, min = 50 },
+		{ name = "중", seconds = 120, min = 200 },
+		{ name = "대", seconds = 600, min = 1000 },
+	},
+	BoostMultiplier = 2,
+	BoostSeconds = 600, -- 완성 뒤 수입 2배 시간
+	RestSeconds = 300, -- 2배가 끝나고 다시 조립을 시작하기까지
+	DonateRange = 12, -- 기부 단말기에서 이 거리 안에서만 기부
+	TopTitle = "🔧 정비왕", -- 최고 기부자 칭호 (다음 완성 때까지)
+}
+
 -- 소리 (2026-11-17): Roblox 공식 라이브러리(Pro Sound Effects 효과음, APM Music 음악)만 쓴다.
 -- 바꾸고 싶으면 asset 번호만 바꾼다. volume은 0~1. loop = 계속 반복
 Config.Sounds = {

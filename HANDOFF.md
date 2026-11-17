@@ -11,9 +11,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — **소리(B-21)**, 그 전 맵 2차 꾸미기(B-20) |
+| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — **협력 거대 로봇(B-22)**. 그 전: 소리(B-21), 맵 2차 꾸미기(B-20) |
 | 작업 시점 | 2026-11-17 |
-| 다음 작업 AI | **협력 거대 로봇**(계획 먼저) → 공개 준비(썸네일·아이콘·설명) |
+| 다음 작업 AI | ① 사용자·Codex: 2인으로 함께 기부해 완성(진행 막대 공유·최고 기부자 칭호·2배 수입) 확인 ② **공개 준비**(썸네일·아이콘·게임 설명·공개 전 점검표 — 공개·Publish는 사용자) |
 | 게임 이름 | 마이오비(Studio Place 이름) / **로봇 고물상 타이쿤 단독 운영**. 오비와 로봇 작업장은 `ServerStorage/ArchivedModes`에 보관 |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -22,7 +22,7 @@
 | Studio 모드 | **Edit 모드**(2026-11-17 MCP 확인) |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-17 Claude Code: 도둑맞을 때 경보음 — `Junkyard` steal의 피해자 알림 종류 "Alert"→"Stolen"(60368 B / 146425781), `JunkyardHud`가 "Stolen"을 빨간 알림 + Alarm 소리로 처리(43150 B / 86886801). Studio 일치. 사용자가 2차 꾸미기 색·소리 확인 후 Ctrl+S 저장함 |
+| 마지막 게임 수정 | 2026-11-17 Claude Code: 거대 로봇 — 새 ModuleScript `JunkyardGiantRobot`(9635 B / 323149579), `JunkyardConfig.GiantRobot`(18666 / 179631184), `Junkyard` 연결(62517 / 647110135), `JunkyardHud` 기부 창·가동 표시·완성 소리(46518 / 351620810), 맵 `Workspace/Junkyard/GiantRobot` 20파트(tools/build-giant-robot.luau). Studio 일치 |
 | Studio 저장 상태 | 대회 변경은 사용자가 Ctrl+S로 저장한 뒤 재시작까지 확인했다. 도감 완성 보상은 Studio Edit에 반영했고 클라우드 저장 여부는 미확인 |
 | 휴대폰 미리보기 | 사용자 직접 확인(2026-11-17). Studio 휴대폰 미리보기에서 상점·도감·대회 상자·안내 띠에 문제 없음 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
@@ -177,6 +177,22 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
   - 떠나 있는 동안 기지는 서버에서 비워지므로 아무도 훔칠 수 없다. 기지 6개가 꽉 차서 기지가 없는 플레이어는 불러오지도 저장하지도 않는다.
 
 **클라이언트 `StarterPlayerScripts/JunkyardHud`** — 잠긴 기지마다 위에 "🛡 방어막 N초" 빌보드(모두에게 보임, 300스터드), 왼쪽 위 패널(돈, 초당·도감 배수, 운반 상태, 방어막 버튼, 도감 버튼), 도감 창(18칸 + 세트 보너스 진행), 위쪽 알림, 벨트 로봇 직접 그리기와 구매 프롬프트, 받침대 버튼 문구(내 기지 "팔기 +금액" / 남의 기지 "훔치기"). Mode가 Junkyard일 때만 보인다.
+
+### B-22. 협력 거대 로봇 (2026-11-17, 사용자 승인 · 혼자 Play 자동 테스트 통과)
+
+**흐름 (`ServerScriptService/JunkyardGiantRobot`, 저장 없음 — 서버 안에서만)**: Building(기부) → 목표 달성 → Active(서버 전체 수입 x2, 600초) → Resting(300초) → 새 Building.
+- 목표 = 기지가 있는 접속자 초당 수입 합 × `GoalSeconds`(600), 최소 5000. 아무도 기부하지 않은 동안은 1초마다 다시 계산(사람이 들어오면 커짐).
+- 기부: `JunkyardAction("Donate", 1|2|3)` → 서버가 금액 = max(min, 내 초당 수입 × 30/120/600초)로 계산, 남은 목표 이상은 받지 않음. 단말기(`GiantRobot/Terminal`) 12스터드 안, 0.5초 연타 제한, 돈 부족·조립 중 아님이면 거절 알림.
+- 조립 단계 = floor(진행/목표 × 5): 파트 속성 Stage 1 다리 → 2 몸통 → 3 팔 → 4 머리 → 5 눈. 안 된 단계는 투명도 0.8. 완성(Active)이면 눈 Neon(하늘색).
+- 완성: 최고 기부자에게 플레이어 속성 `RobotTitle` = "🔧 정비왕"(머리 위 칭호, **다음 완성 때까지**, 이전 보유자는 지움), 전체 알림, `baseIncome`에 `JunkyardGiantRobot.incomeBoost()`(x2) 곱, 모두 `refreshIncome`. 오프라인 수입에는 영향 없음(접속 중 수입만). 대회 수입왕 점수는 각자 시작 수입 기준이라 모두에게 같은 비율.
+- 공개 속성(workspace): `GiantState`, `GiantGoal`, `GiantProgress`, `GiantStage`, `GiantBoostUntil`, `GiantNextAt`. 머리 위 BillboardGui `Head/Display`에 % · 금액 · 상위 3명.
+- 숫자는 `JunkyardConfig.GiantRobot`(GoalSeconds, MinGoal, Tiers, BoostMultiplier, BoostSeconds, RestSeconds, DonateRange, TopTitle).
+- 화면(`JunkyardHud`): 단말기 "부품 기부" 버튼(ProximityPrompt `DonatePrompt`) → 기부 창(소·중·대 금액·진행률), 가동 중 왼쪽 위 줄 "🤖 거대 로봇 가동! 수입 x2 m:ss", 완성 순간 팡파르.
+- 맵: `Workspace/Junkyard/GiantRobot` 20파트, 로봇 X 523~531·Z 89~111(부딪히지 않음), 단말기 (507, 43, 100)(부딪힘). 기존 장식과 겹침 0. 기지 7·8 입구 통로 밖.
+- Studio 전용 훅: `DebugGiantProgress`(0~1, 1이면 완성), `DebugGiantSkip`(가동·쉬는 남은 시간을 n초로).
+
+**테스트 (2026-11-17, Claude Code, 혼자 Play, 사용자 본인 계정)**: 처음 Building·목표 34,020(초당 56.7 × 600)·단계 0. 단말기 멀리서 기부 → 거절(돈 그대로). 가까이서 소 → 1,701 차감·진행 1,701·머리 위 5%와 1위 표시. 버튼 번호 99·"abc" → 무시. 50% → 단계 2(7파트 보임). 100% → Active·단계 5·눈 Neon·초당 56.7→113.4·칭호 "🔧 정비왕 [일반 수집가]". 가동 끝 → Resting·초당 56.7. 쉬는 끝 → 새 Building·진행 0·모두 흐림. 기부 창 금액 1701/6804/34.0K 표시. 서버·클라이언트 오류·경고 0. 사용자 계정 돈은 시험 기부 1,701만큼 줄었다.
+**미검증:** 2인 이상 함께 기부(진행 공유·최고 기부자 선정·칭호 이동), 실제 600초 가동·300초 휴식 시간 경과(훅으로 줄여 확인), 휴대폰에서 기부 창 크기.
 
 ### B-21. 소리 (2026-11-17, 사용자 승인 · 혼자 Play 확인, 실제로 들어 보는 것은 사용자)
 

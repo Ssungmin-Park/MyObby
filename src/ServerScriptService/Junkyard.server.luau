@@ -19,6 +19,7 @@ local JunkyardSave = require(script.Parent:WaitForChild("JunkyardSave"))
 local JunkyardStore = require(script.Parent:WaitForChild("JunkyardStore"))
 local JunkyardRanking = require(script.Parent:WaitForChild("JunkyardRanking"))
 local JunkyardContest = require(script.Parent:WaitForChild("JunkyardContest"))
+local JunkyardGiantRobot = require(script.Parent:WaitForChild("JunkyardGiantRobot"))
 
 local junkyard = workspace:WaitForChild("Junkyard")
 local basesFolder = junkyard:WaitForChild("Bases")
@@ -243,9 +244,10 @@ local function baseIncome(base: Base, state: State?): number
 	if not state then
 		return total
 	end
-	-- 도감 배수 × 환생 배수 × 수입 2배 게임패스
+	-- 도감 배수 × 환생 배수 × 수입 2배 게임패스 × 거대 로봇 가동 중 서버 2배
 	return total * state.multiplier * Config.rebirthMultiplier(state.rebirth)
 		* (if state.passes.DoubleIncome then Config.IncomePassMultiplier else 1)
+		* JunkyardGiantRobot.incomeBoost()
 end
 
 local function refreshIncome(state: State)
@@ -268,8 +270,9 @@ local function applyTitle(state: State)
 	local variantPage = Config.highestVariantPage(state.variantCatalog)
 	local vip = state.passes.VipBase == true
 	local contestTitle = state.player:GetAttribute("ContestTitle")
+	local robotTitle = state.player:GetAttribute("RobotTitle") -- 거대 로봇 최고 기부자
 	local tag = head:FindFirstChild("TitleTag") :: BillboardGui?
-	if not best and not vip and state.rebirth <= 0 and typeof(contestTitle) ~= "string" then
+	if not best and not vip and state.rebirth <= 0 and typeof(contestTitle) ~= "string" and typeof(robotTitle) ~= "string" then
 		if tag then
 			tag:Destroy()
 		end
@@ -297,6 +300,9 @@ local function applyTitle(state: State)
 	local words = {}
 	if typeof(contestTitle) == "string" then
 		table.insert(words, contestTitle)
+	end
+	if typeof(robotTitle) == "string" then
+		table.insert(words, robotTitle)
 	end
 	if state.rebirth > 0 then
 		table.insert(words, Config.rebirthMark(state.rebirth))
@@ -1038,6 +1044,8 @@ actionRemote.OnServerEvent:Connect(function(player: Player, action: unknown, arg
 		rebirth(state)
 	elseif action == "Tutorial" and (arg == "Shop" or arg == "Catalog") then
 		advanceTutorial(state, arg :: string) -- 화면을 연 단계만 (보상 없음, 순서가 맞을 때만)
+	elseif action == "Donate" then
+		JunkyardGiantRobot.donate(player, arg) -- 버튼 번호만 받고 금액·거리·돈은 모듈이 검사
 	elseif action == "TutorialSkip" and state.tutorial ~= 0 then
 		setTutorial(state, 0)
 		JunkyardSave.saveNow(state.player)
@@ -1122,6 +1130,45 @@ JunkyardContest.start({
 		end
 	end,
 	notifyAll = notifyAll,
+})
+
+-- 협력 거대 로봇 ------------------------------------------------------------------
+JunkyardGiantRobot.start({
+	getPlayers = function()
+		local list = {}
+		for player, state in states do
+			if state.base and not state.loading then
+				table.insert(list, player)
+			end
+		end
+		return list
+	end,
+	incomeOf = function(player)
+		local state = states[player]
+		return if state and state.base then baseIncome(state.base, state) else 0
+	end,
+	takeMoney = function(player, amount)
+		local state = states[player]
+		if not state or state.loading or state.money < amount then
+			return false
+		end
+		setMoney(state, state.money - amount)
+		return true
+	end,
+	notify = notify,
+	notifyAll = notifyAll,
+	setTitle = function(player, title)
+		local state = states[player]
+		if state then
+			player:SetAttribute("RobotTitle", title)
+			applyTitle(state)
+		end
+	end,
+	onBoostChanged = function()
+		for _, state in states do
+			refreshIncome(state)
+		end
+	end,
 })
 
 -- 희귀 로봇 비 확정 선물: 희귀 이상 등급 중에서 원래 가중치 비율로 뽑는다 (확률은 상점에 공개)
@@ -1504,6 +1551,21 @@ if game:GetService("RunService"):IsStudio() then
 		local state = player and states[player]
 		if state and not state.loading then
 			setTutorial(state, step)
+		end
+	end)
+	-- 거대 로봇 시험: 진행률(0~1, 1이면 완성) / 가동·쉬는 시간을 n초로 줄이기
+	workspace:GetAttributeChangedSignal("DebugGiantProgress"):Connect(function()
+		local fraction = workspace:GetAttribute("DebugGiantProgress")
+		workspace:SetAttribute("DebugGiantProgress", nil)
+		if typeof(fraction) == "number" then
+			JunkyardGiantRobot.debugSetProgress(fraction)
+		end
+	end)
+	workspace:GetAttributeChangedSignal("DebugGiantSkip"):Connect(function()
+		local seconds = workspace:GetAttribute("DebugGiantSkip")
+		workspace:SetAttribute("DebugGiantSkip", nil)
+		if typeof(seconds) == "number" and seconds >= 0 then
+			JunkyardGiantRobot.debugSkip(seconds)
 		end
 	end)
 end
