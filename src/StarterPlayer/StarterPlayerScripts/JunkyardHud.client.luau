@@ -78,9 +78,17 @@ corner(panel, 10)
 local moneyLabel = label(panel, UDim2.fromOffset(12, 6), UDim2.new(1, -24, 0, 30), 24, Color3.fromRGB(255, 220, 100))
 local incomeLabel = label(panel, UDim2.fromOffset(12, 36), UDim2.new(1, -24, 0, 18), 13, white)
 local carryLabel = label(panel, UDim2.fromOffset(12, 56), UDim2.new(1, -24, 0, 30), 12, muted)
-local lockButton = button(panel, "방어막", UDim2.fromOffset(12, 92), UDim2.fromOffset(90, 32), Color3.fromRGB(60, 120, 170))
-local shopButton = button(panel, "🛒 상점", UDim2.fromOffset(106, 92), UDim2.fromOffset(68, 32), Color3.fromRGB(170, 120, 40))
-local catalogButton = button(panel, "도감", UDim2.fromOffset(178, 92), UDim2.fromOffset(60, 32), Color3.fromRGB(70, 82, 96))
+local lockButton = button(panel, "방어막", UDim2.fromOffset(12, 92), UDim2.fromOffset(110, 32), Color3.fromRGB(60, 120, 170))
+-- 상점 버튼은 왼쪽 위(채팅창에 가려짐) 대신 화면 오른쪽에 크게 둔다. 맨 위는 기본 리더보드 자리라 그 아래쪽
+local shopButton = button(gui, "🛒 상점", UDim2.new(1, -12, 0.38, 0), UDim2.fromOffset(124, 60), Color3.fromRGB(170, 120, 40))
+shopButton.AnchorPoint = Vector2.new(1, 0.5)
+shopButton.TextSize = 22
+local shopButtonStroke = Instance.new("UIStroke")
+shopButtonStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+shopButtonStroke.Color = Color3.fromRGB(255, 214, 120)
+shopButtonStroke.Thickness = 2
+shopButtonStroke.Parent = shopButton
+local catalogButton = button(panel, "도감", UDim2.fromOffset(126, 92), UDim2.fromOffset(112, 32), Color3.fromRGB(70, 82, 96))
 local trainLabel = label(panel, UDim2.fromOffset(12, 128), UDim2.new(1, -24, 0, 18), 12, Color3.fromRGB(255, 210, 120))
 local contestPanel = Instance.new("Frame")
 contestPanel.Name = "ContestPanel"
@@ -933,7 +941,8 @@ local function fitWindows()
 	local size = camera.ViewportSize
 	local scale = math.clamp(math.min((size.Y - 70) / 420, (size.X - 20) / 440), 0.55, 1)
 	catalogScale.Scale = scale
-	shopScale.Scale = scale
+	-- 상점은 큰 화면에서 최대 2배까지 키운다 (기본 440×400)
+	shopScale.Scale = math.clamp(math.min((size.Y - 80) / 400, (size.X - 40) / 440), 0.55, 2)
 end
 
 -- 방어막 남은 시간: 모든 기지 위에 크게 띄운다 (누구 기지가 잠겼는지 멀리서도 보이게)
