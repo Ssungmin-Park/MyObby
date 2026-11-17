@@ -1128,7 +1128,7 @@ local function onPlayerAdded(player: Player)
 		player:SetAttribute("SaveOff", true)
 		state.loading = false
 		player:SetAttribute("Loading", false)
-		notify(player, "Alert", "이 서버의 기지 6개가 모두 찼어요. 오비를 즐겨 주세요! (이번 접속은 고물상 진행이 저장되지 않아요)")
+		notify(player, "Alert", "이 서버의 기지가 모두 찼어요. 오비를 즐겨 주세요! (이번 접속은 고물상 진행이 저장되지 않아요)")
 	end
 	refreshIncome(state)
 

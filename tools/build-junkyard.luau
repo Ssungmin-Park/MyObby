@@ -3,7 +3,8 @@
 -- Studio Edit에서 ChangeHistoryService 기록 안에서 실행한다. Workspace/Junkyard 모델을 만들고,
 -- 오비 시작 발판에 "로봇 고물상" 입구를 붙인다.
 -- 배치: 가운데(X 290~510, Z 0~200, 바닥 윗면 Y 40.5)에 동→서 컨베이어 벨트(Z 100),
---       북쪽 기지 3개(Z 23~57)와 남쪽 기지 3개(Z 143~177). 기지 입구는 벨트 쪽.
+--       북쪽 기지 4개(Z 23~57)와 남쪽 기지 4개(Z 143~177). 기지 입구는 벨트 쪽.
+--       (2026-11-17 기지 6 → 8개: 7·8번은 X 520. 서버 최대 인원도 8명으로 맞춘다)
 local function buildJunkyard(): Model
 	assert(not workspace:FindFirstChild("Junkyard"), "이미 Junkyard가 있음")
 	local model = Instance.new("Model")
@@ -61,7 +62,7 @@ local function buildJunkyard(): Model
 	local wall = Color3.fromRGB(78, 87, 99)
 	local dark = Color3.fromRGB(45, 48, 54)
 
-	part(model, "Floor", Vector3.new(400, 40, 100), Vector3.new(220, 1, 200), ground)
+	part(model, "Floor", Vector3.new(420, 40, 100), Vector3.new(260, 1, 200), ground) -- X 290~550
 
 	-- 컨베이어 벨트 ------------------------------------------------------------
 	local belt = part(model, "Belt", Vector3.new(400, 41, 100), Vector3.new(170, 1, 8), dark)
@@ -74,13 +75,14 @@ local function buildJunkyard(): Model
 	billboard(chute, "Sign", "고물 투입구", 4.5, 120)
 	part(model, "BeltEnd", Vector3.new(489, 43.5, 100), Vector3.new(6, 6, 10), wall)
 
-	-- 기지 6개 ------------------------------------------------------------------
+	-- 기지 8개 ------------------------------------------------------------------
 	local bases = Instance.new("Folder")
 	bases.Name = "Bases"
 	bases.Parent = model
-	for index = 1, 6 do
-		local column = (index - 1) % 3
-		local north = index <= 3
+	for index = 1, 8 do
+		-- 1~3 북쪽, 4~6 남쪽 (X 340/400/460), 7 북쪽·8 남쪽 (X 520)
+		local column = if index <= 6 then (index - 1) % 3 else 3
+		local north = if index <= 6 then index <= 3 else index == 7
 		local bx = 340 + column * 60
 		local bz = if north then 40 else 160
 		local front = if north then 1 else -1 -- 벨트(Z 100) 쪽 방향

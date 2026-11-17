@@ -152,7 +152,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 **맵 `Workspace/Junkyard`** (X 290~510, Z 0~200, 바닥 윗면 Y 40.5, `tools/build-junkyard.luau`)
 - `Belt`: Z 100, X 315→485 (속성 `StartPos`, `EndPos`). 양옆 `BeltRail`, 시작 `BeltStart`(고물 투입구), 끝 `BeltEnd`.
-- `Bases/Base1~6`: 북쪽 1~3(Z 23~57, 입구 +Z), 남쪽 4~6(Z 143~177, 입구 −Z), X 340/400/460. 속성 `Index`, `Front`, `Center`, `OwnerUserId`, `OwnerName`, `Vault`, `LockedUntil`. 자식: `Floor`, `Wall`(높이 12 — 점프로 못 넘음, 뒷벽에 이름판 `Sign`), `Shield`(기지 전체를 덮는 ForceField 상자, 잠기면 반투명 0.5), `Pads/Pad1~10`(각 `RobotPrompt`, 1.5초 누르기), `Vault`(밟으면 수령, `Amount` 빌보드), `LockButton`(`LockPrompt`), `Spawn`(투명).
+- `Bases/Base1~8` (2026-11-17 6→8개): 북쪽 1~3·7(Z 23~57, 입구 +Z), 남쪽 4~6·8(Z 143~177, 입구 −Z), X 340/400/460, 7·8은 X 520. 바닥은 X 290~550로 넓힘. **서버 최대 인원은 사용자가 체험 설정에서 8명으로 맞춰야 한다(확인 시 60명이었음 → 9번째부터 기지 없음).** 속성 `Index`, `Front`, `Center`, `OwnerUserId`, `OwnerName`, `Vault`, `LockedUntil`. 자식: `Floor`, `Wall`(높이 12 — 점프로 못 넘음, 뒷벽에 이름판 `Sign`), `Shield`(기지 전체를 덮는 ForceField 상자, 잠기면 반투명 0.5), `Pads/Pad1~10`(각 `RobotPrompt`, 1.5초 누르기), `Vault`(밟으면 수령, `Amount` 빌보드), `LockButton`(`LockPrompt`), `Spawn`(투명).
 - `ObbyPortal`(298, 42.5, 100), `JunkyardPortal`(오비 시작 발판 −X쪽).
 
 **설정 `ReplicatedStorage/Modules/JunkyardConfig`** — 6등급(일반·고급·희귀·에픽·전설·신화: 벨트 확률 600/250/100/40/9/1, 가격 25/100/500/2.5K/15K/100K, 초당 1/4/15/60/300/1500, 세트 보너스 +5/10/15/25/40/100%), 로봇 18종(등급별 3), 시작 돈 50, 벨트 2.5초 간격·초속 4, 받침대 10, 판매 50%, 운반 중 걷기 11, 훔치기 1.5초, 붙잡기 거리 6, 방어막 60초+쿨타임 60초. **로봇 id는 저장 키가 될 예정이라 바꾸지 않는다.**
@@ -439,6 +439,8 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 참고: 운반 중이던 희귀 로봇(스프링)은 설계대로 저장되지 않았다.
 
 **⑱ 2026-11-17 로봇 고물상 3-1 기본 확인 (Claude Code, Play 1인)** — 불러오기 후 돈 161·업그레이드 모두 0·걷기 16, Pad11 투명도 0.7(잠김), 돈 부족 시 방어막 강화·EMP 요청 거절(돈 그대로), HUD "🚂 다음 희귀 로봇 열차 9:57", 클라이언트·서버 에러 없음. 나머지 기능 테스트는 미실행(B-12).
+
+**⑲ 2026-11-17 기지 8개 (Claude Code)** — Studio 확인 결과 `Players.MaxPlayers` 60, 기지 6개라 7번째 플레이어부터 고물상 불가였다. 기지 3·6을 복제해 X+60에 7·8 추가, 바닥 확장, 안내 문구에서 숫자 제거. 1인 Play: 기지 7·8 위에 서도 떨어지지 않음, 에러 없음. 7~8명 동시 배정은 미검증(코드는 Bases 폴더의 모든 기지를 읽음).
 
 **⑰ 2026-11-17 로봇 고물상 저장 (Claude Code)**
 - 가짜 저장소 15항목 PASS: 새 플레이어(돈 50, lock), 저장·불러오기 같은 값, 퇴장 시 lock 해제, 다른 서버 lock → locked, lock 빼앗긴 저장 → lostLock, 만료 lock 가져오기, 알 수 없는 형식 보존, 망가진 값 정리(음수 돈, 없는 로봇, 받침대 번호 0·11·2.5·문자, 받침대 로봇 도감 추가), NaN 돈 → 0, 오프라인 1시간 = 18000(초당 10)·하루 = 3시간치 54000·lastSeen 없음 0, 요청 실패 재시도.
