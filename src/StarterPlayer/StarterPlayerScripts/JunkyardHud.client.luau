@@ -324,6 +324,10 @@ local function addEntry(kind: string, id: string, category: string, name: string
 			end
 			return
 		end
+		if kind == "Expand" then
+			actionRemote:FireServer("Expand")
+			return
+		end
 		actionRemote:FireServer(if kind == "Item" then "Item" else "Upgrade", id)
 	end)
 	table.insert(shopEntries, { kind = kind, id = id, category = category, row = row, info = info, buy = buy })
@@ -332,6 +336,7 @@ for _, id in Config.ItemOrder do
 	local item = Config.Items[id]
 	addEntry("Item", id, item.category, item.name, item.desc)
 end
+addEntry("Expand", "Expand", "Help", "🏗 구역 확장", "기지가 뒤쪽으로 넓어지고 받침대 자리 6개가 생겨요. 받침대 추가·터보 신발을 더 올릴 수 있어요. 환생해도 그대로예요")
 for _, id in Config.UpgradeOrder do
 	local upgrade = Config.Upgrades[id]
 	addEntry("Upgrade", id, upgrade.category, upgrade.name, upgrade.desc)
@@ -440,7 +445,14 @@ local function renderShop()
 			continue
 		end
 		local price: number? = nil
-		if entry.kind == "Item" then
+		local expand = (player:GetAttribute("Expand") or 0) :: number
+		local needExpand = false -- 구역 확장을 해야 더 올릴 수 있음
+		if entry.kind == "Expand" then
+			price = Config.Expansion.Costs[expand + 1]
+			entry.info.Text = if price
+				then ("지금 %d단계 → %d단계 · 받침대 최대 %d칸"):format(expand, expand + 1, 14 + Config.Expansion.PadsPerLevel * (expand + 1))
+				else ("최고 단계 (%d단계 · 받침대 최대 %d칸)"):format(expand, 14 + Config.Expansion.PadsPerLevel * expand)
+		elseif entry.kind == "Item" then
 			price = Config.itemPrice(entry.id, income)
 			if entry.id == "EMP" then
 				local ready = ((player:GetAttribute("EmpReadyAt") or 0) :: number) - t
@@ -471,6 +483,11 @@ local function renderShop()
 					then ("현재 %s → 다음 %s"):format(tostring(current), tostring(Config.upgradeValue(entry.id, level + 1)))
 					else ("최고 단계 (%s)"):format(tostring(current))
 			end
+			if price and level >= Config.upgradeCap(entry.id, expand) then
+				needExpand = true
+				price = nil
+				entry.info.Text = ("현재 %s · 더 올리려면 🏗 구역 확장 %d단계 필요"):format(tostring(current), expand + 1)
+			end
 		end
 		if price == 0 then
 			entry.buy.Text = "⚡ 무료 사용"
@@ -481,7 +498,7 @@ local function renderShop()
 			entry.buy.BackgroundColor3 = if money >= price then Color3.fromRGB(60, 140, 80) else Color3.fromRGB(90, 70, 70)
 			entry.buy.Active = true
 		else
-			entry.buy.Text = if entry.kind == "Item" then "사용 중" else "완료"
+			entry.buy.Text = if entry.kind == "Item" then "사용 중" elseif needExpand then "🔒 확장 필요" else "완료"
 			entry.buy.BackgroundColor3 = Color3.fromRGB(70, 82, 96)
 			entry.buy.Active = false
 		end

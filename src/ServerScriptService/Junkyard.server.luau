@@ -37,6 +37,7 @@ type Base = {
 	robots: { [number]: string }, -- 받침대 번호 → 로봇 id
 	padModels: { [number]: Model },
 	reserved: { [number]: boolean }, -- 도둑이 들고 가는 중인 자리 (되돌아올 수 있게 비워 둠)
+	expand: number, -- 지금 펼쳐진 확장 단계 (주인의 단계, 빈 기지는 0)
 	owner: Player?,
 	vault: number,
 	lockedUntil: number, -- 서버 시간(GetServerTimeNow) 기준
@@ -77,6 +78,7 @@ type State = {
 	empCharges: number, -- Robux로 산 무료 EMP 남은 횟수 (저장됨)
 	totalEarned: number, -- 로봇이 벌어 준 누적 수입 (저장됨, 환생해도 유지, 전체 서버 순위표)
 	tutorial: number, -- 첫 접속 안내 단계 (1~5, 0 = 끝남, 저장됨)
+	expand: number, -- 기지 확장 단계 (저장됨, 환생해도 유지)
 }
 
 local bases: { Base } = {}
@@ -113,7 +115,9 @@ end
 
 local function insideBase(base: Base, position: Vector3): boolean
 	local offset = position - base.center
-	return math.abs(offset.X) <= 22 and math.abs(offset.Z) <= 17 and offset.Y > -3 and offset.Y < 20
+	local forward = offset.Z * base.front -- 벨트 쪽이 +, 뒤쪽(확장 구역)이 −
+	local depth = Config.Expansion.Depth * base.expand
+	return math.abs(offset.X) <= 22 and forward <= 17 and forward >= -17 - depth and offset.Y > -3 and offset.Y < 20
 end
 
 -- 로봇 모형 (회색 상자 몸통 + 머리, 등급 색과 크기) --------------------------------
@@ -202,10 +206,38 @@ end
 local function setPadLocks(base: Base)
 	local limit = padLimit(base)
 	for index, pad in base.pads do
+		local hidden = ((pad:GetAttribute("ExpandLevel") or 0) :: number) > base.expand -- 아직 넓히지 않은 구역
 		local locked = index > limit
-		pad.Transparency = if locked then 0.7 else 0
+		pad.Transparency = if hidden then 1 elseif locked then 0.7 else 0
+		pad.CanCollide = not hidden
 		pad.Color = if locked then Color3.fromRGB(40, 44, 50) else Color3.fromRGB(70, 78, 88)
+		local prompt = pad:FindFirstChild("RobotPrompt")
+		if prompt and prompt:IsA("ProximityPrompt") then
+			prompt.Enabled = not hidden
+		end
 	end
+end
+
+-- 기지를 확장 단계만큼 펼친다: 뒷벽을 뒤로 밀고, 옆벽·바닥·방어막을 늘리고, 그 구역 받침대를 보인다
+-- (지도의 OrigPosition/OrigSize 속성 기준, tools/build-expansion.luau)
+local function applyExpansion(base: Base, level: number)
+	base.expand = level
+	base.model:SetAttribute("Expand", level)
+	local grow = Config.Expansion.Depth * level
+	local shift = Vector3.new(0, 0, -base.front * grow) -- 뒤쪽으로
+	for _, child in base.model:GetChildren() do
+		local origPosition = child:GetAttribute("OrigPosition")
+		local origSize = child:GetAttribute("OrigSize")
+		if child:IsA("BasePart") and typeof(origPosition) == "Vector3" and typeof(origSize) == "Vector3" then
+			if child:GetAttribute("WallRole") == "Back" then
+				child.Position = origPosition + shift
+			else -- 옆벽·바닥·방어막
+				child.Size = origSize + Vector3.new(0, 0, grow)
+				child.Position = origPosition + shift / 2
+			end
+		end
+	end
+	setPadLocks(base)
 end
 
 -- 로봇이 놓인 받침대 수 (등급 상관없이)
@@ -632,7 +664,7 @@ local function assignBase(state: State): Base?
 			setSign(base, state.player.DisplayName .. "의 기지")
 			state.base = base
 			state.player:SetAttribute("BaseIndex", base.index)
-			setPadLocks(base)
+			applyExpansion(base, state.expand)
 			return base
 		end
 	end
@@ -663,7 +695,7 @@ local function releaseBase(base: Base)
 	base.intruders = {}
 	base.alarmAt = {}
 	setSign(base, "빈 기지")
-	setPadLocks(base)
+	applyExpansion(base, 0)
 end
 
 local function spawnCFrame(base: Base): CFrame
@@ -700,7 +732,7 @@ local function snapshot(state: State): JunkyardSave.Data
 			money += Config.robotValue(carry.robotId)
 		end
 	end
-	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades), empCharges = state.empCharges, rebirth = state.rebirth, variantCatalog = table.clone(state.variantCatalog), totalEarned = math.floor(state.totalEarned), tutorial = state.tutorial }
+	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades), empCharges = state.empCharges, rebirth = state.rebirth, variantCatalog = table.clone(state.variantCatalog), totalEarned = math.floor(state.totalEarned), tutorial = state.tutorial, expand = state.expand }
 end
 
 -- 첫 접속 안내 (튜토리얼) ------------------------------------------------------------
@@ -891,6 +923,10 @@ local function buyUpgrade(state: State, id: string)
 		notify(state.player, "Info", upgrade.name .. "은(는) 최고 단계예요.")
 		return
 	end
+	if level >= Config.upgradeCap(id, state.expand) then
+		notify(state.player, "Alert", ("%s을(를) 더 올리려면 🏗 구역 확장 %d단계가 필요해요."):format(upgrade.name, state.expand + 1))
+		return
+	end
 	if state.money < cost then
 		notify(state.player, "Alert", ("%s: 돈이 %s 부족해요."):format(upgrade.name, Config.formatMoney(cost - state.money)))
 		return
@@ -904,6 +940,31 @@ local function buyUpgrade(state: State, id: string)
 		applySpeed(state)
 	end
 	notify(state.player, "Info", ("%s %d단계 완료!"):format(upgrade.name, level + 1))
+end
+
+-- 구역 확장: 기지가 뒤로 넓어지고 받침대 자리가 생긴다 (환생해도 유지되므로 바로 저장)
+local function buyExpand(state: State)
+	local base = state.base
+	if state.loading or not base then
+		return
+	end
+	local cost = Config.Expansion.Costs[state.expand + 1]
+	if not cost then
+		notify(state.player, "Info", "이미 가장 넓은 기지예요.")
+		return
+	end
+	if state.money < cost then
+		notify(state.player, "Alert", ("구역 확장: 돈이 %s 부족해요."):format(Config.formatMoney(cost - state.money)))
+		return
+	end
+	setMoney(state, state.money - cost)
+	state.expand += 1
+	state.player:SetAttribute("Expand", state.expand)
+	applyExpansion(base, state.expand)
+	notify(state.player, "Info", ("🏗 구역 확장 %d단계 완료! 받침대 자리 +%d · 받침대 추가·터보 신발 단계가 더 열렸어요"):format(state.expand, Config.Expansion.PadsPerLevel))
+	if state.player:GetAttribute("SaveOff") == false then
+		JunkyardSave.saveNow(state.player)
+	end
 end
 
 -- EMP가 터지는 모습 (잠깐 보이는 빛나는 구)
@@ -1109,6 +1170,7 @@ for _, model in basesFolder:GetChildren() do
 		vault = 0,
 		lockedUntil = 0,
 		lockCooldownUntil = 0,
+		expand = 0,
 		intruders = {},
 		alarmAt = {},
 	}
@@ -1181,6 +1243,8 @@ actionRemote.OnServerEvent:Connect(function(player: Player, action: unknown, arg
 		lockBase(state)
 	elseif action == "Upgrade" and typeof(arg) == "string" then
 		buyUpgrade(state, arg)
+	elseif action == "Expand" then
+		buyExpand(state)
 	elseif action == "Item" and typeof(arg) == "string" then
 		useItem(state, arg)
 	elseif action == "Rebirth" then
@@ -1429,6 +1493,9 @@ local function loadPlayer(state: State)
 		state.upgrades = data.upgrades
 		syncUpgradeAttributes(state)
 		state.empCharges = data.empCharges
+		state.expand = data.expand
+		player:SetAttribute("Expand", state.expand)
+		applyExpansion(base, state.expand) -- 받침대를 채우기 전에 구역을 펼친다
 		state.passes = JunkyardStore.checkPasses(player)
 		syncPasses(state)
 		applyTitle(state)
@@ -1508,7 +1575,9 @@ local function onPlayerAdded(player: Player)
 		rebirthValue = nil,
 		totalEarned = 0,
 		tutorial = 0,
+		expand = 0,
 	}
+	player:SetAttribute("Expand", 0)
 	for _, id in Config.UpgradeOrder do
 		state.upgrades[id] = 0
 	end

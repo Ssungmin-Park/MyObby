@@ -107,7 +107,7 @@ Config.BaseWalkSpeed = 16
 Config.PadSpeedBonus = 0.4 -- 받침대 1칸을 채울 때마다 (등급 상관없이)
 Config.CarrySlow = { Common = 2, Uncommon = 3, Rare = 4, Epic = 5, Legendary = 6, Mythic = 7 } :: { [string]: number } -- 로봇 무게: 들고 있으면 이만큼 느려진다 (변종도 기본 로봇과 같다)
 Config.MinWalkSpeed = 8
-Config.MaxWalkSpeed = 30
+Config.MaxWalkSpeed = 36
 Config.StealHold = 1.5 -- 훔치기·팔기 버튼을 누르고 있어야 하는 시간(초)
 Config.CatchRange = 6 -- 주인이 이 거리 안에 들어오면 도둑이 로봇을 떨어뜨린다
 Config.SnatchRange = 12 -- 들고 가는 로봇 "빼앗기"를 서버가 허용하는 거리
@@ -122,11 +122,15 @@ Config.OfflineMaxHours = 3 -- 최대 3시간치
 -- 상점 (3-1) ------------------------------------------------------------------
 -- 영구 업그레이드: level 0 = 기본(values[1]). 다음 단계 비용 = costs[level + 1]. 저장된다.
 export type Upgrade = { name: string, desc: string, category: string, costs: { number }, values: { number } }
-Config.MaxPads = 14 -- 받침대 업그레이드 최대 (기본 PadsPerBase 10, 맵에는 받침대 14개가 있다)
+Config.MaxPads = 32 -- 받침대 업그레이드 최대 (기본 PadsPerBase 10, 맵에는 기본 14개 + 확장 18개)
+-- 기지 확장(구역 사기): 벨트 반대쪽으로 Depth칸씩 넓어지고 받침대 자리가 PadsPerLevel개 생긴다. 환생해도 유지된다.
+-- 확장 1단계마다 받침대 추가 업그레이드가 PadsLevels단계, 터보 신발이 ShoesLevels단계 더 열린다.
+-- 지도(tools/build-expansion.luau)의 확장 받침대 Pad15~32와 Depth가 맞아야 한다.
+Config.Expansion = { Costs = { 250000, 2500000, 25000000 }, Depth = 7, PadsPerLevel = 6, PadsLevels = 3, ShoesLevels = 1 }
 Config.UpgradeOrder = { "Pads", "Shoes", "ShieldTime", "Alarm", "Fence" }
 Config.Upgrades = {
-	Pads = { name = "받침대 추가", desc = "받침대가 2칸 늘어요", category = "Help", costs = { 5000, 50000 }, values = { 10, 12, 14 } },
-	Shoes = { name = "터보 신발", desc = "걷기 속도가 빨라져요 (로봇을 들어도 그대로)", category = "Help", costs = { 3000, 30000, 300000 }, values = { 16, 19, 22, 25 } },
+	Pads = { name = "받침대 추가", desc = "받침대가 2칸 늘어요 (구역을 확장하면 더 올릴 수 있어요)", category = "Help", costs = { 5000, 50000, 150000, 300000, 600000, 1500000, 3000000, 6000000, 15000000, 30000000, 60000000 }, values = { 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32 } },
+	Shoes = { name = "터보 신발", desc = "걷기 속도가 빨라져요 (로봇을 들어도 그대로, 구역 확장으로 더 열림)", category = "Help", costs = { 3000, 30000, 300000, 500000, 5000000, 50000000 }, values = { 16, 19, 22, 25, 27, 29, 31 } },
 	ShieldTime = { name = "방어막 강화", desc = "방어막이 더 오래 가요(초)", category = "Defense", costs = { 1000, 10000, 100000 }, values = { 60, 90, 120, 150 } },
 	Alarm = { name = "경보기", desc = "누가 내 기지에 들어오면 알리고 그 사람을 빨갛게 표시해요", category = "Defense", costs = { 5000 }, values = { 0, 1 } },
 	Fence = { name = "레이저 울타리", desc = "내 기지에 들어온 사람이 3초 동안 느려져요", category = "Defense", costs = { 20000 }, values = { 0, 1 } },
@@ -250,6 +254,17 @@ end
 function Config.walkSpeed(shoes: number, filledPads: number, carryKey: string?): number
 	local speed = Config.BaseWalkSpeed + (shoes - Config.BaseWalkSpeed) + filledPads * Config.PadSpeedBonus - Config.carrySlow(carryKey)
 	return math.clamp(speed, Config.MinWalkSpeed, Config.MaxWalkSpeed)
+end
+
+-- 이 확장 단계에서 올릴 수 있는 업그레이드 최고 단계 (받침대·신발만 확장에 묶인다)
+function Config.upgradeCap(id: string, expand: number): number
+	local upgrade = Config.Upgrades[id]
+	if id == "Pads" then
+		return math.min(#upgrade.costs, 2 + Config.Expansion.PadsLevels * expand)
+	elseif id == "Shoes" then
+		return math.min(#upgrade.costs, 3 + Config.Expansion.ShoesLevels * expand)
+	end
+	return #upgrade.costs
 end
 
 -- 다음 단계 비용 (최고 단계면 nil)

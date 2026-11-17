@@ -44,6 +44,7 @@ export type Data = {
 	variantCatalog: { [string]: boolean }, -- 모은 변종 키
 	totalEarned: number, -- 누적 수입 (전체 서버 순위표용)
 	tutorial: number, -- 첫 접속 안내 단계 (1~5, 0 = 끝남)
+	expand: number, -- 기지 확장 단계 (0~3, 환생해도 유지. 옛 데이터는 0)
 }
 export type LoadStatus = "new" | "ok" | "failed" | "locked"
 export type SaveStatus = "ok" | "failed" | "lostLock"
@@ -84,12 +85,12 @@ local function defaultUpgrades(): { [string]: number }
 end
 
 function JunkyardSave.newData(): Data
-	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 1 }
+	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 1, expand = 0 }
 end
 
 -- 저장소에서 읽은 값을 허용 범위로 정리해서 항상 올바른 Data를 돌려준다.
 function JunkyardSave.sanitize(raw: any): Data
-	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 0 }
+	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 0, expand = 0 }
 	if typeof(raw) ~= "table" then
 		return JunkyardSave.newData()
 	end
@@ -103,6 +104,11 @@ function JunkyardSave.sanitize(raw: any): Data
 		data.totalEarned = math.floor(math.clamp(earned, 0, MAX_MONEY))
 	else
 		data.totalEarned = data.money
+	end
+	-- 기지 확장 단계: 없으면(옛 데이터) 0
+	local expand = raw.expand
+	if typeof(expand) == "number" and expand == expand then
+		data.expand = math.floor(math.clamp(expand, 0, #Config.Expansion.Costs))
 	end
 	-- 안내 단계: 없으면(옛 데이터) 0 = 이미 끝난 것으로 본다
 	local tutorial = raw.tutorial
@@ -169,6 +175,7 @@ local function snapshot(data: Data): Data
 		variantCatalog = table.clone(data.variantCatalog),
 		totalEarned = math.floor(data.totalEarned),
 		tutorial = math.floor(data.tutorial),
+		expand = math.floor(data.expand),
 	}
 end
 
