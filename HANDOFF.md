@@ -23,7 +23,7 @@
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
 | 마지막 게임 수정 | 2026-11-17 Claude Code: **3-2 Robux** — `ServerScriptService/JunkyardStore`(신규, ProcessReceipt·영수증 기록·게임패스 확인), `JunkyardConfig`(GamePasses·Products·확률 함수), `JunkyardBelt`(희귀 로봇 비), `JunkyardSave`(empCharges·saveNow·오프라인 rate/hours 인자), `Junkyard`(혜택·지급·Studio 전용 DebugGrantProduct/DebugGivePass), `JunkyardHud`(💎 Robux 탭·확률 공개·무료 EMP·비 표시). Studio ↔ `src/` 체크섬 일치 |
-| Studio 저장 상태 | `persistedToCloud = true`. **로봇 고물상 추가분의 클라우드 저장(Ctrl+S) 여부는 미확인** — 사용자에게 저장을 요청했다 |
+| Studio 저장 상태 | `persistedToCloud = true`. **2026-11-17 Studio 업데이트로 재시작된 뒤에도 3-2까지의 스크립트 18개(체크섬 일치)·고물상 맵(받침대 14칸)·Remote 6개가 모두 남아 있어 클라우드 저장을 간접 확인했다.** AI는 저장·Publish하지 않는다 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
 | 실제 저장 데이터 | 테스트로 **사용자 본인 키**에 값이 남아 있다: `Progress_v1` = Stage 11, `RobotLab_v1` = 부품 10·삐삐 Lv.1, `Junkyard_v1` = 돈 약 31·받침대 삐삐/너트/스펀지(일반 세트 완성). 지우려면(RemoveAsync) 사용자 승인 필요 |
 | 백업 상태 | 스크립트 18개(Script·ModuleScript·LocalScript)는 `src/`에서 관리하고 Studio와 체크섬 일치(2026-11-17 3-2 반영 후). 맵 생성 코드: 연구소 `tools/build-robot-lab.luau` → `tools/expand-robot-lab.luau`, 고물상 `tools/build-junkyard.luau`. 백업: `ServerStorage/ObbyServer_backup`, `StagesBackup`, `RobotLabV1Backup` |
