@@ -182,13 +182,120 @@ for _, robot in Config.Robots do
 	robotById[robot.id] = robot
 end
 
-function Config.getRobot(id: string): Robot?
+-- 환생과 변종 (4단계) -----------------------------------------------------------
+-- 로봇 키: 기본 로봇은 "Pippi", 변종은 "Pippi@Gold". 받침대·운반·저장에 이 키를 쓴다.
+-- 벨트에는 기본 로봇만 흐른다(모두에게 같음). 환생한 사람이 살 때 서버가 변종을 정한다.
+Config.RebirthBaseCost = 1000000 -- 첫 환생에 필요한 돈
+Config.RebirthCostGrowth = 3 -- 환생할 때마다 필요한 돈 ×3
+Config.RebirthRequiresRarity = "Mythic" -- 도감에 이 등급 로봇이 1종 이상 있어야 환생 가능
+Config.RebirthIncomeBonus = 0.5 -- 환생 1번마다 수입 +50% (영구)
+Config.ProtectionGap = 2 -- 환생 단계가 이만큼 이상 높은 사람은 내 로봇을 훔칠 수 없다 (초보 보호)
+export type Variant = { name: string, mark: string, minRebirth: number, chance: number, income: number, color: Color3, pageBonus: number }
+Config.VariantOrder = { "Gold", "Diamond", "Rainbow" }
+Config.Variants = {
+	Gold = { name = "금색", mark = "✨", minRebirth = 1, chance = 0.15, income = 3, color = Color3.fromRGB(255, 205, 60), pageBonus = 0.25 },
+	Diamond = { name = "다이아", mark = "💎", minRebirth = 3, chance = 0.05, income = 10, color = Color3.fromRGB(120, 230, 255), pageBonus = 0.5 },
+	Rainbow = { name = "무지개", mark = "🌈", minRebirth = 5, chance = 0.01, income = 30, color = Color3.fromRGB(255, 120, 220), pageBonus = 1 },
+} :: { [string]: Variant }
+
+-- "Pippi@Gold" → "Pippi", "Gold" / "Pippi" → "Pippi", nil
+function Config.splitKey(key: string): (string, string?)
+	local id, variant = string.match(key, "^([^@]+)@(.+)$")
+	if id then
+		return id, variant
+	end
+	return key, nil
+end
+
+function Config.getRobot(key: string): Robot?
+	local id = Config.splitKey(key)
 	return robotById[id]
 end
 
-function Config.rarityOf(id: string): Rarity?
-	local robot = robotById[id]
+function Config.rarityOf(key: string): Rarity?
+	local robot = Config.getRobot(key)
 	return if robot then Config.Rarities[robot.rarity] else nil
+end
+
+function Config.variantOf(key: string): Variant?
+	local _, variant = Config.splitKey(key)
+	return if variant then Config.Variants[variant] else nil
+end
+
+-- 저장된 키가 올바른지 (있는 로봇 + 있는 변종)
+function Config.isValidKey(key: string): boolean
+	local id, variant = Config.splitKey(key)
+	return robotById[id] ~= nil and (variant == nil or Config.Variants[variant] ~= nil)
+end
+
+-- 초당 수입 (변종이면 배수)
+function Config.robotIncome(key: string): number
+	local rarity = Config.rarityOf(key)
+	local variant = Config.variantOf(key)
+	return (if rarity then rarity.income else 0) * (if variant then variant.income else 1)
+end
+
+-- 가치 (판매·환급 기준). 변종이면 수입 배수만큼 비싸다
+function Config.robotValue(key: string): number
+	local rarity = Config.rarityOf(key)
+	local variant = Config.variantOf(key)
+	return (if rarity then rarity.price else 0) * (if variant then variant.income else 1)
+end
+
+-- 화면에 보이는 이름: "✨ 금색 삐삐" / "삐삐"
+function Config.robotName(key: string): string
+	local robot = Config.getRobot(key)
+	local variant = Config.variantOf(key)
+	local name = if robot then robot.name else key
+	return if variant then ("%s %s %s"):format(variant.mark, variant.name, name) else name
+end
+
+function Config.rebirthCost(level: number): number
+	return Config.RebirthBaseCost * Config.RebirthCostGrowth ^ level
+end
+
+function Config.rebirthMultiplier(level: number): number
+	return 1 + Config.RebirthIncomeBonus * level
+end
+
+-- 머리 위 환생 표시
+function Config.rebirthMark(level: number): string
+	if level >= 10 then
+		return ("🌈%d"):format(level)
+	elseif level >= 5 then
+		return ("💎%d"):format(level)
+	end
+	return ("⭐%d"):format(level)
+end
+
+-- 살 때 변종 뽑기 (희귀한 것부터 확인). 서버에서만 부른다
+function Config.rollVariant(rebirth: number): string?
+	for i = #Config.VariantOrder, 1, -1 do
+		local id = Config.VariantOrder[i]
+		local variant = Config.Variants[id]
+		if rebirth >= variant.minRebirth and math.random() < variant.chance then
+			return id
+		end
+	end
+	return nil
+end
+
+-- 변종 도감 페이지(18종)를 다 모으면 주는 수입 보너스 합
+function Config.variantPageBonus(variantCatalog: { [string]: boolean }): number
+	local bonus = 0
+	for _, variantId in Config.VariantOrder do
+		local complete = true
+		for _, robot in Config.Robots do
+			if not variantCatalog[robot.id .. "@" .. variantId] then
+				complete = false
+				break
+			end
+		end
+		if complete then
+			bonus += Config.Variants[variantId].pageBonus
+		end
+	end
+	return bonus
 end
 
 -- 도감(모은 로봇 id 집합)으로 수입 배수를 계산한다. 1 + 완성한 등급들의 setBonus 합.

@@ -11,9 +11,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — **3-2 Robux 상품 코드 구현·Studio 반영·테스트**(상품 id는 아직 0 = "준비 중"). 그 전: Codex 3-1 검증·Studio 테스트 자금 훅 |
+| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — 기지 8개, **환생·변종 시스템(B-14) 구현·Studio 반영**. 성공 환생은 사용자 저장 데이터를 초기화하므로 아직 실행 안 함 |
 | 작업 시점 | 2026-11-17 |
-| 다음 작업 AI | ① 사용자가 Creator Dashboard에서 게임패스 3개·개발자 상품 3개를 만들고 알려 준 **id를 `JunkyardConfig`의 `GamePasses`/`Products` `id`에 넣기** → Studio 테스트 구매로 실제 결제 흐름 확인 ② 모바일 상점 UI 확인 ③ 3-3 협력 거대 로봇(계획 승인 먼저) |
+| 다음 작업 AI | ① 환생 성공 경로 테스트(사용자 허락 또는 2인 로컬 서버의 테스트 계정으로) ② 초보 보호 2인 테스트 ③ **전체 서버 순위표**(OrderedDataStore, 계획 승인 먼저) ④ 서버 최대 인원 8명(사용자) |
 | 게임 이름 | 마이오비 (Studio place 이름) / **주력: 로봇 고물상 타이쿤**(멀티플레이). 부가: 실험실 탈출 오비, 로봇 작업장(꼬마 로봇 연구소) |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -22,7 +22,7 @@
 | Studio 모드 | 작업 종료 시 **Edit 모드** (Play 테스트 종료함) |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-17 Claude Code: **3-2 Robux** — `ServerScriptService/JunkyardStore`(신규, ProcessReceipt·영수증 기록·게임패스 확인), `JunkyardConfig`(GamePasses·Products·확률 함수), `JunkyardBelt`(희귀 로봇 비), `JunkyardSave`(empCharges·saveNow·오프라인 rate/hours 인자), `Junkyard`(혜택·지급·Studio 전용 DebugGrantProduct/DebugGivePass), `JunkyardHud`(💎 Robux 탭·확률 공개·무료 EMP·비 표시). Studio ↔ `src/` 체크섬 일치 |
+| 마지막 게임 수정 | 2026-11-17 Claude Code: **환생·변종** — `JunkyardConfig`(환생·변종·로봇 키 함수), `Junkyard`(환생·변종 뽑기·변종 도감·초보 보호·머리 위 환생 표시·리더보드 "환생"·받침대 `RobotKey` 속성), `JunkyardSave`(rebirth·variantCatalog), `JunkyardHud`(⭐ 환생 탭·변종 도감 페이지·팔기 가격). 그 전: 기지 8개. Studio ↔ `src/` 체크섬 일치 |
 | Studio 저장 상태 | `persistedToCloud = true`. **2026-11-17 Studio 업데이트로 재시작된 뒤에도 3-2까지의 스크립트 18개(체크섬 일치)·고물상 맵(받침대 14칸)·Remote 6개가 모두 남아 있어 클라우드 저장을 간접 확인했다.** AI는 저장·Publish하지 않는다 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
 | 실제 저장 데이터 | 테스트로 **사용자 본인 키**에 값이 남아 있다: `Progress_v1` = Stage 11, `RobotLab_v1` = 부품 10·삐삐 Lv.1, `Junkyard_v1` = 돈 약 31·받침대 삐삐/너트/스펀지(일반 세트 완성). 지우려면(RemoveAsync) 사용자 승인 필요 |
@@ -176,6 +176,29 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
   - 떠나 있는 동안 기지는 서버에서 비워지므로 아무도 훔칠 수 없다. 기지 6개가 꽉 차서 기지가 없는 플레이어는 불러오지도 저장하지도 않는다.
 
 **클라이언트 `StarterPlayerScripts/JunkyardHud`** — 잠긴 기지마다 위에 "🛡 방어막 N초" 빌보드(모두에게 보임, 300스터드), 왼쪽 위 패널(돈, 초당·도감 배수, 운반 상태, 방어막 버튼, 도감 버튼), 도감 창(18칸 + 세트 보너스 진행), 위쪽 알림, 벨트 로봇 직접 그리기와 구매 프롬프트, 받침대 버튼 문구(내 기지 "팔기 +금액" / 남의 기지 "훔치기"). Mode가 Junkyard일 때만 보인다.
+
+### B-14. 로봇 고물상 4단계: 환생과 변종 (2026-11-17, 구현 · 성공 경로 미검증)
+
+**목적:** "끝"이 없던 게임에 반복 목표를 준다. 끝까지 가면 처음부터 다시 하되 더 빠르게 성장하고, 새 수집 목표(변종)와 자랑거리(머리 위 표시·리더보드)를 얻는다.
+
+**로봇 키:** 기본 로봇 `"Pippi"`, 변종 `"Pippi@Gold"`. 받침대·운반·저장(`pads`)에 이 키를 쓴다. `Config.splitKey/getRobot/rarityOf/variantOf/isValidKey/robotIncome/robotValue/robotName`가 키를 받는다. **벨트에는 기본 로봇만 흐른다(모두에게 같음)** → 살 때(`buy`) 서버가 `Config.rollVariant(환생 단계)`로 변종을 정한다. 희귀 로봇 비 선물도 같은 방식.
+
+**설정 (`JunkyardConfig`)**
+- 환생 조건: 돈 `RebirthBaseCost`(100만) × `RebirthCostGrowth`(3)^현재 단계 + 도감에 `RebirthRequiresRarity`(신화) 1종 이상. 운반 중이면 불가.
+- 환생 보상: 수입 × `rebirthMultiplier` = 1 + 0.5 × 단계(영구), 머리 위 `rebirthMark`(⭐1~4, 💎5~9, 🌈10+).
+- 변종 `Variants`: 금색 ✨(환생 1+, 15%, 수입·가치 ×3, 페이지 완성 +25%), 다이아 💎(3+, 5%, ×10, +50%), 무지개 🌈(5+, 1%, ×30, +100%). 희귀한 것부터 굴린다.
+- 초보 보호 `ProtectionGap` = 2: 환생 단계가 2 이상 높은 사람은 내 로봇을 훔칠 수 없다.
+
+**서버 (`Junkyard`)**: `JunkyardAction "Rebirth"` → 돈·받침대 로봇·금고·업그레이드 초기화, 도감·변종 도감·무료 EMP·Robux 혜택·환생 단계 유지, 전체 알림, 즉시 저장. 도감 배수 = 기본 세트 보너스 + 변종 페이지 보너스(`recomputeMultiplier`). 수입 = 로봇 수입(변종 배수) × 도감 배수 × 환생 배수 × 수입 2배 패스. 리더보드에 `환생` 열. 받침대 파트에 `RobotKey` 속성(클라이언트 판매 가격 표시용). 플레이어 속성 `Rebirth`, `VariantCatalog`(JSON).
+
+**저장 (`JunkyardSave`)**: Data에 `rebirth`(0~1000), `variantCatalog` 추가. 받침대 값은 변종 키 허용(`isValidKey`), 받침대의 변종은 기본·변종 도감 모두에 넣는다. 옛 데이터는 환생 0·변종 도감 비어 있음으로 읽힌다(version 1 유지).
+
+**클라이언트 (`JunkyardHud`)**: 상점 `⭐ 환생` 탭(조건·보상·다음 해금 변종 표시, **4초 안에 두 번 눌러야 실행**), 도감 창 페이지 버튼(기본 → 금색 → 다이아 → 무지개), 패널 "도감 x… · 환생 ⭐N", 변종 로봇은 변종 색 + Sparkles.
+
+**테스트 (2026-11-17, Claude Code)**
+- 단위 16항목 PASS: 키 나누기, 변종 수입·가치(금색 삐삐 3/75), 잘못된 키, 이름 표시, 환생 비용 1M→3M→9M, 배수 1.5/2.0, 머리 표시, 변종 확률(환생 0: 없음, 1: 금색 14.8%, 5: 무지개 0.95%·다이아 4.9%), 페이지 보너스, 저장 정리(변종 받침대 허용·잘못된 변종 제거·도감 동기화·환생 소수→정수·옛 데이터 기본값).
+- Play(데이터 변경 없음): 리더보드 `환생=0`, 패널 "환생 ⭐0", 돈 부족 환생 요청 거절("965.2K 더 필요")·돈 그대로, 상점 환생 행 표시, 받침대 "팔기 +250"(RobotKey), 에러 0.
+- **미검증:** 환생 성공(사용자 저장의 돈·로봇을 초기화하므로 허락이 필요), 변종 로봇 실제 구매·표시·저장, 초보 보호(2인), 변종 페이지 완성.
 
 ### B-13. 로봇 고물상 3-2: Robux 상품 (2026-11-17, 코드 완료 · 상품 id 미입력)
 

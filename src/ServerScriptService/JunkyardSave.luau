@@ -9,6 +9,7 @@
 --   Data          : { money = 정수, catalog = { [로봇 id] = true }, pads = { ["받침대 번호"] = 로봇 id },
 --                     upgrades = { [업그레이드 id] = 단계 }, empCharges = 정수 }
 --                   ← upgrades는 3-1, empCharges(Robux로 산 무료 EMP)는 3-2에서 추가 (옛 데이터는 0으로 읽힘)
+--                   ← rebirth(환생 단계), variantCatalog({ ["Pippi@Gold"] = true })는 4단계에서 추가. 받침대 값은 변종 키도 허용
 --
 -- 안전 원칙
 --   1. 세션 잠금: 데이터를 쓰는 서버가 lock을 남긴다. 다른 서버의 lock이 살아 있으면 기다리고,
@@ -37,6 +38,8 @@ export type Data = {
 	pads: { [string]: string }, -- 받침대 번호(문자열) → 로봇 id
 	upgrades: { [string]: number }, -- 업그레이드 id → 단계 (0 = 기본)
 	empCharges: number, -- Robux 상품으로 받은 무료 EMP 남은 횟수
+	rebirth: number, -- 환생 단계
+	variantCatalog: { [string]: boolean }, -- 모은 변종 키
 }
 export type LoadStatus = "new" | "ok" | "failed" | "locked"
 export type SaveStatus = "ok" | "failed" | "lostLock"
@@ -77,12 +80,12 @@ local function defaultUpgrades(): { [string]: number }
 end
 
 function JunkyardSave.newData(): Data
-	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0 }
+	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {} }
 end
 
 -- 저장소에서 읽은 값을 허용 범위로 정리해서 항상 올바른 Data를 돌려준다.
 function JunkyardSave.sanitize(raw: any): Data
-	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0 }
+	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {} }
 	if typeof(raw) ~= "table" then
 		return JunkyardSave.newData()
 	end
@@ -101,9 +104,25 @@ function JunkyardSave.sanitize(raw: any): Data
 		for key, robotId in raw.pads do
 			local index = tonumber(key)
 			if index and index == math.floor(index) and index >= 1 and index <= Config.MaxPads
-				and typeof(robotId) == "string" and Config.getRobot(robotId) then
+				and typeof(robotId) == "string" and Config.isValidKey(robotId) then
 				data.pads[tostring(index)] = robotId
-				data.catalog[robotId] = true -- 받침대에 있는 로봇은 도감에도 있어야 한다
+				-- 받침대에 있는 로봇은 도감에도 있어야 한다 (변종이면 변종 도감에도)
+				local baseId, variantId = Config.splitKey(robotId)
+				data.catalog[baseId] = true
+				if variantId then
+					data.variantCatalog[robotId] = true
+				end
+			end
+		end
+	end
+	local rebirth = raw.rebirth
+	if typeof(rebirth) == "number" and rebirth == rebirth then
+		data.rebirth = math.floor(math.clamp(rebirth, 0, 1000))
+	end
+	if typeof(raw.variantCatalog) == "table" then
+		for key, owned in raw.variantCatalog do
+			if owned == true and typeof(key) == "string" and Config.isValidKey(key) and Config.variantOf(key) then
+				data.variantCatalog[key] = true
 			end
 		end
 	end
@@ -130,6 +149,8 @@ local function snapshot(data: Data): Data
 		pads = table.clone(data.pads),
 		upgrades = table.clone(data.upgrades),
 		empCharges = math.floor(data.empCharges),
+		rebirth = math.floor(data.rebirth),
+		variantCatalog = table.clone(data.variantCatalog),
 	}
 end
 

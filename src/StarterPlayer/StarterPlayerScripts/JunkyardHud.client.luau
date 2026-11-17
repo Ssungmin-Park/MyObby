@@ -97,8 +97,13 @@ corner(catalog, 12)
 local catalogMax = Instance.new("UISizeConstraint")
 catalogMax.MaxSize = Vector2.new(420, 420)
 catalogMax.Parent = catalog
-local catalogTitle = label(catalog, UDim2.fromOffset(14, 8), UDim2.new(1, -70, 0, 26), 18, white)
+local catalogTitle = label(catalog, UDim2.fromOffset(14, 8), UDim2.new(1, -170, 0, 26), 18, white)
 local closeButton = button(catalog, "X", UDim2.new(1, -46, 0, 8), UDim2.fromOffset(36, 30), Color3.fromRGB(120, 60, 60))
+local catalogPage = 0 -- 0 = 기본 도감, 1~3 = 변종 도감 (금색·다이아·무지개)
+local pageButton = button(catalog, "기본 ▶", UDim2.new(1, -150, 0, 8), UDim2.fromOffset(98, 30), Color3.fromRGB(70, 82, 96))
+pageButton.Activated:Connect(function()
+	catalogPage = (catalogPage + 1) % (#Config.VariantOrder + 1)
+end)
 local catalogRows: { TextLabel } = {}
 for i in Config.Robots do
 	local column = (i - 1) % 3
@@ -135,7 +140,8 @@ local shopClose = button(shop, "X", UDim2.new(1, -46, 0, 8), UDim2.fromOffset(36
 type ShopEntry = { kind: string, id: string, category: string, row: Frame, info: TextLabel, buy: TextButton }
 local shopEntries: { ShopEntry } = {}
 local shopTab = "Attack"
-local tabs = { { id = "Attack", text = "⚡ 방해" }, { id = "Defense", text = "🛡 방어" }, { id = "Help", text = "💪 도움" }, { id = "Robux", text = "💎 Robux" } }
+local rebirthConfirmAt = 0 -- 환생은 실수로 누르지 않게 4초 안에 두 번 눌러야 한다
+local tabs = { { id = "Attack", text = "⚡ 방해" }, { id = "Defense", text = "🛡 방어" }, { id = "Help", text = "💪 도움" }, { id = "Rebirth", text = "⭐ 환생" }, { id = "Robux", text = "💎 Robux" } }
 local tabButtons: { [string]: TextButton } = {}
 for i, tab in tabs do
 	local tabButton = button(shop, tab.text, UDim2.new((i - 1) / #tabs, 8, 0, 42), UDim2.new(1 / #tabs, -10, 0, 32), Color3.fromRGB(52, 64, 76))
@@ -169,6 +175,15 @@ local function addEntry(kind: string, id: string, category: string, name: string
 	local info = label(row, UDim2.fromOffset(10, 50), UDim2.new(1, -130, 0, 42), 11, Color3.fromRGB(150, 230, 255))
 	local buy = button(row, "", UDim2.new(1, -114, 0.5, -20), UDim2.fromOffset(106, 40), Color3.fromRGB(60, 140, 80))
 	buy.Activated:Connect(function()
+		if kind == "Rebirth" then
+			if os.clock() - rebirthConfirmAt < 4 then
+				rebirthConfirmAt = 0
+				actionRemote:FireServer("Rebirth")
+			else
+				rebirthConfirmAt = os.clock()
+			end
+			return
+		end
 		if kind == "Pass" or kind == "Product" then
 			-- Robux 결제창은 클라이언트에서 띄운다. 지급은 서버(JunkyardStore)가 영수증을 확인한 뒤에만 한다
 			local offer = if kind == "Pass" then Config.GamePasses[id] else Config.Products[id]
@@ -202,6 +217,8 @@ for _, id in Config.ProductOrder do
 	local offer = Config.Products[id]
 	addEntry("Product", id, "Robux", offer.name, offer.desc)
 end
+
+addEntry("Rebirth", "Rebirth", "Rebirth", "⭐ 환생", "돈·받침대 로봇·업그레이드가 처음으로 돌아가고 영구 수입 보너스와 변종 로봇을 얻어요. 도감·무료 EMP·Robux 혜택은 그대로예요")
 
 -- 희귀 로봇 비 확률 공개 (평소 → 비 내릴 때, 등급별 %)
 local oddsText: string
@@ -259,6 +276,23 @@ local function renderShop()
 	local empCharges = (player:GetAttribute("EmpCharges") or 0) :: number
 	for _, entry in shopEntries do
 		entry.row.Visible = entry.category == shopTab
+		if entry.kind == "Rebirth" then
+			local level = (player:GetAttribute("Rebirth") or 0) :: number
+			local cost = Config.rebirthCost(level)
+			local unlock = ""
+			for _, variantId in Config.VariantOrder do
+				local variant = Config.Variants[variantId]
+				if variant.minRebirth == level + 1 then
+					unlock = (" · %s %s 변종 해금"):format(variant.mark, variant.name)
+				end
+			end
+			entry.info.Text = ("현재 ⭐%d · 필요: 돈 %s + 도감에 %s 로봇 1종\n보상: 수입 x%.1f%s"):format(level, Config.formatMoney(cost), Config.Rarities[Config.RebirthRequiresRarity].name, Config.rebirthMultiplier(level + 1), unlock)
+			local confirming = os.clock() - rebirthConfirmAt < 4
+			entry.buy.Text = if confirming then "정말 환생?\n한 번 더!" else "환생하기"
+			entry.buy.BackgroundColor3 = if confirming then Color3.fromRGB(200, 120, 40) elseif money >= cost then Color3.fromRGB(60, 140, 80) else Color3.fromRGB(90, 70, 70)
+			entry.buy.Active = true
+			continue
+		end
 		if entry.kind == "Pass" or entry.kind == "Product" then
 			local offer = if entry.kind == "Pass" then Config.GamePasses[entry.id] else Config.Products[entry.id]
 			local owned = entry.kind == "Pass" and passes[entry.id] == true
@@ -526,14 +560,10 @@ local function syncPadPrompts()
 				local prompt = pad:FindFirstChild("RobotPrompt")
 				if prompt and prompt:IsA("ProximityPrompt") then
 					if mine then
-						local robotId: string? = nil
-						for _, robot in Config.Robots do
-							if robot.name == prompt.ObjectText then
-								robotId = robot.id
-							end
-						end
-						local rarity = if robotId then Config.rarityOf(robotId) else nil
-						prompt.ActionText = if rarity then ("팔기 +%s"):format(Config.formatMoney(rarity.price * Config.SellRate)) else "팔기"
+						local key = pad:GetAttribute("RobotKey") -- 서버가 받침대에 적어 둔 로봇 키 (변종 포함)
+						prompt.ActionText = if typeof(key) == "string" and Config.isValidKey(key)
+							then ("팔기 +%s"):format(Config.formatMoney(Config.robotValue(key) * Config.SellRate))
+							else "팔기"
 					else
 						prompt.ActionText = "훔치기"
 					end
@@ -553,7 +583,7 @@ local function render()
 	local income = (player:GetAttribute("Income") or 0) :: number
 	local multiplier = (player:GetAttribute("Multiplier") or 1) :: number
 	moneyLabel.Text = "💰 " .. Config.formatMoney(money)
-	incomeLabel.Text = ("초당 +%s   (도감 보너스 x%.2f)"):format(Config.formatMoney(income), multiplier)
+	incomeLabel.Text = ("초당 +%s  (도감 x%.2f · 환생 %s)"):format(Config.formatMoney(income), multiplier, Config.rebirthMark((player:GetAttribute("Rebirth") or 0) :: number))
 	saveLabel.Text = if player:GetAttribute("Loading") == true then "⏳ 불러오는 중"
 		elseif player:GetAttribute("SaveOff") == true then "⚠ 저장 안 됨"
 		else ""
@@ -612,18 +642,38 @@ local function render()
 			count += 1
 		end
 	end
-	catalogTitle.Text = ("로봇 도감 %d/%d"):format(count, #Config.Robots)
+	local variantId = if catalogPage > 0 then Config.VariantOrder[catalogPage] else nil
+	local variant = if variantId then Config.Variants[variantId] else nil
+	local variantOwned: { [string]: boolean } = {}
+	local okVariants, variantList = pcall(function()
+		return HttpService:JSONDecode((player:GetAttribute("VariantCatalog") or "[]") :: string)
+	end)
+	if okVariants and typeof(variantList) == "table" then
+		for _, key in variantList do
+			variantOwned[key] = true
+		end
+	end
+	pageButton.Text = if variant then ("%s %s ▶"):format(variant.mark, variant.name) else "기본 ▶"
+	local pageCount = 0
 	for i, robot in Config.Robots do
 		local rarity = Config.Rarities[robot.rarity]
 		local row = catalogRows[i]
-		if owned[robot.id] then
-			row.Text = ("✓ %s\n[%s] 초당 %s"):format(robot.name, rarity.name, Config.formatMoney(rarity.income))
-			row.TextColor3 = rarity.color
+		local key = if variantId then robot.id .. "@" .. variantId else robot.id
+		local has = if variantId then variantOwned[key] == true else owned[robot.id] == true
+		if has then
+			pageCount += 1
+			row.Text = ("✓ %s\n[%s] 초당 %s"):format(Config.robotName(key), rarity.name, Config.formatMoney(Config.robotIncome(key)))
+			row.TextColor3 = if variant then variant.color else rarity.color
 		else
 			row.Text = ("○ ???\n[%s]"):format(rarity.name)
 			row.TextColor3 = muted
 		end
 	end
+	local level = (player:GetAttribute("Rebirth") or 0) :: number
+	catalogTitle.Text = if variant
+		then ("%s %s 도감 %d/%d%s"):format(variant.mark, variant.name, pageCount, #Config.Robots,
+			if level < variant.minRebirth then (" (환생 %d번부터)"):format(variant.minRebirth) else "")
+		else ("로봇 도감 %d/%d"):format(count, #Config.Robots)
 	local lines = { "세트 보너스 (등급의 로봇 3종을 모두 모으면 수입 증가):" }
 	for _, rarityId in Config.RarityOrder do
 		local rarity = Config.Rarities[rarityId]
@@ -634,6 +684,10 @@ local function render()
 			end
 		end
 		table.insert(lines, ("%s %s %d/3 → +%d%%"):format(if have >= 3 then "✓" else "·", rarity.name, have, math.floor(rarity.setBonus * 100)))
+	end
+	for _, pageVariantId in Config.VariantOrder do
+		local pageVariant = Config.Variants[pageVariantId]
+		table.insert(lines, ("%s %s 페이지 완성 → +%d%%"):format(pageVariant.mark, pageVariant.name, math.floor(pageVariant.pageBonus * 100)))
 	end
 	bonusLabel.Text = table.concat(lines, "   ")
 end

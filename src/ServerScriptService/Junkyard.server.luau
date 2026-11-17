@@ -55,6 +55,9 @@ type State = {
 	base: Base?,
 	carry: Carry?,
 	catalog: { [string]: boolean },
+	variantCatalog: { [string]: boolean }, -- 모은 변종 ("Pippi@Gold" 등, 저장됨)
+	rebirth: number, -- 환생 단계 (저장됨)
+	rebirthValue: IntValue?, -- 리더보드 "환생"
 	multiplier: number,
 	moneyValue: IntValue?,
 	incomeValue: IntValue?,
@@ -87,9 +90,8 @@ local function notifyAll(text: string)
 end
 
 local function robotLabel(robotId: string): string
-	local robot = Config.getRobot(robotId)
 	local rarity = Config.rarityOf(robotId)
-	return if robot and rarity then ("%s %s"):format(rarity.name, robot.name) else robotId
+	return if rarity then ("%s %s"):format(rarity.name, Config.robotName(robotId)) else robotId
 end
 
 local function rootOf(player: Player): BasePart?
@@ -112,7 +114,8 @@ local function makeRobotModel(robotId: string, anchored: boolean): Model
 	local robot = Config.getRobot(robotId)
 	local rarity = Config.rarityOf(robotId)
 	local size = if rarity then rarity.size else 1
-	local color = if rarity then rarity.color else Color3.new(1, 1, 1)
+	local variant = Config.variantOf(robotId) -- 변종이면 변종 색과 반짝이
+	local color = if variant then variant.color elseif rarity then rarity.color else Color3.new(1, 1, 1)
 	local model = Instance.new("Model")
 	model.Name = "Robot_" .. robotId
 	local function piece(name: string, partSize: Vector3, offset: Vector3, pieceColor: Color3): Part
@@ -137,6 +140,11 @@ local function makeRobotModel(robotId: string, anchored: boolean): Model
 		piece("Eye", Vector3.new(0.3, 0.3, 0.1), Vector3.new(dx, 2.85, -0.98), Color3.fromRGB(30, 34, 40))
 	end
 	model.PrimaryPart = body
+	if variant then
+		local sparkles = Instance.new("Sparkles")
+		sparkles.SparkleColor = variant.color
+		sparkles.Parent = body
+	end
 	if not anchored then
 		for _, object in model:GetChildren() do
 			if object ~= body and object:IsA("BasePart") then
@@ -159,7 +167,7 @@ local function makeRobotModel(robotId: string, anchored: boolean): Model
 	label.TextSize = 14
 	label.TextStrokeTransparency = 0.3
 	label.TextColor3 = color
-	label.Text = if robot and rarity then ("%s [%s]\n초당 %s"):format(robot.name, rarity.name, Config.formatMoney(rarity.income)) else robotId
+	label.Text = if robot and rarity then ("%s [%s]\n초당 %s"):format(Config.robotName(robotId), rarity.name, Config.formatMoney(Config.robotIncome(robotId))) else robotId
 	label.Parent = billboard
 	return model
 end
@@ -226,16 +234,14 @@ end
 local function baseIncome(base: Base, state: State?): number
 	local total = 0
 	for _, robotId in base.robots do
-		local rarity = Config.rarityOf(robotId)
-		if rarity then
-			total += rarity.income
-		end
+		total += Config.robotIncome(robotId) -- 변종이면 배수 포함
 	end
 	if not state then
 		return total
 	end
-	-- 도감 세트 배수 × 수입 2배 게임패스
-	return total * state.multiplier * (if state.passes.DoubleIncome then Config.IncomePassMultiplier else 1)
+	-- 도감 배수 × 환생 배수 × 수입 2배 게임패스
+	return total * state.multiplier * Config.rebirthMultiplier(state.rebirth)
+		* (if state.passes.DoubleIncome then Config.IncomePassMultiplier else 1)
 end
 
 local function refreshIncome(state: State)
@@ -256,7 +262,7 @@ local function applyTitle(state: State)
 	local _, best = Config.catalogMultiplier(state.catalog)
 	local vip = state.passes.VipBase == true
 	local tag = head:FindFirstChild("TitleTag") :: BillboardGui?
-	if not best and not vip then
+	if not best and not vip and state.rebirth <= 0 then
 		if tag then
 			tag:Destroy()
 		end
@@ -282,6 +288,9 @@ local function applyTitle(state: State)
 	local rarity = if best then Config.Rarities[best] else nil
 	local label = (tag :: BillboardGui):FindFirstChild("Label") :: TextLabel
 	local words = {}
+	if state.rebirth > 0 then
+		table.insert(words, Config.rebirthMark(state.rebirth))
+	end
 	if vip then
 		table.insert(words, "[👑 VIP]")
 	end
@@ -292,20 +301,42 @@ local function applyTitle(state: State)
 	label.TextColor3 = if rarity then rarity.color else Color3.fromRGB(255, 215, 90)
 end
 
-local function addToCatalog(state: State, robotId: string)
+-- 도감 배수 = 기본 도감 세트 보너스 + 변종 도감 페이지 보너스
+local function recomputeMultiplier(state: State)
+	state.multiplier = Config.catalogMultiplier(state.catalog) + Config.variantPageBonus(state.variantCatalog)
+	state.player:SetAttribute("Multiplier", state.multiplier)
+	local keys = {}
+	for key in state.variantCatalog do
+		table.insert(keys, key)
+	end
+	state.player:SetAttribute("VariantCatalog", HttpService:JSONEncode(keys))
+end
+
+local function addToCatalog(state: State, robotKey: string)
+	-- 변종이면 변종 도감에 먼저 등록하고, 기본 로봇도 아래에서 함께 등록한다
+	local robotId, variantId = Config.splitKey(robotKey)
+	if variantId and not state.variantCatalog[robotKey] then
+		local beforeBonus = Config.variantPageBonus(state.variantCatalog)
+		state.variantCatalog[robotKey] = true
+		notify(state.player, "Info", ("변종 도감 등록: %s"):format(robotLabel(robotKey)))
+		if Config.variantPageBonus(state.variantCatalog) > beforeBonus then
+			notifyAll(("%s님이 %s 변종 도감을 완성했어요!"):format(state.player.DisplayName, Config.Variants[variantId].name))
+		end
+		recomputeMultiplier(state)
+		refreshIncome(state)
+	end
 	if state.catalog[robotId] then
 		return
 	end
 	local before, beforeBest = Config.catalogMultiplier(state.catalog)
 	state.catalog[robotId] = true
 	local after, best = Config.catalogMultiplier(state.catalog)
-	state.multiplier = after
 	local ids = {}
 	for id in state.catalog do
 		table.insert(ids, id)
 	end
 	state.player:SetAttribute("Catalog", HttpService:JSONEncode(ids))
-	state.player:SetAttribute("Multiplier", after)
+	recomputeMultiplier(state)
 	notify(state.player, "Info", ("도감 등록: %s"):format(robotLabel(robotId)))
 	if after > before then
 		local completed = if best and best ~= beforeBest then Config.Rarities[best].name else "등급"
@@ -335,10 +366,12 @@ local function setPadRobot(base: Base, padIndex: number, robotId: string?)
 		model.Parent = base.model
 		base.padModels[padIndex] = model
 		local robot = Config.getRobot(robotId)
-		prompt.ObjectText = if robot then robot.name else robotId
+		prompt.ObjectText = if robot then Config.robotName(robotId) else robotId
+		pad:SetAttribute("RobotKey", robotId) -- 클라이언트가 판매 가격을 계산할 때 쓴다
 		prompt.Enabled = true
 	else
 		prompt.Enabled = false
+		pad:SetAttribute("RobotKey", nil)
 	end
 end
 
@@ -500,11 +533,10 @@ local function snapshot(state: State): JunkyardSave.Data
 			end
 		end
 		if not placed then
-			local rarity = Config.rarityOf(carry.robotId)
-			money += if rarity then rarity.price else 0
+			money += Config.robotValue(carry.robotId)
 		end
 	end
-	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades), empCharges = state.empCharges }
+	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades), empCharges = state.empCharges, rebirth = state.rebirth, variantCatalog = table.clone(state.variantCatalog) }
 end
 
 -- 행동 ----------------------------------------------------------------------------
@@ -546,7 +578,13 @@ local function buy(state: State, itemId: number)
 		return
 	end
 	setMoney(state, state.money - rarity.price)
-	startCarry(state, item.robotId, nil, nil)
+	-- 환생한 사람은 살 때 변종(금색·다이아·무지개)이 나올 수 있다. 벨트에 보이는 로봇은 모두에게 같다
+	local variantId = Config.rollVariant(state.rebirth)
+	local robotKey = if variantId then item.robotId .. "@" .. variantId else item.robotId
+	startCarry(state, robotKey, nil, nil)
+	if variantId then
+		notify(state.player, "Info", ("%s 변종이 나왔어요! %s"):format(Config.Variants[variantId].mark, robotLabel(robotKey)))
+	end
 	notify(state.player, "Info", ("%s 구매! 기지로 가져가세요."):format(robotLabel(item.robotId)))
 end
 
@@ -596,7 +634,7 @@ local function sell(state: State, base: Base, padIndex: number)
 		return
 	end
 	setPadRobot(base, padIndex, nil)
-	local gain = math.floor(rarity.price * Config.SellRate)
+	local gain = math.floor(Config.robotValue(robotId) * Config.SellRate)
 	setMoney(state, state.money + gain)
 	refreshIncome(state)
 	notify(state.player, "Info", ("%s 판매 +%s"):format(robotLabel(robotId), Config.formatMoney(gain)))
@@ -613,6 +651,12 @@ local function steal(state: State, base: Base, padIndex: number)
 	end
 	if state.carry then
 		notify(state.player, "Alert", "이미 로봇을 들고 있어요.")
+		return
+	end
+	-- 초보 보호: 환생 단계가 ProtectionGap 이상 낮은 사람의 로봇은 훔칠 수 없다
+	local victim = states[base.owner]
+	if victim and state.rebirth - victim.rebirth >= Config.ProtectionGap then
+		notify(state.player, "Alert", ("초보 보호: 환생 단계가 %d 이상 낮은 사람의 로봇은 훔칠 수 없어요."):format(Config.ProtectionGap))
 		return
 	end
 	if now() < base.lockedUntil then
@@ -728,6 +772,72 @@ local function useItem(state: State, id: string)
 		notify(state.player, "Info", ("🧤 도둑 장갑 착용! %d분 동안 훔치기가 빨라져요."):format(Config.GlovesDuration // 60))
 	end
 	syncUpgradeAttributes(state)
+end
+
+-- 환생 ------------------------------------------------------------------------
+local function syncRebirth(state: State)
+	state.player:SetAttribute("Rebirth", state.rebirth)
+	if state.rebirthValue then
+		state.rebirthValue.Value = state.rebirth
+	end
+end
+
+local function hasRequiredRarity(state: State): boolean
+	for _, robot in Config.Robots do
+		if robot.rarity == Config.RebirthRequiresRarity and state.catalog[robot.id] then
+			return true
+		end
+	end
+	return false
+end
+
+-- 환생: 돈·받침대 로봇·금고·업그레이드는 처음으로. 도감·변종 도감·무료 EMP·Robux 혜택은 유지
+local function rebirth(state: State)
+	local base = state.base
+	if not base or state.loading then
+		return
+	end
+	if state.carry then
+		notify(state.player, "Alert", "들고 있는 로봇을 먼저 기지에 놓고 환생하세요.")
+		return
+	end
+	local cost = Config.rebirthCost(state.rebirth)
+	if state.money < cost then
+		notify(state.player, "Alert", ("환생하려면 돈이 %s 더 필요해요."):format(Config.formatMoney(cost - state.money)))
+		return
+	end
+	if not hasRequiredRarity(state) then
+		notify(state.player, "Alert", ("환생하려면 도감에 %s 로봇이 1종 이상 있어야 해요."):format(Config.Rarities[Config.RebirthRequiresRarity].name))
+		return
+	end
+	for index = 1, #base.pads do
+		if base.robots[index] then
+			setPadRobot(base, index, nil)
+		end
+	end
+	base.vault = 0
+	base.model:SetAttribute("Vault", 0)
+	for _, id in Config.UpgradeOrder do
+		state.upgrades[id] = 0
+	end
+	syncUpgradeAttributes(state)
+	setPadLocks(base)
+	applySpeed(state)
+	setMoney(state, Config.StartMoney)
+	state.rebirth += 1
+	syncRebirth(state)
+	refreshIncome(state)
+	applyTitle(state)
+	local unlock = ""
+	for _, variantId in Config.VariantOrder do
+		local variant = Config.Variants[variantId]
+		if variant.minRebirth == state.rebirth then
+			unlock = (" 이제 %s %s 변종이 나와요!"):format(variant.mark, variant.name)
+		end
+	end
+	notifyAll(("⭐ %s님이 %d번째 환생을 했어요!"):format(state.player.DisplayName, state.rebirth))
+	notify(state.player, "Info", ("환생 완료! 수입 x%.1f.%s"):format(Config.rebirthMultiplier(state.rebirth), unlock))
+	JunkyardSave.saveNow(state.player)
 end
 
 -- 들고 있는 로봇이 내 기지 안에 들어오면 빈 받침대에 놓는다
@@ -901,6 +1011,8 @@ actionRemote.OnServerEvent:Connect(function(player: Player, action: unknown, arg
 		buyUpgrade(state, arg)
 	elseif action == "Item" and typeof(arg) == "string" then
 		useItem(state, arg)
+	elseif action == "Rebirth" then
+		rebirth(state)
 	end
 end)
 
@@ -969,7 +1081,9 @@ local function grantProduct(player: Player, key: string): boolean
 		workspace:SetAttribute("RainUntil", untilTime)
 		notifyAll(("✨ %s님이 희귀 로봇 비를 내렸어요! %d초 동안 모두의 벨트에 희귀 로봇이 %d배!"):format(player.DisplayName, Config.RainDuration, Config.RainMultiplier))
 		-- 산 사람에게는 희귀 이상 로봇 1개를 바로 기지에 준다. 받침대가 꽉 차면 그 로봇 가격만큼 돈으로 준다
-		local giftId = rollRainGift()
+		local giftBase = rollRainGift()
+		local giftVariant = Config.rollVariant(state.rebirth) -- 환생했으면 선물도 변종일 수 있다
+		local giftId = if giftVariant then giftBase .. "@" .. giftVariant else giftBase
 		local base = state.base
 		local padIndex = if base then freePad(base) else nil
 		if base and padIndex then
@@ -978,8 +1092,7 @@ local function grantProduct(player: Player, key: string): boolean
 			refreshIncome(state)
 			notify(player, "Info", ("🎁 희귀 로봇 비 선물: %s이(가) 기지에 도착했어요!"):format(robotLabel(giftId)))
 		else
-			local rarity = Config.rarityOf(giftId)
-			local value = if rarity then rarity.price else 0
+			local value = Config.robotValue(giftId)
 			setMoney(state, state.money + value)
 			notify(player, "Info", ("🎁 받침대가 꽉 차서 %s 대신 %s 돈을 드렸어요."):format(robotLabel(giftId), Config.formatMoney(value)))
 		end
@@ -1007,16 +1120,15 @@ end
 JunkyardStore.start({ grantProduct = grantProduct, onPassOwned = onPassOwned })
 
 -- 저장된 기지 불러오기 ------------------------------------------------------------
-local function setCatalog(state: State, catalog: { [string]: boolean })
+local function setCatalog(state: State, catalog: { [string]: boolean }, variantCatalog: { [string]: boolean })
 	state.catalog = catalog
-	local multiplier = Config.catalogMultiplier(catalog)
-	state.multiplier = multiplier
+	state.variantCatalog = variantCatalog
 	local ids = {}
 	for id in catalog do
 		table.insert(ids, id)
 	end
 	state.player:SetAttribute("Catalog", HttpService:JSONEncode(ids))
-	state.player:SetAttribute("Multiplier", multiplier)
+	recomputeMultiplier(state)
 	applyTitle(state)
 end
 
@@ -1032,7 +1144,9 @@ local function loadPlayer(state: State)
 	end
 	if data then
 		setMoney(state, data.money)
-		setCatalog(state, data.catalog)
+		state.rebirth = data.rebirth
+		syncRebirth(state)
+		setCatalog(state, data.catalog, data.variantCatalog)
 		state.upgrades = data.upgrades
 		syncUpgradeAttributes(state)
 		state.empCharges = data.empCharges
@@ -1109,6 +1223,9 @@ local function onPlayerAdded(player: Player)
 		holdStart = {},
 		passes = {},
 		empCharges = 0,
+		variantCatalog = {},
+		rebirth = 0,
+		rebirthValue = nil,
 	}
 	for _, id in Config.UpgradeOrder do
 		state.upgrades[id] = 0
@@ -1159,6 +1276,11 @@ local function onPlayerAdded(player: Player)
 		local incomeValue = Instance.new("IntValue")
 		incomeValue.Name = "초당"
 		incomeValue.Parent = stats
+		local rebirthValue = Instance.new("IntValue")
+		rebirthValue.Name = "환생"
+		rebirthValue.Value = state.rebirth
+		rebirthValue.Parent = stats
+		state.rebirthValue = rebirthValue
 		state.moneyValue = moneyValue
 		state.incomeValue = incomeValue
 		refreshIncome(state)
