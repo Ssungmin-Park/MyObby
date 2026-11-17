@@ -58,7 +58,12 @@ Config.AnnounceRarities = { Legendary = true, Mythic = true } -- 나오면 서�
 -- 기지
 Config.PadsPerBase = 10
 Config.SellRate = 0.5 -- 팔 때 받는 비율
-Config.CarrySpeed = 11 -- 로봇을 들고 있을 때 걷기 속도 (기본 16)
+-- 걷기 속도 = 기본 + 터보 신발 + 받침대 채운 칸 수 × 보너스 − 들고 있는 로봇 무게 (최저~최고로 제한)
+Config.BaseWalkSpeed = 16
+Config.PadSpeedBonus = 0.4 -- 받침대 1칸을 채울 때마다 (등급 상관없이)
+Config.CarrySlow = { Common = 2, Uncommon = 3, Rare = 4, Epic = 5, Legendary = 6, Mythic = 7 } :: { [string]: number } -- 로봇 무게: 들고 있으면 이만큼 느려진다 (변종도 기본 로봇과 같다)
+Config.MinWalkSpeed = 8
+Config.MaxWalkSpeed = 30
 Config.StealHold = 1.5 -- 훔치기·팔기 버튼을 누르고 있어야 하는 시간(초)
 Config.CatchRange = 6 -- 주인이 이 거리 안에 들어오면 도둑이 로봇을 떨어뜨린다
 Config.LockDuration = 60 -- 기지 잠금 시간(초)
@@ -75,7 +80,7 @@ Config.MaxPads = 14 -- 받침대 업그레이드 최대 (기본 PadsPerBase 10, 
 Config.UpgradeOrder = { "Pads", "Shoes", "ShieldTime", "Alarm", "Fence" }
 Config.Upgrades = {
 	Pads = { name = "받침대 추가", desc = "받침대가 2칸 늘어요", category = "Help", costs = { 5000, 50000 }, values = { 10, 12, 14 } },
-	Shoes = { name = "터보 신발", desc = "걷기 속도가 빨라져요", category = "Help", costs = { 3000, 30000 }, values = { 16, 19, 22 } },
+	Shoes = { name = "터보 신발", desc = "걷기 속도가 빨라져요 (로봇을 들어도 그대로)", category = "Help", costs = { 3000, 30000, 300000 }, values = { 16, 19, 22, 25 } },
 	ShieldTime = { name = "방어막 강화", desc = "방어막이 더 오래 가요(초)", category = "Defense", costs = { 1000, 10000, 100000 }, values = { 60, 90, 120, 150 } },
 	Alarm = { name = "경보기", desc = "누가 내 기지에 들어오면 알리고 그 사람을 빨갛게 표시해요", category = "Defense", costs = { 5000 }, values = { 0, 1 } },
 	Fence = { name = "레이저 울타리", desc = "내 기지에 들어온 사람이 3초 동안 느려져요", category = "Defense", costs = { 20000 }, values = { 0, 1 } },
@@ -185,6 +190,20 @@ end
 function Config.upgradeValue(id: string, level: number): number
 	local upgrade = Config.Upgrades[id]
 	return upgrade.values[math.clamp(level + 1, 1, #upgrade.values)]
+end
+
+-- 걷기 속도 계산 (서버가 정하고, 화면 표시에도 쓴다). shoes = 터보 신발 값(16~), filledPads = 로봇이 놓인 받침대 수
+function Config.carrySlow(key: string?): number
+	if not key then
+		return 0
+	end
+	local robot = Config.getRobot(key)
+	return if robot then Config.CarrySlow[robot.rarity] or 0 else 0
+end
+
+function Config.walkSpeed(shoes: number, filledPads: number, carryKey: string?): number
+	local speed = Config.BaseWalkSpeed + (shoes - Config.BaseWalkSpeed) + filledPads * Config.PadSpeedBonus - Config.carrySlow(carryKey)
+	return math.clamp(speed, Config.MinWalkSpeed, Config.MaxWalkSpeed)
 end
 
 -- 다음 단계 비용 (최고 단계면 nil)

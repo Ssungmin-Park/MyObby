@@ -667,16 +667,18 @@ local function render()
 
 	local carrying = player:GetAttribute("Carrying")
 	local stunned = ((player:GetAttribute("StunnedUntil") or 0) :: number) - workspace:GetServerTimeNow()
+	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	local speedText = if humanoid then ("🏃 속도 %.1f"):format(humanoid.WalkSpeed) else "" -- 서버가 정한 현재 걷기 속도
 	if stunned > 0 then
 		carryLabel.Text = ("⚡ EMP에 맞아 멈춤! %d초"):format(math.ceil(stunned))
 		carryLabel.TextColor3 = Color3.fromRGB(150, 220, 255)
 	elseif typeof(carrying) == "string" and carrying ~= "" then
 		local robot = Config.getRobot(carrying)
 		local stolen = player:GetAttribute("CarryStolen") == true
-		carryLabel.Text = ("%s %s 운반 중 → 내 기지의 빈 받침대로"):format(if stolen then "🦹 훔친" else "📦", if robot then robot.name else carrying)
+		carryLabel.Text = ("%s %s 운반 중 → 빈 받침대로\n무게 −%d · %s"):format(if stolen then "🦹 훔친" else "📦", if robot then robot.name else carrying, Config.carrySlow(carrying), speedText)
 		carryLabel.TextColor3 = if stolen then Color3.fromRGB(255, 140, 140) else white
 	else
-		carryLabel.Text = "벨트에서 로봇을 사서 기지에 놓으면 돈을 벌어요. 금고를 밟아 돈을 받으세요."
+		carryLabel.Text = "로봇을 기지에 놓으면 돈을 벌어요.\n" .. speedText .. " · 받침대를 채울수록 빨라져요"
 		carryLabel.TextColor3 = muted
 	end
 

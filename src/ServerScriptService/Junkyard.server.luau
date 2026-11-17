@@ -199,7 +199,18 @@ local function setPadLocks(base: Base)
 	end
 end
 
--- 걷기 속도·점프: 기절(EMP) > 느려짐(울타리) > 운반 중 > 터보 신발
+-- 로봇이 놓인 받침대 수 (등급 상관없이)
+local function filledPads(state: State): number
+	local count = 0
+	if state.base then
+		for _ in state.base.robots do
+			count += 1
+		end
+	end
+	return count
+end
+
+-- 걷기 속도·점프: 기절(EMP) > 느려짐(울타리) > 신발 + 받침대 − 로봇 무게
 local function applySpeed(state: State)
 	local character = state.player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -207,13 +218,11 @@ local function applySpeed(state: State)
 		return
 	end
 	local t = workspace:GetServerTimeNow()
-	local speed = upgradeValue(state, "Shoes")
+	local speed = Config.walkSpeed(upgradeValue(state, "Shoes"), filledPads(state), if state.carry then state.carry.robotId else nil)
 	if t < state.stunnedUntil then
 		speed = 0
 	elseif t < state.slowedUntil then
 		speed = Config.FenceSpeed
-	elseif state.carry then
-		speed = Config.CarrySpeed + (speed - 16) * 0.5 -- 신발 효과는 운반 중에 절반만
 	end
 	humanoid.WalkSpeed = speed
 	humanoid.JumpHeight = if t < state.stunnedUntil then 0 else 7.2
@@ -256,6 +265,7 @@ local function refreshIncome(state: State)
 	if state.incomeValue then
 		state.incomeValue.Value = math.floor(income)
 	end
+	applySpeed(state) -- 받침대 수가 바뀌면 속도도 바뀐다
 end
 
 -- 도감 ------------------------------------------------------------------------
