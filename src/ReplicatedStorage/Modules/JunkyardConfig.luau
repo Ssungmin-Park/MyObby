@@ -115,9 +115,9 @@ Config.GamePasses = {
 } :: { [string]: RobuxOffer }
 Config.ProductOrder = { "EmpPack", "InstantShield", "RareRain" }
 Config.Products = {
-	EmpPack = { name = "⚡ EMP 5개", desc = "돈 없이 쓰는 EMP 5번 (충전 시간은 같아요, 저장돼요)", id = 0, robux = 49 },
-	InstantShield = { name = "🛡 즉시 방어막", desc = "충전 중이어도 바로 방어막을 켜요", id = 0, robux = 25 },
-	RareRain = { name = "✨ 희귀 로봇 비 (서버 전체)", desc = "60초 동안 모두의 벨트에 희귀 이상 로봇이 5배 자주 나와요", id = 0, robux = 99 },
+	EmpPack = { name = "⚡ EMP 5개", desc = "돈 없이 쓰는 EMP 5번 (충전 시간은 같아요, 저장돼요)", id = 3732684191, robux = 49 },
+	InstantShield = { name = "🛡 즉시 방어막", desc = "충전 중이어도 바로 방어막을 켜요", id = 3732684298, robux = 25 },
+	RareRain = { name = "✨ 희귀 로봇 비 (서버 전체)", desc = "60초 동안 모두의 벨트에 희귀 이상 로봇이 5배 자주 나와요", id = 3732684420, robux = 99 },
 } :: { [string]: RobuxOffer }
 Config.EmpPackCharges = 5
 Config.VipShieldBonus = 30 -- 초

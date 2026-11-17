@@ -189,6 +189,8 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 | 개발자 상품 | `InstantShield` | 🛡 즉시 방어막 | 충전 중이어도 방어막 켜기, 켜져 있으면 시간 이어 붙임 | 25 |
 | 개발자 상품 | `RareRain` | ✨ 희귀 로봇 비 | 서버 전체 60초 동안 희귀 이상 가중치 ×5, 산 사람 이름 전체 알림, workspace 속성 `RainUntil` | 99 |
 
+**등록된 개발자 상품 id (2026-11-17 사용자 생성, Roblox 조회로 확인: 판매 중):** `InstantShield` = 3732684298 (25 R$), `EmpPack` = 3732684191 (49 R$), `RareRain` = 3732684420 (99 R$). 상점 버튼에 실제 가격 표시 확인. 상품 설명은 비어 있음(사용자가 Creator Hub에서 입력 예정). **게임패스 3종은 사용자가 보류** → 상점에 "준비 중". 실제 Studio 테스트 구매(결제창에서 사용자가 직접 누름)는 아직.
+
 **계획에서 바꾼 점:** VIP 기지는 계획의 "받침대 +4" 대신 "방어막 +30초·충전 절반·VIP 표시"로 했다(맵 기지에 받침대 15칸 이상 둘 자리가 없음).
 
 **결제 처리 `ServerScriptService/JunkyardStore`** (ModuleScript)
