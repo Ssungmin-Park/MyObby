@@ -129,7 +129,7 @@ local function renderContest(t: number)
 		else ("나 · %g점"):format(score)
 end
 -- 저장 상태 (오른쪽 위 작은 글씨): 불러오는 중 / 저장 안 됨
-local saveLabel = label(panel, UDim2.new(1, -112, 0, 6), UDim2.fromOffset(100, 18), 12, Color3.fromRGB(255, 150, 150))
+local saveLabel = label(panel, UDim2.new(1, -150, 0, 6), UDim2.fromOffset(100, 18), 12, Color3.fromRGB(255, 150, 150)) -- 오른쪽 끝은 🔊 버튼 자리
 saveLabel.TextXAlignment = Enum.TextXAlignment.Right
 
 -- 도감 창
@@ -906,6 +906,121 @@ local function syncShieldTimers()
 		end
 	end
 end
+
+-- 소리 (2026-11-17) ----------------------------------------------------------------
+-- 소리는 이 화면에서만 재생한다(서버는 알림·속성만 보낸다). 오디오 번호는 JunkyardConfig.Sounds.
+-- 🔊 버튼: 모두 켬 → 음악 끔 → 모두 끔 (이번 접속 동안만 기억)
+local SoundService = game:GetService("SoundService")
+local soundMode = 0 -- 0 모두 켬, 1 음악 끔, 2 모두 끔
+local soundFolder = Instance.new("Folder")
+soundFolder.Name = "JunkyardSounds"
+soundFolder.Parent = SoundService
+local function makeSound(id: string, parent: Instance): Sound
+	local info = Config.Sounds[id]
+	local sound = Instance.new("Sound")
+	sound.Name = id
+	sound.SoundId = "rbxassetid://" .. tostring(info.asset)
+	sound.Volume = info.volume
+	sound.Looped = info.loop == true
+	sound.Parent = parent
+	return sound
+end
+local effects: { [string]: Sound } = {}
+for _, id in { "Buy", "Place", "Collect", "Alarm", "Shield", "Fanfare" } do
+	effects[id] = makeSound(id, soundFolder)
+end
+local music = makeSound("Music", soundFolder)
+-- 벨트 소리는 벨트 파트에 붙여 가까이 갈수록 커지게 한다
+local beltSound = makeSound("Belt", beltPart)
+beltSound.RollOffMode = Enum.RollOffMode.InverseTapered
+beltSound.RollOffMinDistance = 12
+beltSound.RollOffMaxDistance = 90
+
+local function play(id: string)
+	local sound = effects[id]
+	if sound and soundMode < 2 then
+		sound:Play()
+	end
+end
+local function applySoundMode()
+	local effectsOn = soundMode < 2
+	local musicOn = soundMode == 0
+	if musicOn and gui.Enabled then
+		if not music.IsPlaying then
+			music:Play()
+		end
+	else
+		music:Stop()
+	end
+	if effectsOn and gui.Enabled then
+		if not beltSound.IsPlaying then
+			beltSound:Play()
+		end
+	else
+		beltSound:Stop()
+	end
+end
+
+local muteButton = button(panel, "🔊", UDim2.new(1, -42, 0, 6), UDim2.fromOffset(34, 28), Color3.fromRGB(52, 64, 76))
+muteButton.TextSize = 16
+local muteTexts = { "🔊", "🎵✕", "🔇" }
+muteButton.Activated:Connect(function()
+	soundMode = (soundMode + 1) % 3
+	muteButton.Text = muteTexts[soundMode + 1]
+	applySoundMode()
+end)
+gui:GetPropertyChangedSignal("Enabled"):Connect(applySoundMode)
+
+-- 알림 종류로 고르는 소리: 돈 받기 → 동전, 경보 → 경보음
+notifyRemote.OnClientEvent:Connect(function(kind: unknown)
+	if kind == "Money" then
+		play("Collect")
+	elseif kind == "Alarm" then
+		play("Alarm")
+	end
+end)
+-- 속성 변화로 고르는 소리 (접속 직후 불러오기 중에는 내지 않는다)
+local soundReadyAt = os.clock() + 6
+local function ready(): boolean
+	return os.clock() > soundReadyAt and player:GetAttribute("Loading") ~= true
+end
+local lastCarry = player:GetAttribute("Carrying")
+player:GetAttributeChangedSignal("Carrying"):Connect(function()
+	local carrying = player:GetAttribute("Carrying")
+	local was = lastCarry
+	lastCarry = carrying
+	if not ready() then
+		return
+	end
+	if typeof(carrying) == "string" and carrying ~= "" and (was == nil or was == "") and player:GetAttribute("CarryStolen") ~= true then
+		play("Buy") -- 벨트에서 샀다
+	elseif (carrying == nil or carrying == "") and typeof(was) == "string" and was ~= "" then
+		play("Place") -- 내려놓았다 (받침대 배치)
+	end
+end)
+local lastLocked = (player:GetAttribute("LockedUntil") or 0) :: number
+player:GetAttributeChangedSignal("LockedUntil"):Connect(function()
+	local value = (player:GetAttribute("LockedUntil") or 0) :: number
+	if ready() and value > lastLocked + 1 and value > workspace:GetServerTimeNow() then
+		play("Shield")
+	end
+	lastLocked = value
+end)
+local lastRebirth = (player:GetAttribute("Rebirth") or 0) :: number
+player:GetAttributeChangedSignal("Rebirth"):Connect(function()
+	local value = (player:GetAttribute("Rebirth") or 0) :: number
+	if ready() and value > lastRebirth then
+		play("Fanfare")
+	end
+	lastRebirth = value
+end)
+workspace:GetAttributeChangedSignal("ContestType"):Connect(function()
+	local kind = workspace:GetAttribute("ContestType")
+	if ready() and typeof(kind) == "string" and kind ~= "" then
+		play("Fanfare") -- 서버 대회 시작
+	end
+end)
+task.delay(2, applySoundMode)
 
 local acc = 0
 RunService.Heartbeat:Connect(function(dt)

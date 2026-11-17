@@ -11,9 +11,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — 맵 2차 꾸미기(B-20): 바깥 흙바닥·고물 산, 기지 사이 상자·드럼통, 가로등, 기지 벽 재질, HUD 패널 배경 진하게 |
+| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — **소리(B-21)**, 그 전 맵 2차 꾸미기(B-20) |
 | 작업 시점 | 2026-11-17 |
-| 다음 작업 AI | ① 사용자 화면 확인(2차 꾸미기) → 스크린샷 교체(선택) ② 2인 로컬 회귀(훔치기·붙잡기·방어막 밀어내기) ③ **소리**(계획 먼저) → 협력 거대 로봇 → 공개 준비 |
+| 다음 작업 AI | ① 사용자: 소리 들어 보고 바꿀 것 알려 주기, 2차 꾸미기 색 확인 ② 2인 로컬 회귀(훔치기·붙잡기·방어막 밀어내기·경보음) ③ **협력 거대 로봇**(계획 먼저) → 공개 준비(썸네일·아이콘·설명) |
 | 게임 이름 | 마이오비(Studio Place 이름) / **로봇 고물상 타이쿤 단독 운영**. 오비와 로봇 작업장은 `ServerStorage/ArchivedModes`에 보관 |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -22,7 +22,7 @@
 | Studio 모드 | **Edit 모드**(2026-11-17 MCP 확인) |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-17 Claude Code: `Workspace/Junkyard/Decor/Phase2` 509파트(tools/decorate-junkyard-2.luau), 기지 벽 40개 색·재질(원래 값은 속성 OrigColor·OrigMaterial), `JunkyardHud` 패널·대회 패널 BackgroundTransparency 0.12→0.04(38932 B / 706360997, Studio 일치) |
+| 마지막 게임 수정 | 2026-11-17 Claude Code: 소리 — `JunkyardConfig.Sounds`(17878 B / 382009829), `JunkyardHud` 소리 재생·🔊 버튼(43066 B / 585923343), Studio 일치. 그 전: 고물 산·기지 벽 색 어둡게, `Decor/Phase2` |
 | Studio 저장 상태 | 대회 변경은 사용자가 Ctrl+S로 저장한 뒤 재시작까지 확인했다. 도감 완성 보상은 Studio Edit에 반영했고 클라우드 저장 여부는 미확인 |
 | 휴대폰 미리보기 | 사용자 직접 확인(2026-11-17). Studio 휴대폰 미리보기에서 상점·도감·대회 상자·안내 띠에 문제 없음 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
@@ -177,6 +177,23 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
   - 떠나 있는 동안 기지는 서버에서 비워지므로 아무도 훔칠 수 없다. 기지 6개가 꽉 차서 기지가 없는 플레이어는 불러오지도 저장하지도 않는다.
 
 **클라이언트 `StarterPlayerScripts/JunkyardHud`** — 잠긴 기지마다 위에 "🛡 방어막 N초" 빌보드(모두에게 보임, 300스터드), 왼쪽 위 패널(돈, 초당·도감 배수, 운반 상태, 방어막 버튼, 도감 버튼), 도감 창(18칸 + 세트 보너스 진행), 위쪽 알림, 벨트 로봇 직접 그리기와 구매 프롬프트, 받침대 버튼 문구(내 기지 "팔기 +금액" / 남의 기지 "훔치기"). Mode가 Junkyard일 때만 보인다.
+
+### B-21. 소리 (2026-11-17, 사용자 승인 · 혼자 Play 확인, 실제로 들어 보는 것은 사용자)
+
+- 오디오는 Roblox 공식 라이브러리만: 효과음 Pro Sound Effects, 음악·짧은 연주 APM Music. 번호는 `JunkyardConfig.Sounds`(asset·volume·loop) 한 곳에 있다.
+  | id | asset | 용도 |
+  |---|---|---|
+  | Music | 1837768600 (APM "Gnomes (b)", 126초) | 배경 음악, 반복, 볼륨 0.18 |
+  | Belt | 9113910362 (Conveyor Belt 2, 72초) | 벨트 기계음, 벨트 파트에 붙어 12~90스터드에서 작아짐 |
+  | Buy | 9113704038 (동전 넣기) | 벨트에서 샀을 때(Carrying이 빈 값 → 로봇, 훔친 것 제외) |
+  | Place | 9116541944 (쇠 부딪힘) | 들고 있던 로봇을 내려놓았을 때(Carrying → 빈 값) |
+  | Collect | 9113849492 (동전 짤랑) | 알림 종류 Money(금고 수령 등) |
+  | Alarm | 9113085764 (경보 부저) | 알림 종류 Alarm(내 기지 침입) |
+  | Shield | 9042544754 (APM 짧은 전자음) | 플레이어 LockedUntil이 늘었을 때 |
+  | Fanfare | 9047102381 (APM 짧은 승리 연주) | 환생 단계 증가, 서버 대회 시작(ContestType) |
+- 재생은 클라이언트(`JunkyardHud`)에서만. 서버 코드 변경 없음. 접속 후 6초·불러오는 중에는 효과음을 내지 않는다(저장 복원 때 소리 폭주 방지).
+- 패널 오른쪽 위 🔊 버튼: 모두 켬 → 🎵✕(음악만 끔) → 🔇(모두 끔). **이번 접속 동안만** 기억(Roblox 클라이언트에는 개인 저장소가 없어 저장하려면 서버 저장 필드가 필요 — 필요하면 `Junkyard_v1`에 필드 추가). 저장 상태 글씨는 버튼 자리 때문에 왼쪽으로 옮김.
+- 확인(혼자 Play): 8개 모두 IsLoaded=true(길이 1.0~126초), 음악·벨트 재생 중, 방어막→Shield, 금고→Collect, 구매→Buy, 배치→Place 재생, 서버·클라이언트 오류·경고 0. **미검증:** 실제 소리 크기·어울림(사용자가 들어 봐야 함), Alarm(2인 필요), Fanfare(환생·대회), 🔊 버튼 클릭(코드만).
 
 ### B-20. 맵 꾸미기 (2026-11-17, Codex 제작 · Claude Code 확인 — 스크린샷·2인 회귀 남음)
 

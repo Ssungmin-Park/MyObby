@@ -377,4 +377,17 @@ function Config.formatMoney(value: number): string
 	return tostring(value)
 end
 
+-- 소리 (2026-11-17): Roblox 공식 라이브러리(Pro Sound Effects 효과음, APM Music 음악)만 쓴다.
+-- 바꾸고 싶으면 asset 번호만 바꾼다. volume은 0~1. loop = 계속 반복
+Config.Sounds = {
+	Music = { asset = 1837768600, volume = 0.18, loop = true }, -- APM "Gnomes (b)"
+	Belt = { asset = 9113910362, volume = 0.35, loop = true }, -- 컨베이어 벨트 기계음 (벨트 근처에서만 들림)
+	Buy = { asset = 9113704038, volume = 0.6 }, -- 동전 넣는 소리
+	Place = { asset = 9116541944, volume = 0.5 }, -- 쇠 부딪히는 소리
+	Collect = { asset = 9113849492, volume = 0.6 }, -- 동전 짤랑
+	Alarm = { asset = 9113085764, volume = 0.7 }, -- 경보 부저
+	Shield = { asset = 9042544754, volume = 0.45 }, -- 짧은 전자음 (APM "Do Me A Solid - Tag2")
+	Fanfare = { asset = 9047102381, volume = 0.55 }, -- 짧은 승리 연주 (APM "Game Day Warrior Sting 1")
+}
+
 return Config
