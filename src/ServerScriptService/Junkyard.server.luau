@@ -597,7 +597,56 @@ local function variantLock(state: State, key: string): string?
 	return nil
 end
 
--- 들고 가는 로봇 빼앗기: 길게 누르기 확인 → 거리·상태 확인 → 들고 있던 사람에게서 가져온다
+-- 되찾을 때 방망이를 휘두르는 모습: 오른손에 방망이를 잠깐 쥐고, 팔을 머리 위에서 앞으로 내리친다 (R15 팔 동작, R6는 방망이만)
+local function swingBat(player: Player)
+	local character = player.Character
+	if not character or character:GetAttribute("Swinging") then
+		return
+	end
+	local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+	if not hand or not hand:IsA("BasePart") then
+		return
+	end
+	character:SetAttribute("Swinging", true)
+	local bat = Instance.new("Part")
+	bat.Name = "JunkyardBat"
+	bat.Size = Vector3.new(0.45, 3.4, 0.45)
+	bat.Color = Color3.fromRGB(150, 100, 55)
+	bat.Material = Enum.Material.Wood
+	bat.CanCollide = false
+	bat.CanQuery = false
+	bat.CanTouch = false
+	bat.Massless = true
+	local weld = Instance.new("Weld")
+	weld.Part0 = hand
+	weld.Part1 = bat
+	weld.C0 = CFrame.new(0, -hand.Size.Y / 2 - 1.5, 0) -- 손에서 팔 방향으로 뻗는다
+	weld.Parent = bat
+	bat.Parent = character
+	-- 팔 동작: 로블록스 기본 캐릭터의 "도구 휘두르기" 동작을 쓴다 (캐릭터 Animate 안의 toolslash, 없으면 R15 기본 번호)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+	if animator then
+		local animate = character:FindFirstChild("Animate")
+		local slash = animate and animate:FindFirstChild("toolslash")
+		local source = slash and slash:FindFirstChildOfClass("Animation")
+		local animation = Instance.new("Animation")
+		animation.AnimationId = if source then source.AnimationId else "rbxassetid://522635514"
+		local ok, track = pcall(function()
+			return animator:LoadAnimation(animation)
+		end)
+		if ok and track then
+			track.Priority = Enum.AnimationPriority.Action
+			track:Play(0.05, 1, 1.3)
+		end
+	end
+	task.delay(0.75, function()
+		bat:Destroy()
+		character:SetAttribute("Swinging", nil)
+	end)
+end
+
+-- 들고 가는 로봇 버튼: 주인·빼앗긴 사람은 한 번 눌러 "되찾기"(방망이), 다른 사람은 길게 눌러 "빼앗기"
 snatchHandler = function(player: Player, target: State, prompt: ProximityPrompt)
 	local state = states[player]
 	if not state or state == target then
@@ -605,34 +654,37 @@ snatchHandler = function(player: Player, target: State, prompt: ProximityPrompt)
 	end
 	local began = state.holdStart[prompt]
 	state.holdStart[prompt] = nil
-	local required = if now() < state.glovesUntil then Config.GlovesHold else Config.StealHold
-	if not began or os.clock() - began < required - 0.25 then
-		return
-	end
 	local carry = target.carry
 	local root = rootOf(player)
 	local targetRoot = rootOf(target.player)
 	if not carry or not root or not targetRoot or (root.Position - targetRoot.Position).Magnitude > Config.SnatchRange then
 		return
 	end
-	-- 내 받침대에서 훔쳐 가는 로봇: 주인이 길게 눌러 되찾는다 (받침대로 돌아간다)
+	-- 내 받침대에서 훔쳐 가는 로봇: 주인이 한 번 눌러 방망이로 되찾는다 (받침대로 돌아간다)
 	if carry.fromBase then
 		if carry.fromBase.owner == player then
-			returnStolen(target, "주인이 되찾음")
+			swingBat(player)
+			returnStolen(target, "방망이로 되찾음")
 		else
 			notify(player, "Alert", "받침대에서 훔친 로봇은 주인만 되찾을 수 있어요.")
 		end
 		return
 	end
-	-- 나에게서 빼앗아 간 로봇: 길게 눌러 되찾는다 (빼앗긴 직후 잠깐은 불가)
+	-- 나에게서 빼앗아 간 로봇: 한 번 눌러 방망이로 되찾는다 (빼앗긴 직후 잠깐은 불가)
 	if carry.snatchedFrom == player then
 		if now() < (carry.protectUntil or 0) then
 			notify(player, "Alert", "잠깐! 조금 뒤에 되찾을 수 있어요.")
 		elseif state.carry then
 			notify(player, "Alert", "이미 로봇을 들고 있어요.")
 		else
-			returnSnatched(target, "길게 눌러 되찾음")
+			swingBat(player)
+			returnSnatched(target, "방망이로 되찾음")
 		end
+		return
+	end
+	-- 빼앗기는 실제로 길게 눌렀는지 확인 (도둑 장갑이면 짧게)
+	local required = if now() < state.glovesUntil then Config.GlovesHold else Config.StealHold
+	if not began or os.clock() - began < required - 0.25 then
 		return
 	end
 	if not state.base or state.loading or player:GetAttribute("Mode") ~= "Junkyard" or now() < state.stunnedUntil then
@@ -670,7 +722,7 @@ snatchHandler = function(player: Player, target: State, prompt: ProximityPrompt)
 	end
 	syncCarryAttributes(state)
 	notify(player, "Info", ("%s을(를) 빼앗았어요! 되찾기 전에 내 기지로!"):format(robotLabel(robotId)))
-	notify(target.player, "Stolen", ("⚠ %s님이 들고 가던 %s을(를) 빼앗았어요! 쫓아가서 길게 눌러 되찾으세요!"):format(player.DisplayName, robotLabel(robotId)))
+	notify(target.player, "Stolen", ("⚠ %s님이 들고 가던 %s을(를) 빼앗았어요! 쫓아가서 눌러서 되찾으세요!"):format(player.DisplayName, robotLabel(robotId)))
 end
 
 -- 기지 배정·해제 ------------------------------------------------------------------
@@ -940,7 +992,7 @@ local function steal(state: State, base: Base, padIndex: number)
 	end
 	notify(state.player, "Info", ("%s을(를) 훔쳤어요! 주인에게 잡히기 전에 내 기지로!"):format(robotLabel(robotId)))
 	-- "Stolen": 화면에서는 빨간 알림 + 경보음 (경보기 업그레이드 없이도 도둑맞는 순간엔 울린다)
-	notify(base.owner, "Stolen", ("⚠ %s님이 내 %s을(를) 훔쳐 가요! 쫓아가서 로봇을 길게 눌러 되찾으세요!"):format(state.player.DisplayName, robotLabel(robotId)))
+	notify(base.owner, "Stolen", ("⚠ %s님이 내 %s을(를) 훔쳐 가요! 쫓아가서 로봇을 눌러 되찾으세요!"):format(state.player.DisplayName, robotLabel(robotId)))
 end
 
 -- 상점 ------------------------------------------------------------------------

@@ -28,15 +28,16 @@ local function part(name: string, size: Vector3, position: Vector3, color: Color
 	return object
 end
 
-part("Bezel", Vector3.new(52, 20, 1), Vector3.new(296.6, 65, 100), Color3.fromRGB(38, 40, 44), Enum.Material.DiamondPlate)
-part("Screen", Vector3.new(50, 18, 0.4), Vector3.new(295.9, 65, 100), Color3.fromRGB(8, 10, 12), Enum.Material.SmoothPlastic)
+part("Bezel", Vector3.new(52, 20, 1), Vector3.new(296.4, 65, 100), Color3.fromRGB(38, 40, 44), Enum.Material.DiamondPlate)
+-- 화면은 테두리보다 앞(+X, 고물상 쪽)에 있어야 글씨가 보인다 (2026-11-18 테두리 뒤에 있어 검게 보이던 문제 수정)
+part("Screen", Vector3.new(50, 18, 0.4), Vector3.new(297.1, 65, 100), Color3.fromRGB(8, 10, 12), Enum.Material.SmoothPlastic)
 for _, z in { 78, 122 } do
-	part("Pole", Vector3.new(1.2, 16, 1.2), Vector3.new(297.2, 48.5, z), Color3.fromRGB(70, 66, 60), Enum.Material.CorrodedMetal)
+	part("Pole", Vector3.new(1.2, 16, 1.2), Vector3.new(296.2, 48.5, z), Color3.fromRGB(70, 66, 60), Enum.Material.CorrodedMetal)
 end
 -- 지붕 위 감시 카메라 장식
 local cameraBody = part("Camera", Vector3.new(2, 1.6, 3.2), Vector3.new(296.2, 76, 100), Color3.fromRGB(225, 225, 220), Enum.Material.SmoothPlastic)
-cameraBody.CFrame = CFrame.new(295.6, 76, 100) * CFrame.Angles(0, math.rad(-90), math.rad(-15))
-local lamp = part("CameraLamp", Vector3.new(0.4, 0.4, 0.4), Vector3.new(294.3, 76.4, 100), Color3.fromRGB(255, 40, 40), Enum.Material.Neon)
+cameraBody.CFrame = CFrame.new(297.2, 76, 100) * CFrame.Angles(0, math.rad(90), math.rad(-15))
+local lamp = part("CameraLamp", Vector3.new(0.4, 0.4, 0.4), Vector3.new(298.6, 75.6, 100), Color3.fromRGB(255, 40, 40), Enum.Material.Neon)
 lamp.Shape = Enum.PartType.Ball
 
 model.Parent = rankings

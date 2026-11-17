@@ -1304,8 +1304,8 @@ local function styleCarryPrompt(object: ProximityPrompt, carrier: Player?)
 	local mine = ownerId == player.UserId or victimId == player.UserId
 	local gloves = workspace:GetServerTimeNow() < ((player:GetAttribute("GlovesUntil") or 0) :: number)
 	object.Enabled = carrier ~= player and (ownerId == 0 or ownerId == player.UserId)
-	object.ActionText = if mine then "되찾기" else "빼앗기"
-	object.HoldDuration = if gloves then Config.GlovesHold else Config.StealHold
+	object.ActionText = if mine then "🏏 되찾기" else "빼앗기"
+	object.HoldDuration = if mine then 0 elseif gloves then Config.GlovesHold else Config.StealHold -- 되찾기는 한 번 누르기
 end
 local function syncSnatchPrompts()
 	for _, other in Players:GetPlayers() do
