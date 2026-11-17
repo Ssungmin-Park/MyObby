@@ -919,6 +919,34 @@ local function syncPasses(state: State)
 	state.player:SetAttribute("EmpCharges", state.empCharges)
 end
 
+-- 희귀 로봇 비 확정 선물: 희귀 이상 등급 중에서 원래 가중치 비율로 뽑는다 (확률은 상점에 공개)
+local function rollRainGift(): string
+	local total = 0
+	for _, id in Config.RarityOrder do
+		if Config.RainRarities[id] then
+			total += Config.Rarities[id].weight
+		end
+	end
+	local roll = math.random() * total
+	local rarity = "Rare"
+	for _, id in Config.RarityOrder do
+		if Config.RainRarities[id] then
+			roll -= Config.Rarities[id].weight
+			if roll <= 0 then
+				rarity = id
+				break
+			end
+		end
+	end
+	local candidates = {}
+	for _, robot in Config.Robots do
+		if robot.rarity == rarity then
+			table.insert(candidates, robot.id)
+		end
+	end
+	return candidates[math.random(#candidates)]
+end
+
 -- 개발자 상품 지급 (JunkyardStore가 영수증 중복을 막은 뒤 부른다). 지급하면 true
 local function grantProduct(player: Player, key: string): boolean
 	local state = states[player]
@@ -940,6 +968,21 @@ local function grantProduct(player: Player, key: string): boolean
 		local untilTime = Belt.startRain(Config.RainDuration)
 		workspace:SetAttribute("RainUntil", untilTime)
 		notifyAll(("✨ %s님이 희귀 로봇 비를 내렸어요! %d초 동안 모두의 벨트에 희귀 로봇이 %d배!"):format(player.DisplayName, Config.RainDuration, Config.RainMultiplier))
+		-- 산 사람에게는 희귀 이상 로봇 1개를 바로 기지에 준다. 받침대가 꽉 차면 그 로봇 가격만큼 돈으로 준다
+		local giftId = rollRainGift()
+		local base = state.base
+		local padIndex = if base then freePad(base) else nil
+		if base and padIndex then
+			setPadRobot(base, padIndex, giftId)
+			addToCatalog(state, giftId)
+			refreshIncome(state)
+			notify(player, "Info", ("🎁 희귀 로봇 비 선물: %s이(가) 기지에 도착했어요!"):format(robotLabel(giftId)))
+		else
+			local rarity = Config.rarityOf(giftId)
+			local value = if rarity then rarity.price else 0
+			setMoney(state, state.money + value)
+			notify(player, "Info", ("🎁 받침대가 꽉 차서 %s 대신 %s 돈을 드렸어요."):format(robotLabel(giftId), Config.formatMoney(value)))
+		end
 	else
 		return false
 	end

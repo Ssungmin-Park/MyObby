@@ -159,14 +159,14 @@ listLayout.Parent = list
 
 local function addEntry(kind: string, id: string, category: string, name: string, desc: string)
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, -8, 0, 84)
+	row.Size = UDim2.new(1, -8, 0, 96)
 	row.BackgroundColor3 = Color3.fromRGB(36, 44, 54)
 	row.Parent = list
 	corner(row, 8)
 	label(row, UDim2.fromOffset(10, 4), UDim2.new(1, -130, 0, 20), 15, white).Text = name
 	local descLabel = label(row, UDim2.fromOffset(10, 24), UDim2.new(1, -130, 0, 28), 11, muted)
 	descLabel.Text = desc
-	local info = label(row, UDim2.fromOffset(10, 50), UDim2.new(1, -130, 0, 30), 11, Color3.fromRGB(150, 230, 255))
+	local info = label(row, UDim2.fromOffset(10, 50), UDim2.new(1, -130, 0, 42), 11, Color3.fromRGB(150, 230, 255))
 	local buy = button(row, "", UDim2.new(1, -114, 0.5, -20), UDim2.fromOffset(106, 40), Color3.fromRGB(60, 140, 80))
 	buy.Activated:Connect(function()
 		if kind == "Pass" or kind == "Product" then
@@ -212,7 +212,14 @@ do
 	for _, rarityId in Config.RarityOrder do
 		table.insert(parts, ("%s %.1f→%.1f%%"):format(Config.Rarities[rarityId].name, normal[rarityId], rain[rarityId]))
 	end
-	oddsText = "확률 공개: " .. table.concat(parts, " · ")
+	local gift = Config.rainGiftOdds()
+	local giftParts = {}
+	for _, rarityId in Config.RarityOrder do
+		if gift[rarityId] then
+			table.insert(giftParts, ("%s %.1f%%"):format(Config.Rarities[rarityId].name, gift[rarityId]))
+		end
+	end
+	oddsText = "확률 공개(평소→비): " .. table.concat(parts, " · ") .. "\n확정 선물: " .. table.concat(giftParts, " · ")
 end
 shopButton.Activated:Connect(function()
 	shop.Visible = not shop.Visible

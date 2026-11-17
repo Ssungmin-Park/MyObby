@@ -117,7 +117,7 @@ Config.ProductOrder = { "EmpPack", "InstantShield", "RareRain" }
 Config.Products = {
 	EmpPack = { name = "⚡ EMP 5개", desc = "돈 없이 쓰는 EMP 5번 (충전 시간은 같아요, 저장돼요)", id = 3732684191, robux = 49 },
 	InstantShield = { name = "🛡 즉시 방어막", desc = "충전 중이어도 바로 방어막을 켜요", id = 3732684298, robux = 25 },
-	RareRain = { name = "✨ 희귀 로봇 비 (서버 전체)", desc = "60초 동안 모두의 벨트에 희귀 이상 로봇이 5배 자주 나와요", id = 3732684420, robux = 99 },
+	RareRain = { name = "✨ 희귀 로봇 비 (서버 전체)", desc = "60초 동안 모두의 벨트에 희귀 이상 5배 + 나에게는 희귀 이상 로봇 1개 확정 선물", id = 3732684420, robux = 99 },
 } :: { [string]: RobuxOffer }
 Config.EmpPackCharges = 5
 Config.VipShieldBonus = 30 -- 초
@@ -128,6 +128,23 @@ Config.IncomePassMultiplier = 2
 Config.RainDuration = 60
 Config.RainMultiplier = 5
 Config.RainRarities = { Rare = true, Epic = true, Legendary = true, Mythic = true }
+
+-- 희귀 로봇 비를 산 사람에게 주는 확정 선물 로봇의 등급 확률(%) (RainRarities 안에서 원래 가중치 비율)
+function Config.rainGiftOdds(): { [string]: number }
+	local total = 0
+	for _, id in Config.RarityOrder do
+		if Config.RainRarities[id] then
+			total += Config.Rarities[id].weight
+		end
+	end
+	local odds = {}
+	for _, id in Config.RarityOrder do
+		if Config.RainRarities[id] then
+			odds[id] = Config.Rarities[id].weight / total * 100
+		end
+	end
+	return odds
+end
 
 -- 확률 공개용: 등급별 벨트 등장 확률(%). rain이면 희귀 로봇 비가 내리는 중
 function Config.rarityOdds(rain: boolean): { [string]: number }
