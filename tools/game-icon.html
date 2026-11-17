@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Game Icon</title>
+<style>
+  body { margin: 0; padding: 16px; background: #222; display: flex; gap: 16px; align-items: flex-start; }
+  canvas { width: 384px; height: 384px; border-radius: 16px; }
+  canvas.small { width: 128px; height: 128px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<script>
+// 로봇 고물상 타이쿤 게임 아이콘 (512×512). 브라우저에서 열면 그려지고, window.iconData에 PNG가 담긴다.
+const S = 512;
+function draw(variant) {
+  const canvas = document.createElement("canvas");
+  canvas.width = S; canvas.height = S;
+  const ctx = canvas.getContext("2d");
+
+  // 노을 하늘
+  const sky = ctx.createLinearGradient(0, 0, 0, S);
+  sky.addColorStop(0, "#3b2a6b");
+  sky.addColorStop(0.45, "#d8653a");
+  sky.addColorStop(0.75, "#f2b24c");
+  sky.addColorStop(1, "#5a3a22");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, S, S);
+
+  // 해와 빛줄기
+  const sun = ctx.createRadialGradient(S / 2, S * 0.5, 10, S / 2, S * 0.5, 230);
+  sun.addColorStop(0, "rgba(255, 236, 170, 0.95)");
+  sun.addColorStop(0.35, "rgba(255, 200, 110, 0.5)");
+  sun.addColorStop(1, "rgba(255, 160, 80, 0)");
+  ctx.fillStyle = sun;
+  ctx.fillRect(0, 0, S, S);
+  ctx.save();
+  ctx.translate(S / 2, S * 0.5);
+  ctx.globalAlpha = 0.1;
+  ctx.fillStyle = "#fff";
+  for (let i = 0; i < 14; i++) {
+    ctx.rotate(Math.PI / 7);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-20, -S); ctx.lineTo(20, -S); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+
+  // 고물 산 실루엣 (양옆과 아래)
+  ctx.fillStyle = "#2b1d16";
+  ctx.beginPath();
+  ctx.moveTo(0, S);
+  const ridge = [[0, 330], [40, 300], [70, 318], [110, 280], [150, 330], [175, 360], [230, 390], [282, 392], [338, 360], [362, 330], [400, 288], [436, 312], [470, 285], [512, 320], [512, 512]];
+  for (const [x, y] of ridge) ctx.lineTo(x, y);
+  ctx.closePath(); ctx.fill();
+  // 산 위로 삐죽 나온 고철 막대
+  ctx.strokeStyle = "#2b1d16"; ctx.lineWidth = 9; ctx.lineCap = "round";
+  [[60, 300, 40, 250], [120, 285, 145, 238], [410, 292, 430, 240], [470, 290, 452, 248]].forEach(([a, b, c, d]) => {
+    ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.stroke();
+  });
+
+  // 크레인 (오른쪽 위)
+  ctx.strokeStyle = "rgba(43, 29, 22, 0.85)"; ctx.lineWidth = 8;
+  ctx.beginPath(); ctx.moveTo(445, 300); ctx.lineTo(445, 70); ctx.lineTo(300, 70); ctx.stroke();
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(330, 70); ctx.lineTo(330, 120); ctx.stroke();
+  ctx.fillStyle = "rgba(43, 29, 22, 0.85)";
+  ctx.fillRect(316, 118, 28, 12);
+
+  // 주인공 로봇
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.shadowColor = "rgba(0, 0, 0, 0.55)"; ctx.shadowBlur = 30; ctx.shadowOffsetY = 12;
+  ctx.font = "270px 'Segoe UI Emoji'";
+  ctx.fillText("🤖", S / 2, S * 0.43);
+  ctx.shadowColor = "transparent";
+
+  // 돈과 반짝이
+  ctx.font = "92px 'Segoe UI Emoji'";
+  ctx.fillText("💰", 100, 200);
+  ctx.font = "70px 'Segoe UI Emoji'";
+  ctx.fillText("✨", 420, 175);
+  ctx.fillText("🔧", 410, 290);
+
+  // 제목
+  const title = "로봇 고물상";
+  let size = 96;
+  ctx.font = `900 ${size}px 'Malgun Gothic', sans-serif`;
+  while (ctx.measureText(title).width > S - 50) { size -= 2; ctx.font = `900 ${size}px 'Malgun Gothic', sans-serif`; }
+  const ty = S - 98;
+  ctx.lineJoin = "round";
+  ctx.lineWidth = 22; ctx.strokeStyle = "#1c1210";
+  ctx.strokeText(title, S / 2, ty);
+  const gold = ctx.createLinearGradient(0, ty - 50, 0, ty + 50);
+  gold.addColorStop(0, "#fff3a8"); gold.addColorStop(0.55, "#ffc93c"); gold.addColorStop(1, "#e08a1a");
+  ctx.fillStyle = gold;
+  ctx.fillText(title, S / 2, ty);
+
+  // 부제 띠
+  const sub = "TYCOON";
+  ctx.font = "900 44px 'Segoe UI', 'Malgun Gothic', sans-serif";
+  const w = ctx.measureText(sub).width + 56;
+  ctx.fillStyle = "#c2381f";
+  ctx.beginPath();
+  const bx = S / 2 - w / 2, by = S - 52, bh = 46;
+  ctx.moveTo(bx + 14, by - bh / 2); ctx.lineTo(bx + w - 14, by - bh / 2); ctx.lineTo(bx + w, by); ctx.lineTo(bx + w - 14, by + bh / 2);
+  ctx.lineTo(bx + 14, by + bh / 2); ctx.lineTo(bx, by); ctx.closePath(); ctx.fill();
+  ctx.lineWidth = 4; ctx.strokeStyle = "#1c1210"; ctx.stroke();
+  ctx.fillStyle = "#fff";
+  ctx.fillText(sub, S / 2, by + 2);
+
+  canvas.className = variant;
+  document.body.appendChild(canvas);
+  return canvas.toDataURL("image/png");
+}
+
+document.fonts.ready.then(() => {
+  window.iconData = draw("");
+  draw("small"); // 작게 보였을 때 모습 미리보기
+  window.iconReady = true;
+});
+</script>
+</body>
+</html>
