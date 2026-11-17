@@ -214,7 +214,7 @@ local function setPadLocks(base: Base)
 		pad.Color = if locked then Color3.fromRGB(40, 44, 50) else Color3.fromRGB(70, 78, 88)
 		local prompt = pad:FindFirstChild("RobotPrompt")
 		if prompt and prompt:IsA("ProximityPrompt") then
-			prompt.Enabled = not hidden
+			prompt.Enabled = not hidden and base.robots[index] ~= nil -- 빈 받침대에는 팔기·훔치기 버튼을 띄우지 않는다
 		end
 	end
 end
