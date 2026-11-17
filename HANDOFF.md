@@ -11,9 +11,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Codex** — 도감 완성 보상 구현과 Studio 2인 검증(B-19) |
+| 마지막 작업 AI | **Codex**(사용량 소진으로 중단) — 맵 꾸미기(B-20) **진행 중**. Studio에는 장식이 이미 들어가 있음. 2026-11-17 Claude Code가 상태만 확인·기록 |
 | 작업 시점 | 2026-11-17 |
-| 다음 작업 AI | 협력 거대 로봇(규칙 확정 후 구현) → 비주얼·사운드·썸네일 → 공개 준비 |
+| 다음 작업 AI | **B-20 맵 꾸미기 마무리**: 사용자 화면 확인 → 회귀 2인 테스트·렉 측정·스크린샷·README → 커밋. 그다음 소리 → 협력 거대 로봇 → 공개 준비 |
 | 게임 이름 | 마이오비(Studio Place 이름) / **로봇 고물상 타이쿤 단독 운영**. 오비와 로봇 작업장은 `ServerStorage/ArchivedModes`에 보관 |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -177,6 +177,16 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
   - 떠나 있는 동안 기지는 서버에서 비워지므로 아무도 훔칠 수 없다. 기지 6개가 꽉 차서 기지가 없는 플레이어는 불러오지도 저장하지도 않는다.
 
 **클라이언트 `StarterPlayerScripts/JunkyardHud`** — 잠긴 기지마다 위에 "🛡 방어막 N초" 빌보드(모두에게 보임, 300스터드), 왼쪽 위 패널(돈, 초당·도감 배수, 운반 상태, 방어막 버튼, 도감 버튼), 도감 창(18칸 + 세트 보너스 진행), 위쪽 알림, 벨트 로봇 직접 그리기와 구매 프롬프트, 받침대 버튼 문구(내 기지 "팔기 +금액" / 남의 기지 "훔치기"). Mode가 Junkyard일 때만 보인다.
+
+### B-20. 맵 꾸미기 (2026-11-17, **진행 중 — Codex 작업이 중간에 끊김**)
+
+**Claude Code 상태 확인 (2026-11-17)**
+- Studio(`59d3aea7-…`, Edit)에 `Workspace/Junkyard/Decor` 있음: 파트 561개 — Perimeter 148, ScrapAndContainers 200, MagnetCrane 68, YardMarkings 50, BeltTrim 38, BaseAndYardSigns 57. 콘셉트 "노을빛 고물상".
+- Lighting 변경: ClockTime 16.6, Brightness 2.65, `Lighting/JunkyardGrade`(색 보정) 추가, Atmosphere 색·밀도 조정, Sky SunAngularSize 19, DepthOfField 끔. `Junkyard/Floor` 재질 Concrete·색 (143,132,109).
+- 게임 객체 정상: 기지 8/8(Pads·Vault·Spawn), Belt, Rankings, JunkyardSpawn. 스크립트 9개 Studio ↔ `src/` 체크섬 일치(꾸미기는 코드 변경 없음).
+- 생성 스크립트 `tools/decorate-junkyard.luau`(307줄)를 이 커밋에 포함. 기존 Decor·JunkyardGrade가 있으면 멈추게 되어 있다.
+- **남은 일:** 사용자 화면 확인(콘셉트 승인 여부 불명), 꾸미기 전후 렉 측정, 2인 로컬 회귀(구매·배치·금고·훔치기·방어막·떨어짐·안내 화살표·순위판·대회), 휴대폰 미리보기 밝기, 스크린샷 `docs/screenshots/` + README, 이 섹션 완성, NOTES.
+- 주의: Studio에 이름 없는 인스턴스 3개가 함께 잡혔다(테스트 창이 남아 있는 것으로 보임). 화면 캡처는 흰 화면만 나왔다. ChangeHistory 기록이 또 진행 중 상태(`IsRecordingInProgress = true`).
 
 ### B-19. 도감 완성 보상 (2026-11-17, 사용자 승인 · Studio 2인 검증)
 
