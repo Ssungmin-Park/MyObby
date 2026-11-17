@@ -129,9 +129,9 @@ Config.Contest = {
 export type RobuxOffer = { name: string, desc: string, id: number, robux: number }
 Config.PassOrder = { "DoubleIncome", "VipBase", "OfflineBoost" }
 Config.GamePasses = {
-	DoubleIncome = { name = "💰 수입 2배", desc = "모든 로봇 수입이 영구로 2배", id = 0, robux = 399 },
-	VipBase = { name = "👑 VIP 기지", desc = "방어막 +30초, 방어막 충전 시간 절반, 머리 위 VIP 표시", id = 0, robux = 249 },
-	OfflineBoost = { name = "🌙 오프라인 수입 강화", desc = "떠나 있는 동안 수입 50% → 100%, 최대 3시간 → 8시간", id = 0, robux = 149 },
+	DoubleIncome = { name = "💰 수입 2배", desc = "모든 로봇 수입이 영구로 2배", id = 2093876772, robux = 399 },
+	VipBase = { name = "👑 VIP 기지", desc = "방어막 +30초, 방어막 충전 시간 절반, 머리 위 VIP 표시", id = 2092598831, robux = 249 },
+	OfflineBoost = { name = "🌙 오프라인 수입 강화", desc = "떠나 있는 동안 수입 50% → 100%, 최대 3시간 → 8시간", id = 2093948767, robux = 149 },
 } :: { [string]: RobuxOffer }
 Config.ProductOrder = { "EmpPack", "InstantShield", "RareRain" }
 Config.Products = {

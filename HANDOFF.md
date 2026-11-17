@@ -13,7 +13,7 @@
 |---|---|
 | 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — 공개 준비 문서 `docs/LAUNCH.md`(이름·설명 한/영, 썸네일 가이드, 공개 전 점검표). 그 전: 협력 거대 로봇(B-22) |
 | 작업 시점 | 2026-11-17 |
-| 다음 작업 AI | 사용자: `docs/LAUNCH.md` 점검표 진행(이름·설명·아이콘·썸네일·성숙도 설문·게임 패스 결정). AI: 게임 패스 숨기기 또는 번호 입력, 썸네일용 장면 연출(거대 로봇 완성 상태 등), 2인 테스트 남은 항목 |
+| 다음 작업 AI | 사용자: 게임 패스 3개 판매 켜기·가격(399/249/149), 패스·상품 이미지(선택), `docs/LAUNCH.md` 점검표. AI: 판매 켠 뒤 결제창 확인(다른 계정 필요 — 만든 사람은 이미 보유), 썸네일 장면 연출 |
 | 게임 이름 | 마이오비(Studio Place 이름) / **로봇 고물상 타이쿤 단독 운영**. 오비와 로봇 작업장은 `ServerStorage/ArchivedModes`에 보관 |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -22,7 +22,7 @@
 | Studio 모드 | **Edit 모드**(2026-11-17 MCP 확인) |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-17 Claude Code: 거대 로봇 — 새 ModuleScript `JunkyardGiantRobot`(9635 B / 323149579), `JunkyardConfig.GiantRobot`(18666 / 179631184), `Junkyard` 연결(62517 / 647110135), `JunkyardHud` 기부 창·가동 표시·완성 소리(46518 / 351620810), 맵 `Workspace/Junkyard/GiantRobot` 20파트(tools/build-giant-robot.luau). Studio 일치 |
+| 마지막 게임 수정 | 2026-11-17 Claude Code: 게임 패스 번호 입력 — `JunkyardConfig.GamePasses` DoubleIncome 2093876772 · VipBase 2092598831 · OfflineBoost 2093948767 (18693 B / 405329843, Studio 일치). 3개 모두 `GetProductInfo`로 이름 확인, **판매 중 꺼짐·가격 없음**(사용자가 Creator Hub에서 판매 켜기·가격 설정 필요). 사용자 계정은 패스를 만든 사람이라 3개를 자동 보유(Passes 속성에 3개) |
 | Studio 저장 상태 | 대회 변경은 사용자가 Ctrl+S로 저장한 뒤 재시작까지 확인했다. 도감 완성 보상은 Studio Edit에 반영했고 클라우드 저장 여부는 미확인 |
 | 휴대폰 미리보기 | 사용자 직접 확인(2026-11-17). Studio 휴대폰 미리보기에서 상점·도감·대회 상자·안내 띠에 문제 없음 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
