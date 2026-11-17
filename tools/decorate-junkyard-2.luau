@@ -36,12 +36,13 @@ local rng = Random.new(20261117)
 local count = 0
 local GROUND_TOP = 39.5 -- 고물상 바닥(윗면 40.5)보다 1 낮게
 
+-- 처음 색에서 60%로 어둡게 (2026-11-17 사용자 화면에서 분홍빛으로 떠 보여 낮춤)
 local rustColors = {
-	Color3.fromRGB(117, 64, 43),
-	Color3.fromRGB(140, 82, 52),
-	Color3.fromRGB(96, 70, 55),
-	Color3.fromRGB(78, 74, 70),
-	Color3.fromRGB(110, 98, 84),
+	Color3.fromRGB(70, 38, 26),
+	Color3.fromRGB(84, 49, 31),
+	Color3.fromRGB(58, 42, 33),
+	Color3.fromRGB(47, 44, 42),
+	Color3.fromRGB(66, 59, 50),
 }
 local moundMaterials = { Enum.Material.CorrodedMetal, Enum.Material.Metal, Enum.Material.Slate, Enum.Material.CorrodedMetal }
 
@@ -167,7 +168,7 @@ for _, base in bases:GetChildren() do
 				child:SetAttribute("OrigMaterial", child.Material.Name)
 			end
 			child.Material = Enum.Material.CorrodedMetal
-			child.Color = Color3.fromRGB(104, 98, 90)
+			child.Color = Color3.fromRGB(74, 68, 62) -- 어두운 쇠 색 (밝으면 녹 무늬가 분홍빛으로 보임)
 			wallCount += 1
 		end
 	end
