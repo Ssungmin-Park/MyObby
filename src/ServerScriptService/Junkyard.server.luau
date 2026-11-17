@@ -264,6 +264,8 @@ local function applyTitle(state: State)
 		return
 	end
 	local _, best = Config.catalogMultiplier(state.catalog)
+	local fullCatalog = Config.isCatalogComplete(state.catalog)
+	local variantPage = Config.highestVariantPage(state.variantCatalog)
 	local vip = state.passes.VipBase == true
 	local contestTitle = state.player:GetAttribute("ContestTitle")
 	local tag = head:FindFirstChild("TitleTag") :: BillboardGui?
@@ -302,14 +304,18 @@ local function applyTitle(state: State)
 	if vip then
 		table.insert(words, "[👑 VIP]")
 	end
-	if rarity then
+	if fullCatalog then
+		table.insert(words, Config.FullCatalogTitle)
+	elseif rarity then
 		table.insert(words, ("[%s 수집가]"):format(rarity.name))
 	end
-	label.Text = table.concat(words, " ")
+	local mainTitle = table.concat(words, " ")
+	tag.Size = UDim2.fromOffset(220, if variantPage then 42 else 24)
+	label.Text = if variantPage then mainTitle .. "\n" .. Config.VariantPageTitles[variantPage] else mainTitle
 	label.TextColor3 = if rarity then rarity.color else Color3.fromRGB(255, 215, 90)
 end
 
--- 도감 배수 = 기본 도감 세트 보너스 + 변종 도감 페이지 보너스
+-- 도감 배수에는 기본 도감과 변종 도감 보너스를 각각 한 번 더한다.
 local function recomputeMultiplier(state: State)
 	state.multiplier = Config.catalogMultiplier(state.catalog) + Config.variantPageBonus(state.variantCatalog)
 	state.player:SetAttribute("Multiplier", state.multiplier)
@@ -321,38 +327,51 @@ local function recomputeMultiplier(state: State)
 end
 
 local function addToCatalog(state: State, robotKey: string)
-	-- 변종이면 변종 도감에 먼저 등록하고, 기본 로봇도 아래에서 함께 등록한다
 	local robotId, variantId = Config.splitKey(robotKey)
-	if variantId and not state.variantCatalog[robotKey] then
-		local beforeBonus = Config.variantPageBonus(state.variantCatalog)
-		state.variantCatalog[robotKey] = true
-		notify(state.player, "Info", ("변종 도감 등록: %s"):format(robotLabel(robotKey)))
-		if Config.variantPageBonus(state.variantCatalog) > beforeBonus then
-			notifyAll(("%s님이 %s 변종 도감을 완성했어요!"):format(state.player.DisplayName, Config.Variants[variantId].name))
-		end
-		recomputeMultiplier(state)
-		refreshIncome(state)
-	end
-	if state.catalog[robotId] then
+	local milestones: { string } = {}
+	local addedVariant = variantId ~= nil and not state.variantCatalog[robotKey]
+	local addedRobot = not state.catalog[robotId]
+	if not addedRobot and not addedVariant then
 		return
 	end
-	local before, beforeBest = Config.catalogMultiplier(state.catalog)
-	state.catalog[robotId] = true
-	local after, best = Config.catalogMultiplier(state.catalog)
-	local ids = {}
-	for id in state.catalog do
-		table.insert(ids, id)
+	-- 한 로봇으로 여러 도감을 완성할 수 있다. 축하 알림은 한 번으로 묶는다.
+	if variantId and not state.variantCatalog[robotKey] then
+		state.variantCatalog[robotKey] = true
+		if Config.isVariantPageComplete(state.variantCatalog, variantId) then
+			table.insert(milestones, Config.VariantPageTitles[variantId])
+		end
 	end
-	state.player:SetAttribute("Catalog", HttpService:JSONEncode(ids))
+	if addedRobot then
+		state.catalog[robotId] = true
+		local ids = {}
+		for id in state.catalog do
+			table.insert(ids, id)
+		end
+		state.player:SetAttribute("Catalog", HttpService:JSONEncode(ids))
+		local robot = Config.getRobot(robotId)
+		if robot and Config.isCatalogComplete(state.catalog, robot.rarity) then
+			table.insert(milestones, Config.Rarities[robot.rarity].name .. " 세트")
+		end
+		if Config.isCatalogComplete(state.catalog) then
+			table.insert(milestones, Config.FullCatalogTitle)
+		end
+	end
 	recomputeMultiplier(state)
-	notify(state.player, "Info", ("도감 등록: %s"):format(robotLabel(robotId)))
-	if after > before then
-		local completed = if best and best ~= beforeBest then Config.Rarities[best].name else "등급"
-		notify(state.player, "Info", ("%s 세트 완성! 수입 x%.2f"):format(completed, after))
-		notifyAll(("%s님이 %s 로봇 도감을 완성했어요!"):format(state.player.DisplayName, completed))
-		applyTitle(state)
-	end
 	refreshIncome(state)
+	if #milestones > 0 then
+		applyTitle(state)
+		notifyAll(("🎉 %s님 달성 · %s"):format(state.player.DisplayName, table.concat(milestones, " · ")))
+		local root = rootOf(state.player)
+		if root then
+			local effect = Instance.new("Sparkles")
+			effect.Name = "CatalogCelebration"
+			effect.SparkleColor = Color3.fromRGB(255, 215, 90)
+			effect.Parent = root
+			Debris:AddItem(effect, 3)
+		end
+	else
+		notify(state.player, "Info", ("%s도감 등록 · %s"):format(if addedVariant then "변종 " else "", robotLabel(robotKey)))
+	end
 end
 
 -- 받침대 ----------------------------------------------------------------------

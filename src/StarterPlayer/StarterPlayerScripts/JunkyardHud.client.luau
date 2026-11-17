@@ -762,9 +762,12 @@ local function render()
 		end
 		table.insert(lines, ("%s %s %d/3 → +%d%%"):format(if have >= 3 then "✓" else "·", rarity.name, have, math.floor(rarity.setBonus * 100)))
 	end
-	for _, pageVariantId in Config.VariantOrder do
-		local pageVariant = Config.Variants[pageVariantId]
-		table.insert(lines, ("%s %s 페이지 완성 → +%d%%"):format(pageVariant.mark, pageVariant.name, math.floor(pageVariant.pageBonus * 100)))
+	if variant and variantId then
+		table.insert(lines, ("%s %s · +%d%%"):format(if pageCount == #Config.Robots then "✓ 획득" else "완성 보상",
+			Config.VariantPageTitles[variantId], math.round(variant.pageBonus * 100)))
+	else
+		table.insert(lines, ("%s %s · +%d%%"):format(if count == #Config.Robots then "✓ 획득" else "18종 완성",
+			Config.FullCatalogTitle, math.round(Config.FullCatalogBonus * 100)))
 	end
 	bonusLabel.Text = table.concat(lines, "   ")
 end

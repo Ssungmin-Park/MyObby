@@ -300,41 +300,66 @@ function Config.rollVariant(rebirth: number): string?
 	return nil
 end
 
+Config.FullCatalogBonus = 0.30
+Config.FullCatalogTitle = "🏆 고물왕"
+Config.VariantPageTitles = {
+	Gold = "✨ 금빛 수집왕",
+	Diamond = "💎 다이아 수집왕",
+	Rainbow = "🌈 무지개 수집왕",
+} :: { [string]: string }
+
+function Config.isCatalogComplete(catalog: { [string]: boolean }, rarityId: string?): boolean
+	for _, robot in Config.Robots do
+		if (rarityId == nil or robot.rarity == rarityId) and catalog[robot.id] ~= true then
+			return false
+		end
+	end
+	return true
+end
+
+function Config.isVariantPageComplete(variantCatalog: { [string]: boolean }, variantId: string): boolean
+	for _, robot in Config.Robots do
+		if variantCatalog[robot.id .. "@" .. variantId] ~= true then
+			return false
+		end
+	end
+	return true
+end
+
+function Config.highestVariantPage(variantCatalog: { [string]: boolean }): string?
+	for index = #Config.VariantOrder, 1, -1 do
+		local variantId = Config.VariantOrder[index]
+		if Config.isVariantPageComplete(variantCatalog, variantId) then
+			return variantId
+		end
+	end
+	return nil
+end
+
 -- 변종 도감 페이지(18종)를 다 모으면 주는 수입 보너스 합
 function Config.variantPageBonus(variantCatalog: { [string]: boolean }): number
 	local bonus = 0
 	for _, variantId in Config.VariantOrder do
-		local complete = true
-		for _, robot in Config.Robots do
-			if not variantCatalog[robot.id .. "@" .. variantId] then
-				complete = false
-				break
-			end
-		end
-		if complete then
+		if Config.isVariantPageComplete(variantCatalog, variantId) then
 			bonus += Config.Variants[variantId].pageBonus
 		end
 	end
 	return bonus
 end
 
--- 도감(모은 로봇 id 집합)으로 수입 배수를 계산한다. 1 + 완성한 등급들의 setBonus 합.
+-- 기본 도감 수입 배수에 등급 세트와 전체 완성 보너스를 더한다.
 -- 두 번째 값: 완성한 가장 높은 등급 id (칭호용)
 function Config.catalogMultiplier(catalog: { [string]: boolean }): (number, string?)
 	local multiplier = 1
 	local best: string? = nil
 	for _, rarityId in Config.RarityOrder do
-		local complete = true
-		for _, robot in Config.Robots do
-			if robot.rarity == rarityId and not catalog[robot.id] then
-				complete = false
-				break
-			end
-		end
-		if complete then
+		if Config.isCatalogComplete(catalog, rarityId) then
 			multiplier += Config.Rarities[rarityId].setBonus
 			best = rarityId
 		end
+	end
+	if Config.isCatalogComplete(catalog) then
+		multiplier += Config.FullCatalogBonus
 	end
 	return multiplier, best
 end
