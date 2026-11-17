@@ -13,7 +13,7 @@
 |---|---|
 | 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — 기지 8개, **환생·변종 시스템(B-14) 구현·Studio 반영**. 성공 환생은 사용자 저장 데이터를 초기화하므로 아직 실행 안 함 |
 | 작업 시점 | 2026-11-17 |
-| 다음 작업 AI | ① 환생 성공 경로 테스트(사용자 허락 또는 2인 로컬 서버의 테스트 계정으로) ② 초보 보호 2인 테스트 ③ **전체 서버 순위표**(OrderedDataStore, 계획 승인 먼저) ④ 서버 최대 인원 8명(사용자) |
+| 다음 작업 AI | **Codex: G-0 지시서(환생·변종 2인 로컬 테스트)를 그대로 실행.** 그다음 **전체 서버 순위표**(OrderedDataStore, 계획 승인 먼저). 서버 최대 인원 8명은 사용자가 웹 Creator Hub에서 설정(G-0 끝 참고) |
 | 게임 이름 | 마이오비 (Studio place 이름) / **주력: 로봇 고물상 타이쿤**(멀티플레이). 부가: 실험실 탈출 오비, 로봇 작업장(꼬마 로봇 연구소) |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -152,7 +152,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 **맵 `Workspace/Junkyard`** (X 290~510, Z 0~200, 바닥 윗면 Y 40.5, `tools/build-junkyard.luau`)
 - `Belt`: Z 100, X 315→485 (속성 `StartPos`, `EndPos`). 양옆 `BeltRail`, 시작 `BeltStart`(고물 투입구), 끝 `BeltEnd`.
-- `Bases/Base1~8` (2026-11-17 6→8개): 북쪽 1~3·7(Z 23~57, 입구 +Z), 남쪽 4~6·8(Z 143~177, 입구 −Z), X 340/400/460, 7·8은 X 520. 바닥은 X 290~550로 넓힘. **서버 최대 인원은 사용자가 체험 설정에서 8명으로 맞춰야 한다(확인 시 60명이었음 → 9번째부터 기지 없음).** 속성 `Index`, `Front`, `Center`, `OwnerUserId`, `OwnerName`, `Vault`, `LockedUntil`. 자식: `Floor`, `Wall`(높이 12 — 점프로 못 넘음, 뒷벽에 이름판 `Sign`), `Shield`(기지 전체를 덮는 ForceField 상자, 잠기면 반투명 0.5), `Pads/Pad1~10`(각 `RobotPrompt`, 1.5초 누르기), `Vault`(밟으면 수령, `Amount` 빌보드), `LockButton`(`LockPrompt`), `Spawn`(투명).
+- `Bases/Base1~8` (2026-11-17 6→8개): 북쪽 1~3·7(Z 23~57, 입구 +Z), 남쪽 4~6·8(Z 143~177, 입구 −Z), X 340/400/460, 7·8은 X 520. 바닥은 X 290~550로 넓힘. **서버 최대 인원은 사용자가 웹 Creator Hub에서 8명으로 맞춰야 한다(확인 시 60명이었음 → 9번째부터 기지 없음). Studio 체험 설정에는 이 항목이 없었다(2026-11-17 사용자 확인).** 속성 `Index`, `Front`, `Center`, `OwnerUserId`, `OwnerName`, `Vault`, `LockedUntil`. 자식: `Floor`, `Wall`(높이 12 — 점프로 못 넘음, 뒷벽에 이름판 `Sign`), `Shield`(기지 전체를 덮는 ForceField 상자, 잠기면 반투명 0.5), `Pads/Pad1~10`(각 `RobotPrompt`, 1.5초 누르기), `Vault`(밟으면 수령, `Amount` 빌보드), `LockButton`(`LockPrompt`), `Spawn`(투명).
 - `ObbyPortal`(298, 42.5, 100), `JunkyardPortal`(오비 시작 발판 −X쪽).
 
 **설정 `ReplicatedStorage/Modules/JunkyardConfig`** — 6등급(일반·고급·희귀·에픽·전설·신화: 벨트 확률 600/250/100/40/9/1, 가격 25/100/500/2.5K/15K/100K, 초당 1/4/15/60/300/1500, 세트 보너스 +5/10/15/25/40/100%), 로봇 18종(등급별 3), 시작 돈 50, 벨트 2.5초 간격·초속 4, 받침대 10, 판매 50%, 운반 중 걷기 11, 훔치기 1.5초, 붙잡기 거리 6, 방어막 60초+쿨타임 60초. **로봇 id는 저장 키가 될 예정이라 바꾸지 않는다.**
@@ -515,6 +515,49 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 ## G. 다음 개발 계획 (우선순위 순)
 
+### G-0. Codex 지시서: 환생·변종(B-14) 2인 로컬 테스트 (2026-11-17 Claude Code 작성, 사용자가 Codex에게 넘김)
+
+**0. 시작 전 (필수)**
+1. AGENTS.md, 이 HANDOFF(특히 B-11~B-14)를 읽는다. `git status`, `git log --oneline -5`로 미커밋 변경이 없는지 확인한다(있으면 멈추고 사용자에게 알림).
+2. `list_roblox_studios`에서 placeId `77293997616106`("마이오비") 인스턴스만 쓴다.
+3. Studio 스크립트와 `src/`가 같은지 체크섬(`h=(h*31+byte)%1000000007`)으로 확인한다. 기대값(바이트/체크섬, 3538bbc 기준): `ServerScriptService/Junkyard` 52972/909989772, `JunkyardSave` 13463/583590408, `ReplicatedStorage/Modules/JunkyardConfig` 15470/977588474, `StarterPlayerScripts/JunkyardHud` 30737/678768506. 다르면 작업하지 말고 보고한다.
+
+**1. 절대 지킬 것**
+- 사용자 본인 계정 저장 키(`Junkyard_v1`의 `Player_<사용자 UserId>`)는 건드리지 않는다. 테스트는 Studio 로컬 서버의 테스트 플레이어(Player1/Player2, UserId 음수)로만 한다.
+- DataStore 삭제(RemoveAsync)·형식 변경 금지. 테스트 키(`Player_-1`, `Player_-2`)도 승인 없이 지우지 않는다.
+- Publish, `save_place`, 공개 설정 변경 금지(저장은 사용자 Ctrl+S). 파괴적 git 명령 금지. 기존 스크립트 통째 재작성 금지.
+
+**2. 먼저: Studio 전용 테스트 훅 2개 추가**
+현재 훅은 `DebugMoneyUserId` + `DebugGiveMoney`(1회 최대 1,000,000), `DebugGrantProduct`, `DebugGivePass`, `DebugTrainNow`뿐이라 "신화 로봇 도감 등록"과 "환생 단계 지정"을 할 수 없다. `ServerScriptService/Junkyard` 맨 아래 `if game:GetService("RunService"):IsStudio() then` 블록 안에, 기존 `DebugGrantProduct`와 같은 모양으로 추가한다.
+- `DebugGiveRobot`(문자열 로봇 키, 예 `"<신화 id>"`, `"Pippi@Gold"`): 대상은 `DebugMoneyUserId` 플레이어. `Config.isValidKey(key)`일 때만. 빈 받침대가 있으면 `freePad` → `setPadRobot` → `addToCatalog` → `refreshIncome`(희귀 로봇 비 선물 코드와 같은 순서). 처리 뒤 속성을 nil로.
+- `DebugSetRebirth`(정수 0~20): `state.rebirth`를 그 값으로 바꾸고 `syncRebirth(state)`, 도감 배수 재계산(`recomputeMultiplier`), `refreshIncome` 호출(실제 함수 이름은 코드에서 확인). 처리 뒤 속성을 nil로.
+- 둘 다 `IsStudio()` 안에만 둔다. `ChangeHistoryService` 기록으로 감싸 반영하고, 같은 변경을 `src/ServerScriptService/Junkyard.server.luau`에 적용한 뒤 바이트·체크섬 일치를 확인한다.
+- 신화 로봇 id는 `JunkyardConfig.Robots`에서 `rarity == "Mythic"`인 것을 찾는다.
+
+**3. 테스트 방법**
+- Studio 테스트 탭 → "클라이언트 및 서버", 플레이어 2명. 서버 확인·훅 설정은 `execute_luau` Server, 화면 확인은 Client.
+- 훅 예(Server): `workspace:SetAttribute("DebugMoneyUserId", Player1.UserId)` 후 `workspace:SetAttribute("DebugGiveRobot", "<신화 id>")`.
+- 행동은 클라이언트에서 실제 Remote/Prompt로 한다. 환생: `ReplicatedStorage.Remotes.JunkyardAction:FireServer("Rebirth")`. 훔치기: 상대 기지 받침대의 `RobotPrompt`를 실제로 발동(서버에서 Triggered를 흉내 내지 않음, 누르기 시간 검증이 있음). 캐릭터 이동은 서버 `PivotTo`.
+
+**4. 테스트 항목 (각각 PASS/FAIL + 근거)**
+- A. 환생 성공(Player1): 돈 ≥ 1,000,000 + 도감 신화 1종 → Rebirth → 환생=1, 머리 위 ⭐1, 리더보드 "환생" 1, 돈 50, 받침대 로봇 0, 금고 0, 업그레이드 초기화, 도감·무료 EMP 유지, 전체 알림. 바로 다시 Rebirth → 거절(필요 3,000,000). 로봇 운반 중 환생 → 거절.
+- B. 변종 구매(Player1, 환생 ≥1): 벨트 로봇 여러 번 구매 → 금색 약 15%. 받침대 키 `"id@Gold"`, 변종 색 + Sparkles, 판매 가격 3배, `VariantCatalog` 속성 기록, HUD 도감 금색 페이지 표시. 필요하면 `DebugSetRebirth` 5로 다이아·무지개 확인. 환생 0인 Player2는 20회 이상 사도 변종이 절대 안 나와야 한다.
+- C. 저장: Player1 퇴장 → 재입장 후 환생 단계·변종 도감·받침대의 변종 로봇 유지.
+- D. 초보 보호: Player1 환생 2, Player2 환생 0 → Player1이 Player2 로봇 훔치기 거절 + "초보 보호" 알림. Player2가 Player1 로봇 훔치기는 허용. 환생 차이 1이면 허용.
+- E. 변종 페이지 완성: `DebugGiveRobot`로 금색 18종을 채운다(받침대가 모자라면 팔면서 진행, 변종 도감은 남음) → 도감 배수 +0.25.
+- F. 서버·클라이언트 출력 로그 에러·경고 0.
+
+**5. 문제가 생기면** 필요한 부분만 고치고, Studio 반영 → `src/` 체크섬 일치 → 같은 항목 재테스트. 수치·규칙 변경처럼 설계를 바꿔야 하는 문제는 고치지 말고 사용자에게 먼저 보고한다.
+
+**6. 끝나면**
+1. Play를 멈춘다.
+2. 이 HANDOFF의 B-14 "테스트"에서 미검증 항목을 결과로 바꾼다("자동 테스트 통과"/"미검증" 구분). 맨 위 표(마지막 작업 AI, 다음 작업 = 전체 서버 순위표, 계획 승인 먼저)를 갱신하고 이 G-0 지시서는 "완료"로 표시한다.
+3. NOTES.md에 한두 줄 추가. 통과하면 README의 "환생·변종"을 [x]로.
+4. `git status`, `git diff --stat`으로 의도한 파일만인지, 민감 정보(토큰·쿠키·키)가 없는지 확인 → 커밋(예 `[Codex] 환생·변종 2인 테스트 + Studio 테스트 훅`) → `git push`.
+5. 사용자에게 한국어로 결과 표, 고친 것, Studio에서 확인할 것, Ctrl+S 저장 안내.
+
+**참고 — 서버 최대 인원(사용자 작업):** Studio의 체험 설정에는 이 항목이 없다(사용자 확인). 웹 Creator Hub(create.roblox.com) → 내 작품 → 이 체험 → 왼쪽 "장소(Places)" → 장소 선택 → "액세스(Access)"의 최대 방문자 수(Maximum Visitor Count)/서버 크기에서 8로 저장한다. 커뮤니티 보고 기준 경로이며 화면이 다를 수 있다. 8로 저장이 안 되면 사용자에게 알리고, 코드 쪽은 9번째부터 "기지가 꽉 찼다" 안내가 이미 있으므로 급하지 않다.
+
 ### 로봇 고물상 타이쿤 (주력, 최우선)
 1. **2인 로컬 서버 테스트:** Studio 테스트 탭 → "클라이언트 및 서버"(플레이어 2명) 시작. 훔치기 → 도둑 기지 배치 / 주인이 붙잡기 → 복귀 / 도둑 사망 → 복귀 / 방어막 중 훔치기 거절·밀어내기 / 같은 벨트 로봇을 둘이 동시에 사기.
 2. ✅ **2단계 저장** 완료 (B-11 저장, F ⑰).
@@ -522,7 +565,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 4. ✅ **3-2 Robux 상품 코드 완료**(B-13). 남은 것: 사용자가 상품을 만들고 id 입력 → 실제 결제 테스트. 원래 계획: 게임패스(수입 2배 399, VIP 기지 249, 오프라인 수입 강화 149)·개발자 상품(EMP 5개 49, 즉시 방어막 25, 서버 전체 희귀 로봇 비 99). 사용자가 Creator Dashboard에서 상품을 만들고 ID를 알려 줘야 한다. 구매 처리 `ProcessReceipt`는 서버에서만, 영수증 중복 지급 방지 기록 필수. 확률 변경 상품은 확률 공개.
 5. **3-3 협력 거대 로봇**: 서버 전체 기부 진행 막대 → 완성 시 10분 서버 수입 2배, 상위 기부자 공지.
 6. (예전 계획) **3단계 상점·이벤트 원안:** 방해(EMP 기절, 빠른 도둑), 방어(방어막 연장, 레이저 울타리), 도움(수입 2배·행운·받침대 추가·이동 속도), 서버 전체("희귀 로봇 비"), 10분마다 희귀 로봇 열차, 서버 협력 거대 로봇. Robux 상품 등록은 사용자가 Creator Dashboard에서.
-4. **4단계:** 환생, 변종(금색·무지개), 비주얼·사운드. 서버 최대 인원을 6명으로 맞추기(체험 설정, 사용자).
+4. **4단계:** ✅ 환생·변종 구현(B-14, 2인 테스트는 G-0). 남은 것: 비주얼·사운드. 서버 최대 인원 8명(웹 Creator Hub, 사용자).
 5. 기존 오비·로봇 작업장 정리 여부는 고물상이 자리 잡은 뒤 사용자와 결정(삭제 금지, 보관).
 
 
