@@ -474,7 +474,7 @@ local function renderShop()
 		else
 			local level = upgrades[entry.id] or 0
 			local current = Config.upgradeValue(entry.id, level)
-			price = Config.upgradeCost(entry.id, level)
+			price = Config.upgradeCost(entry.id, level, (player:GetAttribute("Rebirth") or 0) :: number)
 			local isToggle = #Config.Upgrades[entry.id].values == 2 and Config.Upgrades[entry.id].values[1] == 0
 			if isToggle then
 				entry.info.Text = if current > 0 then "보유 중" else "아직 없음"

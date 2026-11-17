@@ -268,8 +268,15 @@ function Config.upgradeCap(id: string, expand: number): number
 end
 
 -- 다음 단계 비용 (최고 단계면 nil)
-function Config.upgradeCost(id: string, level: number): number?
-	return Config.Upgrades[id].costs[level + 1]
+-- rebirth를 주면 환생 단계만큼 비싸진다 (환생하면 업그레이드가 처음으로 돌아가고 수입은 크게 늘기 때문)
+function Config.upgradeCost(id: string, level: number, rebirth: number?): number?
+	local cost = Config.Upgrades[id].costs[level + 1]
+	return if cost then math.floor(cost * Config.shopPriceMultiplier(rebirth or 0)) else nil
+end
+
+-- 상점 업그레이드 가격 배수: 환생 1번마다 ×RebirthShopGrowth (0번 ×1, 1번 ×2, 2번 ×4 …)
+function Config.shopPriceMultiplier(rebirth: number): number
+	return Config.RebirthShopGrowth ^ math.max(0, rebirth)
 end
 
 function Config.itemPrice(id: string, incomePerSecond: number): number
@@ -289,6 +296,7 @@ Config.RebirthBaseCost = 1000000 -- 첫 환생에 필요한 돈
 Config.RebirthCostGrowth = 3 -- 환생할 때마다 필요한 돈 ×3
 Config.RebirthRequiresRarity = "Mythic" -- 도감에 이 등급 로봇이 1종 이상 있어야 환생 가능
 Config.RebirthIncomeBonus = 0.5 -- 환생 1번마다 수입 +50% (영구)
+Config.RebirthShopGrowth = 2 -- 환생 1번마다 상점 업그레이드 가격 ×2 (아이템은 원래 수입에 따라 오르고, 구역 확장은 환생해도 남으므로 그대로)
 Config.ProtectionGap = 2 -- 환생 단계가 이만큼 이상 높은 사람은 내 로봇을 훔칠 수 없다 (초보 보호)
 export type Variant = { name: string, mark: string, minRebirth: number, chance: number, income: number, color: Color3, pageBonus: number }
 Config.VariantOrder = { "Gold", "Diamond", "Rainbow" }

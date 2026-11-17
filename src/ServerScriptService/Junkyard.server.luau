@@ -950,7 +950,7 @@ local function buyUpgrade(state: State, id: string)
 		return
 	end
 	local level = state.upgrades[id] or 0
-	local cost = Config.upgradeCost(id, level)
+	local cost = Config.upgradeCost(id, level, state.rebirth)
 	if not cost then
 		notify(state.player, "Info", upgrade.name .. "은(는) 최고 단계예요.")
 		return
