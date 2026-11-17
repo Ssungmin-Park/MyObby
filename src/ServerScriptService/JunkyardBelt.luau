@@ -62,22 +62,38 @@ function Belt.trainActive(): boolean
 	return workspace:GetServerTimeNow() < trainUntil
 end
 
+-- 희귀 로봇 비 (Robux 상품, 서버 전체): 이 시각까지 희귀 이상 확률 RainMultiplier배. 여러 번 사면 시간이 이어 붙는다
+local rainUntil = 0
+
+function Belt.startRain(duration: number): number
+	rainUntil = math.max(rainUntil, workspace:GetServerTimeNow()) + duration
+	return rainUntil
+end
+
+function Belt.rainActive(): boolean
+	return workspace:GetServerTimeNow() < rainUntil
+end
+
 local function rollRobot(): string
 	local train = Belt.trainActive()
+	local rain = Belt.rainActive()
 	local function allowed(id: string): boolean
 		return not train or Config.TrainRarities[id] == true
+	end
+	local function weightOf(id: string): number
+		return Config.Rarities[id].weight * (if rain and Config.RainRarities[id] then Config.RainMultiplier else 1)
 	end
 	local total = 0
 	for _, id in Config.RarityOrder do
 		if allowed(id) then
-			total += Config.Rarities[id].weight
+			total += weightOf(id)
 		end
 	end
 	local roll = math.random() * total
 	local rarity = if train then "Rare" else Config.RarityOrder[1]
 	for _, id in Config.RarityOrder do
 		if allowed(id) then
-			roll -= Config.Rarities[id].weight
+			roll -= weightOf(id)
 			if roll <= 0 then
 				rarity = id
 				break

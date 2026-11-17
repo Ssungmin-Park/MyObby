@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("JunkyardConfig"))
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -134,10 +135,10 @@ local shopClose = button(shop, "X", UDim2.new(1, -46, 0, 8), UDim2.fromOffset(36
 type ShopEntry = { kind: string, id: string, category: string, row: Frame, info: TextLabel, buy: TextButton }
 local shopEntries: { ShopEntry } = {}
 local shopTab = "Attack"
-local tabs = { { id = "Attack", text = "⚡ 방해" }, { id = "Defense", text = "🛡 방어" }, { id = "Help", text = "💪 도움" } }
+local tabs = { { id = "Attack", text = "⚡ 방해" }, { id = "Defense", text = "🛡 방어" }, { id = "Help", text = "💪 도움" }, { id = "Robux", text = "💎 Robux" } }
 local tabButtons: { [string]: TextButton } = {}
 for i, tab in tabs do
-	local tabButton = button(shop, tab.text, UDim2.new((i - 1) / 3, 10, 0, 42), UDim2.new(1 / 3, -14, 0, 32), Color3.fromRGB(52, 64, 76))
+	local tabButton = button(shop, tab.text, UDim2.new((i - 1) / #tabs, 8, 0, 42), UDim2.new(1 / #tabs, -10, 0, 32), Color3.fromRGB(52, 64, 76))
 	tabButtons[tab.id] = tabButton
 	tabButton.Activated:Connect(function()
 		shopTab = tab.id
@@ -158,16 +159,29 @@ listLayout.Parent = list
 
 local function addEntry(kind: string, id: string, category: string, name: string, desc: string)
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, -8, 0, 70)
+	row.Size = UDim2.new(1, -8, 0, 84)
 	row.BackgroundColor3 = Color3.fromRGB(36, 44, 54)
 	row.Parent = list
 	corner(row, 8)
 	label(row, UDim2.fromOffset(10, 4), UDim2.new(1, -130, 0, 20), 15, white).Text = name
 	local descLabel = label(row, UDim2.fromOffset(10, 24), UDim2.new(1, -130, 0, 28), 11, muted)
 	descLabel.Text = desc
-	local info = label(row, UDim2.fromOffset(10, 50), UDim2.new(1, -130, 0, 16), 11, Color3.fromRGB(150, 230, 255))
+	local info = label(row, UDim2.fromOffset(10, 50), UDim2.new(1, -130, 0, 30), 11, Color3.fromRGB(150, 230, 255))
 	local buy = button(row, "", UDim2.new(1, -114, 0.5, -20), UDim2.fromOffset(106, 40), Color3.fromRGB(60, 140, 80))
 	buy.Activated:Connect(function()
+		if kind == "Pass" or kind == "Product" then
+			-- Robux 결제창은 클라이언트에서 띄운다. 지급은 서버(JunkyardStore)가 영수증을 확인한 뒤에만 한다
+			local offer = if kind == "Pass" then Config.GamePasses[id] else Config.Products[id]
+			if offer.id == 0 then
+				return
+			end
+			if kind == "Pass" then
+				MarketplaceService:PromptGamePassPurchase(player, offer.id)
+			else
+				MarketplaceService:PromptProductPurchase(player, offer.id)
+			end
+			return
+		end
 		actionRemote:FireServer(if kind == "Item" then "Item" else "Upgrade", id)
 	end)
 	table.insert(shopEntries, { kind = kind, id = id, category = category, row = row, info = info, buy = buy })
@@ -179,6 +193,26 @@ end
 for _, id in Config.UpgradeOrder do
 	local upgrade = Config.Upgrades[id]
 	addEntry("Upgrade", id, upgrade.category, upgrade.name, upgrade.desc)
+end
+for _, id in Config.PassOrder do
+	local offer = Config.GamePasses[id]
+	addEntry("Pass", id, "Robux", offer.name .. " (게임패스)", offer.desc)
+end
+for _, id in Config.ProductOrder do
+	local offer = Config.Products[id]
+	addEntry("Product", id, "Robux", offer.name, offer.desc)
+end
+
+-- 희귀 로봇 비 확률 공개 (평소 → 비 내릴 때, 등급별 %)
+local oddsText: string
+do
+	local normal = Config.rarityOdds(false)
+	local rain = Config.rarityOdds(true)
+	local parts = {}
+	for _, rarityId in Config.RarityOrder do
+		table.insert(parts, ("%s %.1f→%.1f%%"):format(Config.Rarities[rarityId].name, normal[rarityId], rain[rarityId]))
+	end
+	oddsText = "확률 공개: " .. table.concat(parts, " · ")
 end
 shopButton.Activated:Connect(function()
 	shop.Visible = not shop.Visible
@@ -206,16 +240,46 @@ local function renderShop()
 	for id, tabButton in tabButtons do
 		tabButton.BackgroundColor3 = if id == shopTab then Color3.fromRGB(90, 110, 130) else Color3.fromRGB(52, 64, 76)
 	end
+	local passes: { [string]: boolean } = {}
+	local okPasses, passList = pcall(function()
+		return HttpService:JSONDecode((player:GetAttribute("Passes") or "[]") :: string)
+	end)
+	if okPasses and typeof(passList) == "table" then
+		for _, key in passList do
+			passes[key] = true
+		end
+	end
+	local empCharges = (player:GetAttribute("EmpCharges") or 0) :: number
 	for _, entry in shopEntries do
 		entry.row.Visible = entry.category == shopTab
+		if entry.kind == "Pass" or entry.kind == "Product" then
+			local offer = if entry.kind == "Pass" then Config.GamePasses[entry.id] else Config.Products[entry.id]
+			local owned = entry.kind == "Pass" and passes[entry.id] == true
+			if entry.id == "RareRain" then
+				entry.info.Text = oddsText
+			elseif entry.id == "EmpPack" then
+				entry.info.Text = ("무료 EMP 보유 %d개"):format(empCharges)
+			else
+				entry.info.Text = if owned then "보유 중 · 적용됨" else ""
+			end
+			local available = offer.id ~= 0 and not owned
+			entry.buy.Active = available
+			entry.buy.Text = if owned then "보유 중" elseif offer.id == 0 then "준비 중" else ("R$ %d"):format(offer.robux)
+			entry.buy.BackgroundColor3 = if available then Color3.fromRGB(40, 160, 90) else Color3.fromRGB(70, 82, 96)
+			continue
+		end
 		local price: number? = nil
 		if entry.kind == "Item" then
 			price = Config.itemPrice(entry.id, income)
 			if entry.id == "EMP" then
 				local ready = ((player:GetAttribute("EmpReadyAt") or 0) :: number) - t
-				entry.info.Text = if ready > 0 then ("충전 중 %d초"):format(math.ceil(ready)) else "사면 바로 터져요 · 가격은 내 수입에 따라 올라요"
+				entry.info.Text = if ready > 0 then ("충전 중 %d초"):format(math.ceil(ready))
+					elseif empCharges > 0 then ("무료 EMP %d개 남음 · 누르면 무료로 사용"):format(empCharges)
+					else "사면 바로 터져요 · 가격은 내 수입에 따라 올라요"
 				if ready > 0 then
 					price = nil
+				elseif empCharges > 0 then
+					price = 0
 				end
 			else
 				local left = ((player:GetAttribute("GlovesUntil") or 0) :: number) - t
@@ -237,7 +301,11 @@ local function renderShop()
 					else ("최고 단계 (%s)"):format(tostring(current))
 			end
 		end
-		if price then
+		if price == 0 then
+			entry.buy.Text = "⚡ 무료 사용"
+			entry.buy.BackgroundColor3 = Color3.fromRGB(60, 140, 80)
+			entry.buy.Active = true
+		elseif price then
 			entry.buy.Text = "💰 " .. Config.formatMoney(price)
 			entry.buy.BackgroundColor3 = if money >= price then Color3.fromRGB(60, 140, 80) else Color3.fromRGB(90, 70, 70)
 			entry.buy.Active = true
@@ -501,7 +569,10 @@ local function render()
 	local t = workspace:GetServerTimeNow()
 	local trainUntil = (workspace:GetAttribute("TrainUntil") or 0) :: number
 	local nextTrain = (workspace:GetAttribute("NextTrainAt") or 0) :: number
-	if t < trainUntil then
+	local rainUntil = (workspace:GetAttribute("RainUntil") or 0) :: number
+	if t < rainUntil then
+		trainLabel.Text = ("✨ 희귀 로봇 비! %d초"):format(math.ceil(rainUntil - t))
+	elseif t < trainUntil then
 		trainLabel.Text = ("🚂 희귀 로봇 열차 운행 중! %d초"):format(math.ceil(trainUntil - t))
 	elseif nextTrain > t then
 		local left = math.ceil(nextTrain - t)

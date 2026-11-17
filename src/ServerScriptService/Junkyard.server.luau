@@ -16,6 +16,7 @@ local Debris = game:GetService("Debris")
 local Config = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("JunkyardConfig"))
 local Belt = require(script.Parent:WaitForChild("JunkyardBelt"))
 local JunkyardSave = require(script.Parent:WaitForChild("JunkyardSave"))
+local JunkyardStore = require(script.Parent:WaitForChild("JunkyardStore"))
 
 local junkyard = workspace:WaitForChild("Junkyard")
 local basesFolder = junkyard:WaitForChild("Bases")
@@ -66,6 +67,8 @@ type State = {
 	glovesUntil: number, -- 도둑 장갑 효과 끝나는 시각
 	empReadyAt: number, -- EMP 다시 쓸 수 있는 시각
 	holdStart: { [ProximityPrompt]: number }, -- 받침대 버튼을 누르기 시작한 시각 (누르는 시간 검증)
+	passes: { [string]: boolean }, -- 가진 게임패스 (접속할 때 확인)
+	empCharges: number, -- Robux로 산 무료 EMP 남은 횟수 (저장됨)
 }
 
 local bases: { Base } = {}
@@ -228,7 +231,11 @@ local function baseIncome(base: Base, state: State?): number
 			total += rarity.income
 		end
 	end
-	return total * (if state then state.multiplier else 1)
+	if not state then
+		return total
+	end
+	-- 도감 세트 배수 × 수입 2배 게임패스
+	return total * state.multiplier * (if state.passes.DoubleIncome then Config.IncomePassMultiplier else 1)
 end
 
 local function refreshIncome(state: State)
@@ -247,8 +254,9 @@ local function applyTitle(state: State)
 		return
 	end
 	local _, best = Config.catalogMultiplier(state.catalog)
+	local vip = state.passes.VipBase == true
 	local tag = head:FindFirstChild("TitleTag") :: BillboardGui?
-	if not best then
+	if not best and not vip then
 		if tag then
 			tag:Destroy()
 		end
@@ -271,10 +279,17 @@ local function applyTitle(state: State)
 		newTag.Parent = head
 		tag = newTag
 	end
-	local rarity = Config.Rarities[best]
+	local rarity = if best then Config.Rarities[best] else nil
 	local label = (tag :: BillboardGui):FindFirstChild("Label") :: TextLabel
-	label.Text = ("[%s 수집가]"):format(rarity.name)
-	label.TextColor3 = rarity.color
+	local words = {}
+	if vip then
+		table.insert(words, "[👑 VIP]")
+	end
+	if rarity then
+		table.insert(words, ("[%s 수집가]"):format(rarity.name))
+	end
+	label.Text = table.concat(words, " ")
+	label.TextColor3 = if rarity then rarity.color else Color3.fromRGB(255, 215, 90)
 end
 
 local function addToCatalog(state: State, robotId: string)
@@ -489,7 +504,7 @@ local function snapshot(state: State): JunkyardSave.Data
 			money += if rarity then rarity.price else 0
 		end
 	end
-	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades) }
+	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades), empCharges = state.empCharges }
 end
 
 -- 행동 ----------------------------------------------------------------------------
@@ -535,6 +550,26 @@ local function buy(state: State, itemId: number)
 	notify(state.player, "Info", ("%s 구매! 기지로 가져가세요."):format(robotLabel(item.robotId)))
 end
 
+-- 방어막 시간·충전 시간 (방어막 강화 단계 + VIP 게임패스)
+local function shieldDuration(state: State): number
+	return upgradeValue(state, "ShieldTime") + (if state.passes.VipBase then Config.VipShieldBonus else 0)
+end
+
+local function shieldCooldown(state: State): number
+	return Config.LockCooldown * (if state.passes.VipBase then Config.VipCooldownRate else 1)
+end
+
+-- 방어막을 untilTime(서버 시간)까지 켠다
+local function setShield(state: State, base: Base, untilTime: number)
+	base.lockedUntil = untilTime
+	base.lockCooldownUntil = untilTime + shieldCooldown(state)
+	base.model:SetAttribute("LockedUntil", base.lockedUntil)
+	state.player:SetAttribute("LockedUntil", base.lockedUntil)
+	state.player:SetAttribute("LockCooldownUntil", base.lockCooldownUntil)
+	local shield = base.model:FindFirstChild("Shield") :: BasePart
+	shield.Transparency = 0.5
+end
+
 local function lockBase(state: State)
 	local base = state.base
 	if not base then
@@ -549,14 +584,8 @@ local function lockBase(state: State)
 		notify(state.player, "Alert", ("방어막 충전 중이에요. %d초 뒤에 다시 쓸 수 있어요."):format(math.ceil(base.lockCooldownUntil - t)))
 		return
 	end
-	local duration = upgradeValue(state, "ShieldTime") -- 방어막 강화 단계에 따라 60~150초
-	base.lockedUntil = t + duration
-	base.lockCooldownUntil = base.lockedUntil + Config.LockCooldown
-	base.model:SetAttribute("LockedUntil", base.lockedUntil)
-	state.player:SetAttribute("LockedUntil", base.lockedUntil)
-	state.player:SetAttribute("LockCooldownUntil", base.lockCooldownUntil)
-	local shield = base.model:FindFirstChild("Shield") :: BasePart
-	shield.Transparency = 0.5
+	local duration = shieldDuration(state) -- 방어막 강화 단계(60~150초) + VIP 30초
+	setShield(state, base, t + duration)
 	notify(state.player, "Info", ("방어막 작동! %d초 동안 아무도 훔칠 수 없어요."):format(duration))
 end
 
@@ -662,12 +691,19 @@ local function useItem(state: State, id: string)
 	if not root then
 		return
 	end
-	local price = Config.itemPrice(id, (state.player:GetAttribute("Income") or 0) :: number)
+	-- Robux로 산 무료 EMP가 있으면 돈 대신 그것을 쓴다
+	local free = id == "EMP" and state.empCharges > 0
+	local price = if free then 0 else Config.itemPrice(id, (state.player:GetAttribute("Income") or 0) :: number)
 	if state.money < price then
 		notify(state.player, "Alert", ("%s: 돈이 %s 부족해요."):format(item.name, Config.formatMoney(price - state.money)))
 		return
 	end
-	setMoney(state, state.money - price)
+	if free then
+		state.empCharges -= 1
+		state.player:SetAttribute("EmpCharges", state.empCharges)
+	else
+		setMoney(state, state.money - price)
+	end
 	if id == "EMP" then
 		state.empReadyAt = t + Config.EmpCooldown
 		empBurst(root.Position)
@@ -873,6 +909,60 @@ Belt.start(beltRemote, function(robotId: string)
 end)
 JunkyardSave.start()
 
+-- Robux 상품 (3-2) -------------------------------------------------------------
+local function syncPasses(state: State)
+	local owned = {}
+	for key in state.passes do
+		table.insert(owned, key)
+	end
+	state.player:SetAttribute("Passes", HttpService:JSONEncode(owned))
+	state.player:SetAttribute("EmpCharges", state.empCharges)
+end
+
+-- 개발자 상품 지급 (JunkyardStore가 영수증 중복을 막은 뒤 부른다). 지급하면 true
+local function grantProduct(player: Player, key: string): boolean
+	local state = states[player]
+	if not state or state.loading then
+		return false -- 준비가 끝나면 Roblox가 영수증을 다시 보낸다
+	end
+	if key == "EmpPack" then
+		state.empCharges += Config.EmpPackCharges
+		notify(player, "Info", ("⚡ 무료 EMP %d개를 받았어요! (남은 %d개)"):format(Config.EmpPackCharges, state.empCharges))
+	elseif key == "InstantShield" then
+		local base = state.base
+		if not base then
+			return false
+		end
+		local t = now()
+		setShield(state, base, math.max(base.lockedUntil, t) + shieldDuration(state)) -- 켜져 있으면 이어 붙인다
+		notify(player, "Info", ("🛡 즉시 방어막! %d초 동안 아무도 훔칠 수 없어요."):format(math.ceil(base.lockedUntil - t)))
+	elseif key == "RareRain" then
+		local untilTime = Belt.startRain(Config.RainDuration)
+		workspace:SetAttribute("RainUntil", untilTime)
+		notifyAll(("✨ %s님이 희귀 로봇 비를 내렸어요! %d초 동안 모두의 벨트에 희귀 로봇이 %d배!"):format(player.DisplayName, Config.RainDuration, Config.RainMultiplier))
+	else
+		return false
+	end
+	syncPasses(state)
+	JunkyardSave.saveNow(player) -- 결제 결과는 바로 저장
+	return true
+end
+
+-- 게임 안에서 게임패스를 새로 샀을 때
+local function onPassOwned(player: Player, key: string)
+	local state = states[player]
+	if not state then
+		return
+	end
+	state.passes[key] = true
+	syncPasses(state)
+	refreshIncome(state)
+	applyTitle(state)
+	notify(player, "Info", ("%s 구매 고마워요! 바로 적용됐어요."):format(Config.GamePasses[key].name))
+end
+
+JunkyardStore.start({ grantProduct = grantProduct, onPassOwned = onPassOwned })
+
 -- 저장된 기지 불러오기 ------------------------------------------------------------
 local function setCatalog(state: State, catalog: { [string]: boolean })
 	state.catalog = catalog
@@ -902,6 +992,10 @@ local function loadPlayer(state: State)
 		setCatalog(state, data.catalog)
 		state.upgrades = data.upgrades
 		syncUpgradeAttributes(state)
+		state.empCharges = data.empCharges
+		state.passes = JunkyardStore.checkPasses(player)
+		syncPasses(state)
+		applyTitle(state)
 		setPadLocks(base)
 		applySpeed(state)
 		for key, robotId in data.pads do
@@ -911,7 +1005,9 @@ local function loadPlayer(state: State)
 			end
 		end
 		refreshIncome(state)
-		local gained = JunkyardSave.offlineEarnings(baseIncome(base, state), lastSeen, os.time())
+		local boost = state.passes.OfflineBoost == true -- 오프라인 수입 강화 게임패스
+		local gained = JunkyardSave.offlineEarnings(baseIncome(base, state), lastSeen, os.time(),
+			if boost then Config.OfflineBoostRate else nil, if boost then Config.OfflineBoostHours else nil)
 		if gained > 0 then
 			base.vault += gained
 			base.model:SetAttribute("Vault", math.floor(base.vault))
@@ -968,6 +1064,8 @@ local function onPlayerAdded(player: Player)
 		glovesUntil = 0,
 		empReadyAt = 0,
 		holdStart = {},
+		passes = {},
+		empCharges = 0,
 	}
 	for _, id in Config.UpgradeOrder do
 		state.upgrades[id] = 0
@@ -1061,6 +1159,25 @@ if game:GetService("RunService"):IsStudio() then
 			if player.UserId == userId and not state.loading then
 				setMoney(state, state.money + amount)
 			end
+		end
+	end)
+	-- Studio 전용: Robux 없이 상품·게임패스 효과 시험 (DebugMoneyUserId 대상에게)
+	workspace:GetAttributeChangedSignal("DebugGrantProduct"):Connect(function()
+		local key = workspace:GetAttribute("DebugGrantProduct")
+		local userId = workspace:GetAttribute("DebugMoneyUserId")
+		workspace:SetAttribute("DebugGrantProduct", nil)
+		local player = if typeof(userId) == "number" then Players:GetPlayerByUserId(userId) else nil
+		if player and typeof(key) == "string" and Config.Products[key] then
+			grantProduct(player, key)
+		end
+	end)
+	workspace:GetAttributeChangedSignal("DebugGivePass"):Connect(function()
+		local key = workspace:GetAttribute("DebugGivePass")
+		local userId = workspace:GetAttribute("DebugMoneyUserId")
+		workspace:SetAttribute("DebugGivePass", nil)
+		local player = if typeof(userId) == "number" then Players:GetPlayerByUserId(userId) else nil
+		if player and typeof(key) == "string" and Config.GamePasses[key] then
+			onPassOwned(player, key)
 		end
 	end)
 end

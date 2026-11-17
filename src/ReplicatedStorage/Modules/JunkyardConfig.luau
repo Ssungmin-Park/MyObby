@@ -103,6 +103,48 @@ Config.TrainDuration = 30
 Config.TrainInterval = 1
 Config.TrainRarities = { Rare = true, Epic = true, Legendary = true, Mythic = true }
 
+-- Robux 상품 (3-2) -------------------------------------------------------------
+-- id는 사용자가 Creator Dashboard에서 상품을 만든 뒤 넣는다. 0이면 아직 없음 → 상점에 "준비 중".
+-- robux는 화면 표시용 예상 가격이다. 실제 가격은 Creator Dashboard에서 정한 값이 결제창에 나온다.
+export type RobuxOffer = { name: string, desc: string, id: number, robux: number }
+Config.PassOrder = { "DoubleIncome", "VipBase", "OfflineBoost" }
+Config.GamePasses = {
+	DoubleIncome = { name = "💰 수입 2배", desc = "모든 로봇 수입이 영구로 2배", id = 0, robux = 399 },
+	VipBase = { name = "👑 VIP 기지", desc = "방어막 +30초, 방어막 충전 시간 절반, 머리 위 VIP 표시", id = 0, robux = 249 },
+	OfflineBoost = { name = "🌙 오프라인 수입 강화", desc = "떠나 있는 동안 수입 50% → 100%, 최대 3시간 → 8시간", id = 0, robux = 149 },
+} :: { [string]: RobuxOffer }
+Config.ProductOrder = { "EmpPack", "InstantShield", "RareRain" }
+Config.Products = {
+	EmpPack = { name = "⚡ EMP 5개", desc = "돈 없이 쓰는 EMP 5번 (충전 시간은 같아요, 저장돼요)", id = 0, robux = 49 },
+	InstantShield = { name = "🛡 즉시 방어막", desc = "충전 중이어도 바로 방어막을 켜요", id = 0, robux = 25 },
+	RareRain = { name = "✨ 희귀 로봇 비 (서버 전체)", desc = "60초 동안 모두의 벨트에 희귀 이상 로봇이 5배 자주 나와요", id = 0, robux = 99 },
+} :: { [string]: RobuxOffer }
+Config.EmpPackCharges = 5
+Config.VipShieldBonus = 30 -- 초
+Config.VipCooldownRate = 0.5
+Config.OfflineBoostRate = 1
+Config.OfflineBoostHours = 8
+Config.IncomePassMultiplier = 2
+Config.RainDuration = 60
+Config.RainMultiplier = 5
+Config.RainRarities = { Rare = true, Epic = true, Legendary = true, Mythic = true }
+
+-- 확률 공개용: 등급별 벨트 등장 확률(%). rain이면 희귀 로봇 비가 내리는 중
+function Config.rarityOdds(rain: boolean): { [string]: number }
+	local total = 0
+	local weights: { [string]: number } = {}
+	for _, id in Config.RarityOrder do
+		local weight = Config.Rarities[id].weight * (if rain and Config.RainRarities[id] then Config.RainMultiplier else 1)
+		weights[id] = weight
+		total += weight
+	end
+	local odds = {}
+	for id, weight in weights do
+		odds[id] = weight / total * 100
+	end
+	return odds
+end
+
 function Config.upgradeValue(id: string, level: number): number
 	local upgrade = Config.Upgrades[id]
 	return upgrade.values[math.clamp(level + 1, 1, #upgrade.values)]

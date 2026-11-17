@@ -11,9 +11,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **OpenAI Codex** — 3-1 팔기·2인 훔치기·상점 효과·재접속 복원·열차 테스트 완료. 모바일 상점 UI는 미검증 |
+| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — **3-2 Robux 상품 코드 구현·Studio 반영·테스트**(상품 id는 아직 0 = "준비 중"). 그 전: Codex 3-1 검증·Studio 테스트 자금 훅 |
 | 작업 시점 | 2026-11-17 |
-| 다음 작업 AI | 모바일 상점 UI 확인. 3-2 Robux 상품은 계획 승인과 사용자 생성 상품 ID를 받은 뒤 구현한다 |
+| 다음 작업 AI | ① 사용자가 Creator Dashboard에서 게임패스 3개·개발자 상품 3개를 만들고 알려 준 **id를 `JunkyardConfig`의 `GamePasses`/`Products` `id`에 넣기** → Studio 테스트 구매로 실제 결제 흐름 확인 ② 모바일 상점 UI 확인 ③ 3-3 협력 거대 로봇(계획 승인 먼저) |
 | 게임 이름 | 마이오비 (Studio place 이름) / **주력: 로봇 고물상 타이쿤**(멀티플레이). 부가: 실험실 탈출 오비, 로봇 작업장(꼬마 로봇 연구소) |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -22,11 +22,11 @@
 | Studio 모드 | 작업 종료 시 **Edit 모드** (Play 테스트 종료함) |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-17 Claude Code: **3-1 상점·이벤트** — `JunkyardConfig`(상점·업그레이드·열차 설정), `JunkyardBelt`(열차), `JunkyardEvents`(신규 Script), `JunkyardSave`(upgrades 저장), `Junkyard`(상점·EMP·장갑·경보기·울타리·신발·방어막 강화·받침대 추가·누르기 시간 검증), `JunkyardHud`(상점 창·열차 시간·침입자 강조), 맵 각 기지에 `Pad11~14` 추가. Studio ↔ `src/` 체크섬 일치 |
+| 마지막 게임 수정 | 2026-11-17 Claude Code: **3-2 Robux** — `ServerScriptService/JunkyardStore`(신규, ProcessReceipt·영수증 기록·게임패스 확인), `JunkyardConfig`(GamePasses·Products·확률 함수), `JunkyardBelt`(희귀 로봇 비), `JunkyardSave`(empCharges·saveNow·오프라인 rate/hours 인자), `Junkyard`(혜택·지급·Studio 전용 DebugGrantProduct/DebugGivePass), `JunkyardHud`(💎 Robux 탭·확률 공개·무료 EMP·비 표시). Studio ↔ `src/` 체크섬 일치 |
 | Studio 저장 상태 | `persistedToCloud = true`. **로봇 고물상 추가분의 클라우드 저장(Ctrl+S) 여부는 미확인** — 사용자에게 저장을 요청했다 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
 | 실제 저장 데이터 | 테스트로 **사용자 본인 키**에 값이 남아 있다: `Progress_v1` = Stage 11, `RobotLab_v1` = 부품 10·삐삐 Lv.1, `Junkyard_v1` = 돈 약 31·받침대 삐삐/너트/스펀지(일반 세트 완성). 지우려면(RemoveAsync) 사용자 승인 필요 |
-| 백업 상태 | 스크립트 17개(Script·ModuleScript·LocalScript)는 `src/`에서 관리한다. 작업 시작 시 Studio와 모두 체크섬 일치. 맵 생성 코드: 연구소 `tools/build-robot-lab.luau` → `tools/expand-robot-lab.luau`, 고물상 `tools/build-junkyard.luau`. 백업: `ServerStorage/ObbyServer_backup`, `StagesBackup`, `RobotLabV1Backup` |
+| 백업 상태 | 스크립트 18개(Script·ModuleScript·LocalScript)는 `src/`에서 관리하고 Studio와 체크섬 일치(2026-11-17 3-2 반영 후). 맵 생성 코드: 연구소 `tools/build-robot-lab.luau` → `tools/expand-robot-lab.luau`, 고물상 `tools/build-junkyard.luau`. 백업: `ServerStorage/ObbyServer_backup`, `StagesBackup`, `RobotLabV1Backup` |
 | 게임 공개 상태 | 확인하지 않았고 바꾸지 않았다. AI는 Publish하지 않는다 (AGENTS.md §8 규칙 9) |
 
 ---
@@ -176,6 +176,36 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
   - 떠나 있는 동안 기지는 서버에서 비워지므로 아무도 훔칠 수 없다. 기지 6개가 꽉 차서 기지가 없는 플레이어는 불러오지도 저장하지도 않는다.
 
 **클라이언트 `StarterPlayerScripts/JunkyardHud`** — 잠긴 기지마다 위에 "🛡 방어막 N초" 빌보드(모두에게 보임, 300스터드), 왼쪽 위 패널(돈, 초당·도감 배수, 운반 상태, 방어막 버튼, 도감 버튼), 도감 창(18칸 + 세트 보너스 진행), 위쪽 알림, 벨트 로봇 직접 그리기와 구매 프롬프트, 받침대 버튼 문구(내 기지 "팔기 +금액" / 남의 기지 "훔치기"). Mode가 Junkyard일 때만 보인다.
+
+### B-13. 로봇 고물상 3-2: Robux 상품 (2026-11-17, 코드 완료 · 상품 id 미입력)
+
+**상품 (`JunkyardConfig`)** — `id`가 0이면 상점에 "준비 중"이고 결제창을 띄우지 않는다. 사용자가 만든 뒤 id를 넣는다. `robux`는 화면 표시용 예상 가격(실제 가격은 Creator Dashboard 값).
+| 종류 | 키 | 이름 | 효과 | 예상 가격 |
+|---|---|---|---|---|
+| 게임패스 | `DoubleIncome` | 💰 수입 2배 | 기지 수입 ×2 (`IncomePassMultiplier`) | 399 |
+| 게임패스 | `VipBase` | 👑 VIP 기지 | 방어막 +30초, 충전 시간 ×0.5, 머리 위 `[👑 VIP]` | 249 |
+| 게임패스 | `OfflineBoost` | 🌙 오프라인 수입 강화 | 오프라인 수입 50%→100%, 최대 3→8시간 | 149 |
+| 개발자 상품 | `EmpPack` | ⚡ EMP 5개 | 무료 EMP 5회(`empCharges`, 저장됨). EMP를 쓸 때 돈 대신 먼저 차감 | 49 |
+| 개발자 상품 | `InstantShield` | 🛡 즉시 방어막 | 충전 중이어도 방어막 켜기, 켜져 있으면 시간 이어 붙임 | 25 |
+| 개발자 상품 | `RareRain` | ✨ 희귀 로봇 비 | 서버 전체 60초 동안 희귀 이상 가중치 ×5, 산 사람 이름 전체 알림, workspace 속성 `RainUntil` | 99 |
+
+**계획에서 바꾼 점:** VIP 기지는 계획의 "받침대 +4" 대신 "방어막 +30초·충전 절반·VIP 표시"로 했다(맵 기지에 받침대 15칸 이상 둘 자리가 없음).
+
+**결제 처리 `ServerScriptService/JunkyardStore`** (ModuleScript)
+- `MarketplaceService.ProcessReceipt`는 이 모듈 한 곳에서만 설정한다(`Junkyard`가 `JunkyardStore.start({grantProduct, onPassOwned})` 호출).
+- 영수증 기록: DataStore `Receipts_v1`, 키 `Receipt_<PurchaseId>`, 값 `{ userId, product, at }`. 흐름: 기록 있음 → `PurchaseGranted` / 플레이어 없음·로딩 중·지급 실패·기록 확인 실패 → `NotProcessedYet`(Roblox가 다시 보냄) / 지급 → 기록 → `PurchaseGranted`. 기록 저장만 실패하면 `NotProcessedYet`이라 재시도 때 **다시 지급될 수 있다**(Roblox 권장 흐름과 같은 알려진 한계).
+- 게임패스: 접속해 저장 데이터를 불러올 때 `UserOwnsGamePassAsync`로 확인(`checkPasses`), 게임 안에서 사면 `PromptGamePassPurchaseFinished`로 바로 적용. 게임패스 보유는 저장하지 않는다(매번 Roblox에 확인).
+- 지급 후 `JunkyardSave.saveNow(player)`로 바로 저장.
+- 플레이어 속성: `Passes`(JSON 배열), `EmpCharges`.
+- **Studio 전용 테스트 훅**(`RunService:IsStudio()`일 때만 연결, Codex의 `DebugGiveMoney`와 같은 방식): 서버에서 `workspace:SetAttribute("DebugMoneyUserId", userId)` 후 `DebugGrantProduct` = 상품 키, `DebugGivePass` = 게임패스 키.
+
+**클라이언트**: 상점에 `💎 Robux` 탭. 버튼은 `PromptGamePassPurchase`/`PromptProductPurchase`만 띄우고 지급은 서버가 한다. 희귀 로봇 비 행에 등급별 확률 공개(평소 → 비: 일반 60→37.5%, 고급 25→15.6%, 희귀 10→31.2%, 에픽 4→12.5%, 전설 0.9→2.8%, 신화 0.1→0.3%). EMP 행은 무료 EMP가 있으면 "⚡ 무료 사용". 패널에 "✨ 희귀 로봇 비! N초".
+
+**테스트 (2026-11-17, Claude Code, Play 1인)**
+- 영수증 처리 단위 테스트(복제본 + 가짜 영수증 저장소 + 가짜 지급 함수) 7항목 PASS: 첫 결제 지급·기록, 같은 영수증 재지급 없음, 지급 실패 → NotProcessedYet·기록 없음, 기록 확인 실패 → 지급 안 함, 기록 저장 실패 → NotProcessedYet, 모르는 상품 id, 서버에 없는 플레이어.
+- Studio 전용 훅으로 효과 확인: EMP 5개 → 무료 EMP 0→5, 무료 EMP 사용 시 돈 그대로·4개 남음·충전 시작 / 즉시 방어막 90초(+다시 사면 179초로 이어 붙음) / 희귀 로봇 비 60초·패널 표시 / 수입 2배 초당 2.1→4.2 / VIP 칭호 `[👑 VIP] [일반 수집가]` / 상점 Robux 탭 6행·"준비 중"·확률 공개 표시 / 클라이언트 에러 0.
+- **미검증:** 실제 결제창(상품 id 필요), 오프라인 수입 강화의 실제 적용(오래 기다려야 함), VIP 충전 시간 절반의 실제 적용, 무료 EMP 재접속 유지(코드상 저장됨), 모바일 화면.
+- 테스트로 사용자 본인 `Junkyard_v1`에 무료 EMP 4개가 남았다(게임패스는 테스트 훅이라 저장 안 됨).
 
 ### B-12. 로봇 고물상 3-1: 게임 돈 상점·희귀 로봇 열차 (2026-11-17, 구현 완료·테스트 일부)
 
@@ -460,7 +490,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 1. **2인 로컬 서버 테스트:** Studio 테스트 탭 → "클라이언트 및 서버"(플레이어 2명) 시작. 훔치기 → 도둑 기지 배치 / 주인이 붙잡기 → 복귀 / 도둑 사망 → 복귀 / 방어막 중 훔치기 거절·밀어내기 / 같은 벨트 로봇을 둘이 동시에 사기.
 2. ✅ **2단계 저장** 완료 (B-11 저장, F ⑰).
 3. **3-1 마무리 테스트 (다음 AI가 가장 먼저):** 돈이 부족하면 테스트가 어려우니, Studio Play 중 **서버**에서 플레이어 돈을 늘리는 방법이 필요하다(현재 디버그 명령 없음). 방법 제안: `Junkyard` 스크립트에 Studio에서만 동작하는 테스트 훅(`RunService:IsStudio()`일 때 workspace 속성 `DebugGiveMoney`)을 추가하거나, 금고에 쌓이길 기다린다. 확인 목록: ① 업그레이드 5종 구매 → 효과(받침대 12칸 열림·걷기 19·방어막 90초·경보기 알림+빨간 표시·울타리 느려짐) ② 업그레이드가 재접속 후 유지(Junkyard_v1 upgrades) ③ EMP(2인 로컬 서버: 맞은 사람 3초 정지, 훔친 로봇 복귀, 쿨타임 30초) ④ 도둑 장갑(0.6초 훔치기) ⑤ **일반 팔기·훔치기가 누르기 시간 검증 후에도 정상인지**(`PromptButtonHoldBegan`이 서버에서 오는지 꼭 확인. 안 오면 팔기·훔치기가 모두 막히므로 검증 코드를 고쳐야 함) ⑥ `DebugTrainNow`로 열차 → 30초간 희귀 이상만·1초 간격·알림 ⑦ 모바일에서 상점 창 크기.
-4. **3-2 Robux 상품** (B-12 다음): 게임패스(수입 2배 399, VIP 기지 249, 오프라인 수입 강화 149)·개발자 상품(EMP 5개 49, 즉시 방어막 25, 서버 전체 희귀 로봇 비 99). 사용자가 Creator Dashboard에서 상품을 만들고 ID를 알려 줘야 한다. 구매 처리 `ProcessReceipt`는 서버에서만, 영수증 중복 지급 방지 기록 필수. 확률 변경 상품은 확률 공개.
+4. ✅ **3-2 Robux 상품 코드 완료**(B-13). 남은 것: 사용자가 상품을 만들고 id 입력 → 실제 결제 테스트. 원래 계획: 게임패스(수입 2배 399, VIP 기지 249, 오프라인 수입 강화 149)·개발자 상품(EMP 5개 49, 즉시 방어막 25, 서버 전체 희귀 로봇 비 99). 사용자가 Creator Dashboard에서 상품을 만들고 ID를 알려 줘야 한다. 구매 처리 `ProcessReceipt`는 서버에서만, 영수증 중복 지급 방지 기록 필수. 확률 변경 상품은 확률 공개.
 5. **3-3 협력 거대 로봇**: 서버 전체 기부 진행 막대 → 완성 시 10분 서버 수입 2배, 상위 기부자 공지.
 6. (예전 계획) **3단계 상점·이벤트 원안:** 방해(EMP 기절, 빠른 도둑), 방어(방어막 연장, 레이저 울타리), 도움(수입 2배·행운·받침대 추가·이동 속도), 서버 전체("희귀 로봇 비"), 10분마다 희귀 로봇 열차, 서버 협력 거대 로봇. Robux 상품 등록은 사용자가 Creator Dashboard에서.
 4. **4단계:** 환생, 변종(금색·무지개), 비주얼·사운드. 서버 최대 인원을 6명으로 맞추기(체험 설정, 사용자).

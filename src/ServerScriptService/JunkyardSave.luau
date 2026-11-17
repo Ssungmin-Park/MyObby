@@ -7,7 +7,8 @@
 --   키            : "Player_<UserId>"
 --   값            : { version = 1, data = Data, lastSeen = os.time(), lock = { job = 서버ID, at = os.time() } 또는 없음 }
 --   Data          : { money = 정수, catalog = { [로봇 id] = true }, pads = { ["받침대 번호"] = 로봇 id },
---                     upgrades = { [업그레이드 id] = 단계 } }   ← upgrades는 3-1에서 추가 (옛 데이터는 모두 0단계로 읽힘)
+--                     upgrades = { [업그레이드 id] = 단계 }, empCharges = 정수 }
+--                   ← upgrades는 3-1, empCharges(Robux로 산 무료 EMP)는 3-2에서 추가 (옛 데이터는 0으로 읽힘)
 --
 -- 안전 원칙
 --   1. 세션 잠금: 데이터를 쓰는 서버가 lock을 남긴다. 다른 서버의 lock이 살아 있으면 기다리고,
@@ -35,6 +36,7 @@ export type Data = {
 	catalog: { [string]: boolean },
 	pads: { [string]: string }, -- 받침대 번호(문자열) → 로봇 id
 	upgrades: { [string]: number }, -- 업그레이드 id → 단계 (0 = 기본)
+	empCharges: number, -- Robux 상품으로 받은 무료 EMP 남은 횟수
 }
 export type LoadStatus = "new" | "ok" | "failed" | "locked"
 export type SaveStatus = "ok" | "failed" | "lostLock"
@@ -75,12 +77,12 @@ local function defaultUpgrades(): { [string]: number }
 end
 
 function JunkyardSave.newData(): Data
-	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades() }
+	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0 }
 end
 
 -- 저장소에서 읽은 값을 허용 범위로 정리해서 항상 올바른 Data를 돌려준다.
 function JunkyardSave.sanitize(raw: any): Data
-	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades() }
+	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0 }
 	if typeof(raw) ~= "table" then
 		return JunkyardSave.newData()
 	end
@@ -105,6 +107,10 @@ function JunkyardSave.sanitize(raw: any): Data
 			end
 		end
 	end
+	local charges = raw.empCharges
+	if typeof(charges) == "number" and charges == charges then
+		data.empCharges = math.floor(math.clamp(charges, 0, 999))
+	end
 	if typeof(raw.upgrades) == "table" then
 		for _, id in Config.UpgradeOrder do
 			local level = raw.upgrades[id]
@@ -123,6 +129,7 @@ local function snapshot(data: Data): Data
 		catalog = table.clone(data.catalog),
 		pads = table.clone(data.pads),
 		upgrades = table.clone(data.upgrades),
+		empCharges = math.floor(data.empCharges),
 	}
 end
 
@@ -231,12 +238,13 @@ function JunkyardSave.saveAsync(userId: number, data: Data, release: boolean): S
 end
 
 -- 떠나 있던 동안의 수입: 초당 수입 × 비율 × 경과 시간(최대 OfflineMaxHours)
-function JunkyardSave.offlineEarnings(incomePerSecond: number, lastSeen: number?, now: number): number
+-- rate·hours를 주지 않으면 기본값(Config.OfflineRate, OfflineMaxHours). 오프라인 수입 강화 게임패스는 더 큰 값을 준다
+function JunkyardSave.offlineEarnings(incomePerSecond: number, lastSeen: number?, now: number, rate: number?, hours: number?): number
 	if not lastSeen or lastSeen >= now or incomePerSecond <= 0 then
 		return 0
 	end
-	local seconds = math.min(now - lastSeen, Config.OfflineMaxHours * 3600)
-	return math.floor(incomePerSecond * Config.OfflineRate * seconds)
+	local seconds = math.min(now - lastSeen, (hours or Config.OfflineMaxHours) * 3600)
+	return math.floor(incomePerSecond * (rate or Config.OfflineRate) * seconds)
 end
 
 -- 접속 중 저장 관리 ----------------------------------------------------------
@@ -274,6 +282,14 @@ function JunkyardSave.finish(player: Player)
 	tracked[player] = nil
 	local data = entry.getData()
 	task.spawn(saveTracked, player, entry, data, true)
+end
+
+-- 결제 직후처럼 바로 저장해야 할 때 부른다 (lock 유지, 멈추지 않음)
+function JunkyardSave.saveNow(player: Player)
+	local entry = tracked[player]
+	if entry then
+		task.spawn(saveTracked, player, entry, entry.getData(), false)
+	end
 end
 
 local started = false
