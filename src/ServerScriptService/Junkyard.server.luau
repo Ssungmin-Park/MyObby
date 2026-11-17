@@ -494,8 +494,9 @@ local function attachCarryModel(state: State)
 	weld.Parent = model.PrimaryPart
 	model.Parent = state.player.Character
 	carry.model = model
-	-- 벨트에서 산 로봇은 다른 사람이 길게 눌러 빼앗을 수 있다 (받침대에서 훔친 로봇은 붙잡기 규칙만)
-	if not carry.fromBase and model.PrimaryPart then
+	-- 들고 가는 로봇 버튼: 벨트에서 산 로봇은 누구나 길게 눌러 "빼앗기", 훔친 로봇은 주인만 "되찾기"
+	-- (누가 누를 수 있는지는 프롬프트 속성 OwnerUserId·VictimUserId로 화면이 정하고, 서버가 다시 확인한다)
+	if model.PrimaryPart then
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.Name = "SnatchPrompt"
 		prompt.ActionText = "빼앗기"
@@ -503,6 +504,9 @@ local function attachCarryModel(state: State)
 		prompt.HoldDuration = Config.StealHold
 		prompt.MaxActivationDistance = 9
 		prompt.RequiresLineOfSight = false
+		local owner = carry.fromBase and carry.fromBase.owner
+		prompt:SetAttribute("OwnerUserId", if owner then owner.UserId else 0)
+		prompt:SetAttribute("VictimUserId", if carry.snatchedFrom then carry.snatchedFrom.UserId else 0)
 		prompt.Parent = model.PrimaryPart
 		prompt.PromptButtonHoldBegan:Connect(function(player: Player)
 			local holder = states[player]
@@ -521,6 +525,13 @@ local function syncCarryAttributes(state: State)
 	local carry = state.carry
 	state.player:SetAttribute("Carrying", if carry then carry.robotId else "")
 	state.player:SetAttribute("CarryStolen", carry ~= nil and (carry.fromBase ~= nil or carry.snatchedFrom ~= nil))
+	-- 들고 가는 로봇 버튼의 주인·원래 사람 표시도 맞춘다
+	local prompt = carry and carry.model and carry.model.PrimaryPart and carry.model.PrimaryPart:FindFirstChild("SnatchPrompt")
+	if carry and prompt then
+		local owner = carry.fromBase and carry.fromBase.owner
+		prompt:SetAttribute("OwnerUserId", if owner then owner.UserId else 0)
+		prompt:SetAttribute("VictimUserId", if carry.snatchedFrom then carry.snatchedFrom.UserId else 0)
+	end
 end
 
 local function startCarry(state: State, robotId: string, fromBase: Base?, fromPad: number?)
@@ -600,7 +611,27 @@ snatchHandler = function(player: Player, target: State, prompt: ProximityPrompt)
 	local carry = target.carry
 	local root = rootOf(player)
 	local targetRoot = rootOf(target.player)
-	if not carry or carry.fromBase or not root or not targetRoot or (root.Position - targetRoot.Position).Magnitude > Config.SnatchRange then
+	if not carry or not root or not targetRoot or (root.Position - targetRoot.Position).Magnitude > Config.SnatchRange then
+		return
+	end
+	-- 내 받침대에서 훔쳐 가는 로봇: 주인이 길게 눌러 되찾는다 (받침대로 돌아간다)
+	if carry.fromBase then
+		if carry.fromBase.owner == player then
+			returnStolen(target, "주인이 되찾음")
+		else
+			notify(player, "Alert", "받침대에서 훔친 로봇은 주인만 되찾을 수 있어요.")
+		end
+		return
+	end
+	-- 나에게서 빼앗아 간 로봇: 길게 눌러 되찾는다 (빼앗긴 직후 잠깐은 불가)
+	if carry.snatchedFrom == player then
+		if now() < (carry.protectUntil or 0) then
+			notify(player, "Alert", "잠깐! 조금 뒤에 되찾을 수 있어요.")
+		elseif state.carry then
+			notify(player, "Alert", "이미 로봇을 들고 있어요.")
+		else
+			returnSnatched(target, "길게 눌러 되찾음")
+		end
 		return
 	end
 	if not state.base or state.loading or player:GetAttribute("Mode") ~= "Junkyard" or now() < state.stunnedUntil then
@@ -638,7 +669,7 @@ snatchHandler = function(player: Player, target: State, prompt: ProximityPrompt)
 	end
 	syncCarryAttributes(state)
 	notify(player, "Info", ("%s을(를) 빼앗았어요! 되찾기 전에 내 기지로!"):format(robotLabel(robotId)))
-	notify(target.player, "Stolen", ("⚠ %s님이 들고 가던 %s을(를) 빼앗았어요! 쫓아가서 되찾으세요!"):format(player.DisplayName, robotLabel(robotId)))
+	notify(target.player, "Stolen", ("⚠ %s님이 들고 가던 %s을(를) 빼앗았어요! 쫓아가서 길게 눌러 되찾으세요!"):format(player.DisplayName, robotLabel(robotId)))
 end
 
 -- 기지 배정·해제 ------------------------------------------------------------------
@@ -908,7 +939,7 @@ local function steal(state: State, base: Base, padIndex: number)
 	end
 	notify(state.player, "Info", ("%s을(를) 훔쳤어요! 주인에게 잡히기 전에 내 기지로!"):format(robotLabel(robotId)))
 	-- "Stolen": 화면에서는 빨간 알림 + 경보음 (경보기 업그레이드 없이도 도둑맞는 순간엔 울린다)
-	notify(base.owner, "Stolen", ("⚠ %s님이 내 %s을(를) 훔쳐 가요! 쫓아가서 붙잡으세요!"):format(state.player.DisplayName, robotLabel(robotId)))
+	notify(base.owner, "Stolen", ("⚠ %s님이 내 %s을(를) 훔쳐 가요! 쫓아가서 로봇을 길게 눌러 되찾으세요!"):format(state.player.DisplayName, robotLabel(robotId)))
 end
 
 -- 상점 ------------------------------------------------------------------------
@@ -1787,7 +1818,7 @@ if game:GetService("RunService"):IsStudio() then
 	end)
 end
 
--- 0.2초마다: 배치, 붙잡기, 방어막 / 1초마다: 수입 -------------------------------------
+-- 0.2초마다: 배치, 방어막 / 1초마다: 수입 (되찾기는 이제 길게 누르기) ---------------------------
 task.spawn(function()
 	local incomeTimer = 0
 	while true do
@@ -1795,20 +1826,7 @@ task.spawn(function()
 		local t = now()
 		for _, state in states do
 			if state.carry then
-				-- 훔친 로봇: 주인이 가까이 오면 떨어뜨린다
-				local carry = state.carry
-				local victim = carry.fromBase and carry.fromBase.owner
-				local thiefRoot = rootOf(state.player)
-				local ownerRoot = victim and rootOf(victim)
-				-- 빼앗은 로봇: 원래 들고 가던 사람이 가까이 오면 되찾는다 (빼앗은 직후 잠깐은 제외)
-				local buyerRoot = if carry.snatchedFrom and t >= (carry.protectUntil or 0) then rootOf(carry.snatchedFrom) else nil
-				if thiefRoot and ownerRoot and (thiefRoot.Position - ownerRoot.Position).Magnitude <= Config.CatchRange then
-					returnStolen(state, "주인에게 붙잡힘")
-				elseif thiefRoot and buyerRoot and (thiefRoot.Position - buyerRoot.Position).Magnitude <= Config.CatchRange and returnSnatched(state, "따라잡아 되찾음") then
-					-- 되찾았다
-				else
-					tryPlace(state)
-				end
+				tryPlace(state) -- 들고 있는 로봇이 내 기지 안에 들어오면 놓는다
 			end
 		end
 		for _, base in bases do

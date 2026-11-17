@@ -109,7 +109,7 @@ Config.CarrySlow = { Common = 2, Uncommon = 3, Rare = 4, Epic = 5, Legendary = 6
 Config.MinWalkSpeed = 8
 Config.MaxWalkSpeed = 36
 Config.StealHold = 1.5 -- 훔치기·팔기 버튼을 누르고 있어야 하는 시간(초)
-Config.CatchRange = 6 -- 주인이 이 거리 안에 들어오면 도둑이 로봇을 떨어뜨린다
+Config.CatchRange = 6 -- (지금은 안 씀) 예전에는 주인이 이 거리 안에 들어오면 자동으로 되찾았다. 이제는 길게 눌러 되찾는다
 Config.SnatchRange = 12 -- 들고 가는 로봇 "빼앗기"를 서버가 허용하는 거리
 Config.SnatchProtect = 3 -- 빼앗거나 되찾은 직후 이 시간(초) 동안은 다시 빼앗기·되찾기 불가
 Config.LockDuration = 60 -- 기지 잠금 시간(초)

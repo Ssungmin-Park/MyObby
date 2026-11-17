@@ -11,7 +11,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — 기지 확장(B-30 = G-2 ④). 다음: G-2 ⑤ 1위 기지 CCTV. 그 전: 빼앗기·변종 제한(B-29), 로봇 33종·경제(B-28), 순위판 즉시 반영(B-27), 신화 타이머(B-26), 상점 창 2배(B-25), 기부 큰 연출·등급 확률(B-24), 이동 속도 개편(B-23). 공개 준비(`docs/LAUNCH.md`, 아이콘·썸네일) |
+| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — 되찾기를 길게 누르기로(B-31), 기지 확장(B-30). 다음: G-2 ⑤ 1위 기지 CCTV. 그 전: 빼앗기·변종 제한(B-29), 로봇 33종·경제(B-28), 순위판 즉시 반영(B-27), 신화 타이머(B-26), 상점 창 2배(B-25), 기부 큰 연출·등급 확률(B-24), 이동 속도 개편(B-23). 공개 준비(`docs/LAUNCH.md`, 아이콘·썸네일) |
 | 작업 시점 | 2026-11-18 |
 | 다음 작업 AI | 사용자: 게임 패스 3개 판매 켜기·가격(399/249/149), 패스·상품 이미지(선택), `docs/LAUNCH.md` 점검표. AI: 판매 켠 뒤 결제창 확인(다른 계정 필요 — 만든 사람은 이미 보유), 썸네일 장면 연출 |
 | 게임 이름 | 마이오비(Studio Place 이름) / **로봇 고물상 타이쿤 단독 운영**. 오비와 로봇 작업장은 `ServerStorage/ArchivedModes`에 보관 |
@@ -22,7 +22,7 @@
 | Studio 모드 | **Edit 모드**(2026-11-17 MCP 확인) |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-18 Claude Code: B-30. `JunkyardConfig` 26430 B / 218537601, `JunkyardSave` 14969 / 430452298, `Junkyard` 72847 / 615107763, `JunkyardHud` 56713 / 511530188 (`JunkyardBelt` B-28, `JunkyardRanking`·`JunkyardGiantRobot` B-27 그대로) — Studio와 일치. 지도: 기지마다 확장 받침대 Pad15~32 추가(`tools/build-expansion.luau`). **사용자가 Ctrl+S 저장 후 다시 게시(Alt+P)해야 실제 게임에 반영** |
+| 마지막 게임 수정 | 2026-11-18 Claude Code: B-31. `JunkyardConfig` 26491 B / 48970560, `Junkyard` 73673 / 472031587, `JunkyardHud` 57864 / 221394562 (`JunkyardSave` 14969 / 430452298은 B-30, `JunkyardBelt` B-28, `JunkyardRanking`·`JunkyardGiantRobot` B-27 그대로) — Studio와 일치. 지도: 확장 받침대 Pad15~32(B-30). **사용자가 Ctrl+S 저장 후 다시 게시(Alt+P)해야 실제 게임에 반영** |
 | Studio 저장 상태 | 대회 변경은 사용자가 Ctrl+S로 저장한 뒤 재시작까지 확인했다. 도감 완성 보상은 Studio Edit에 반영했고 클라우드 저장 여부는 미확인 |
 | 휴대폰 미리보기 | 사용자 직접 확인(2026-11-17). Studio 휴대폰 미리보기에서 상점·도감·대회 상자·안내 띠에 문제 없음 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
@@ -177,6 +177,13 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
   - 떠나 있는 동안 기지는 서버에서 비워지므로 아무도 훔칠 수 없다. 기지 6개가 꽉 차서 기지가 없는 플레이어는 불러오지도 저장하지도 않는다.
 
 **클라이언트 `StarterPlayerScripts/JunkyardHud`** — 잠긴 기지마다 위에 "🛡 방어막 N초" 빌보드(모두에게 보임, 300스터드), 왼쪽 위 패널(돈, 초당·도감 배수, 운반 상태, 방어막 버튼, 도감 버튼), 도감 창(18칸 + 세트 보너스 진행), 위쪽 알림, 벨트 로봇 직접 그리기와 구매 프롬프트, 받침대 버튼 문구(내 기지 "팔기 +금액" / 남의 기지 "훔치기"). Mode가 Junkyard일 때만 보인다.
+
+### B-31. 되찾기를 길게 누르기로 (2026-11-18, 사용자 요청 · 혼자 Play 일부 확인)
+
+- 사용자 요청: 도둑에게 몸만 닿으면 자동으로 되찾는 대신 직접 눌러서 되찾게. → 0.2초 루프의 자동 붙잡기(CatchRange)를 없앴다(`Config.CatchRange`는 남겨 두고 "안 씀" 표시).
+- 들고 가는 모든 로봇에 `SnatchPrompt`(받침대에서 훔친 로봇 포함). 프롬프트 속성 `OwnerUserId`(받침대 주인)·`VictimUserId`(빼앗긴 사람). HUD `styleCarryPrompt`: 내가 든 것은 숨김, 훔친 받침대 로봇은 주인에게만 보임, 내 로봇이면 "되찾기", 아니면 "빼앗기", 장갑이면 0.6초. 새 프롬프트는 workspace.DescendantAdded로 바로 맞춘다.
+- 서버 `snatchHandler`: 훔친 받침대 로봇은 주인이 누르면 `returnStolen`(받침대로), 다른 사람은 거절. 빼앗긴 사람이 누르면 `returnSnatched`(3초 보호 뒤, 빈손일 때). 그 밖은 B-29 빼앗기.
+- 자동 확인: 벨트 구매 → 프롬프트 생성(내 화면 꺼짐, OwnerUserId·VictimUserId 0) → 기지에 놓기, 출력 오류 0. **2인 되찾기는 미검증.**
 
 ### B-30. 기지 확장 (2026-11-18, 사용자 승인 G-2 ④ · 혼자 Play 자동 테스트)
 

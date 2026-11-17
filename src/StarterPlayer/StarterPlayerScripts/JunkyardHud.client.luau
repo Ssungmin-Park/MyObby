@@ -1296,21 +1296,42 @@ RunService.Heartbeat:Connect(function(dt)
 	fitWindows()
 	renderDonate()
 end)
--- 들고 가는 로봇의 "빼앗기" 버튼: 내 로봇 것은 숨기고, 도둑 장갑이면 짧게 (서버도 같은 시간으로 확인)
-local function syncSnatchPrompts()
+-- 들고 가는 로봇 버튼: 내가 든 것은 숨김, 남의 받침대에서 훔친 로봇은 주인만, 내 로봇이면 "되찾기",
+-- 도둑 장갑이면 짧게 (서버도 같은 규칙·시간으로 확인한다)
+local function styleCarryPrompt(object: ProximityPrompt, carrier: Player?)
+	local ownerId = (object:GetAttribute("OwnerUserId") or 0) :: number
+	local victimId = (object:GetAttribute("VictimUserId") or 0) :: number
+	local mine = ownerId == player.UserId or victimId == player.UserId
 	local gloves = workspace:GetServerTimeNow() < ((player:GetAttribute("GlovesUntil") or 0) :: number)
+	object.Enabled = carrier ~= player and (ownerId == 0 or ownerId == player.UserId)
+	object.ActionText = if mine then "되찾기" else "빼앗기"
+	object.HoldDuration = if gloves then Config.GlovesHold else Config.StealHold
+end
+local function syncSnatchPrompts()
 	for _, other in Players:GetPlayers() do
 		local character = other.Character
 		if character then
 			for _, object in character:GetDescendants() do
 				if object:IsA("ProximityPrompt") and object.Name == "SnatchPrompt" then
-					object.Enabled = other ~= player
-					object.HoldDuration = if gloves then Config.GlovesHold else Config.StealHold
+					styleCarryPrompt(object, other)
 				end
 			end
 		end
 	end
 end
+-- 새로 생긴 버튼은 바로 맞춘다 (1초 주기를 기다리지 않게)
+workspace.DescendantAdded:Connect(function(object)
+	if object.Name == "SnatchPrompt" and object:IsA("ProximityPrompt") then
+		local character = object:FindFirstAncestorOfClass("Model")
+		while character and character.Parent ~= workspace do
+			character = character:FindFirstAncestorOfClass("Model")
+		end
+		styleCarryPrompt(object, if character then Players:GetPlayerFromCharacter(character) else nil)
+		object.AttributeChanged:Connect(function()
+			styleCarryPrompt(object, if character then Players:GetPlayerFromCharacter(character) else nil)
+		end)
+	end
+end)
 local function watchOwnCharacter(character: Model)
 	character.DescendantAdded:Connect(function(object)
 		if object:IsA("ProximityPrompt") and object.Name == "SnatchPrompt" then
