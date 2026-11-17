@@ -603,16 +603,48 @@ local function variantLock(state: State, key: string): string?
 end
 
 -- 되찾을 때 방망이를 휘두르는 모습: 오른손에 방망이를 잠깐 쥐고, 팔을 머리 위에서 앞으로 내리친다 (R15 팔 동작, R6는 방망이만)
-local function swingBat(player: Player)
+-- 캐릭터 기본 동작(Animate 안의 animName, 없으면 fallback 번호)을 서버에서 재생한다 (모두에게 보임)
+local function playCharacterAnim(character: Model, animName: string, fallback: string, looped: boolean): AnimationTrack?
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+	if not animator then
+		return nil
+	end
+	local animate = character:FindFirstChild("Animate")
+	local value = animate and animate:FindFirstChild(animName)
+	local source = value and value:FindFirstChildOfClass("Animation")
+	local animation = Instance.new("Animation")
+	animation.AnimationId = if source then source.AnimationId else fallback
+	local ok, track = pcall(function()
+		return animator:LoadAnimation(animation)
+	end)
+	if not ok or not track then
+		return nil
+	end
+	track.Priority = Enum.AnimationPriority.Action
+	track.Looped = looped
+	track:Play(0.1)
+	return track
+end
+
+-- 방망이: [2](또는 화면 버튼)로 들고 [1]로 내린다. 든 동안에만 도둑맞은 로봇을 되찾을 수 있다 (플레이어 속성 BatOut)
+local batTracks: { [Player]: AnimationTrack } = {}
+local function setBat(player: Player, on: boolean)
+	local track = batTracks[player]
+	if track then
+		track:Stop(0.1)
+		batTracks[player] = nil
+	end
 	local character = player.Character
-	if not character or character:GetAttribute("Swinging") then
+	local old = character and character:FindFirstChild("JunkyardBat")
+	if old then
+		old:Destroy()
+	end
+	local hand = character and (character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm"))
+	if not on or not character or not hand or not hand:IsA("BasePart") then
+		player:SetAttribute("BatOut", false)
 		return
 	end
-	local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
-	if not hand or not hand:IsA("BasePart") then
-		return
-	end
-	character:SetAttribute("Swinging", true)
 	local bat = Instance.new("Part")
 	bat.Name = "JunkyardBat"
 	bat.Size = Vector3.new(0.45, 3.4, 0.45)
@@ -628,27 +660,20 @@ local function swingBat(player: Player)
 	weld.C0 = CFrame.new(0, -hand.Size.Y / 2 - 1.5, 0) -- 손에서 팔 방향으로 뻗는다
 	weld.Parent = bat
 	bat.Parent = character
-	-- 팔 동작: 로블록스 기본 캐릭터의 "도구 휘두르기" 동작을 쓴다 (캐릭터 Animate 안의 toolslash, 없으면 R15 기본 번호)
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
-	if animator then
-		local animate = character:FindFirstChild("Animate")
-		local slash = animate and animate:FindFirstChild("toolslash")
-		local source = slash and slash:FindFirstChildOfClass("Animation")
-		local animation = Instance.new("Animation")
-		animation.AnimationId = if source then source.AnimationId else "rbxassetid://522635514"
-		local ok, track = pcall(function()
-			return animator:LoadAnimation(animation)
-		end)
-		if ok and track then
-			track.Priority = Enum.AnimationPriority.Action
-			track:Play(0.05, 1, 1.3)
-		end
+	-- 도구를 든 자세 (toolnone)
+	local hold = playCharacterAnim(character, "toolnone", "rbxassetid://507768375", true)
+	if hold then
+		batTracks[player] = hold
 	end
-	task.delay(0.75, function()
-		bat:Destroy()
-		character:SetAttribute("Swinging", nil)
-	end)
+	player:SetAttribute("BatOut", true)
+end
+
+-- 되찾을 때: 방망이를 휘두르는 동작 (toolslash)
+local function swingBat(player: Player)
+	local character = player.Character
+	if character then
+		playCharacterAnim(character, "toolslash", "rbxassetid://522635514", false)
+	end
 end
 
 -- 들고 가는 로봇 버튼: 주인·빼앗긴 사람은 한 번 눌러 "되찾기"(방망이), 다른 사람은 길게 눌러 "빼앗기"
@@ -668,6 +693,10 @@ snatchHandler = function(player: Player, target: State, prompt: ProximityPrompt)
 	-- 내 받침대에서 훔쳐 가는 로봇: 주인이 한 번 눌러 방망이로 되찾는다 (받침대로 돌아간다)
 	if carry.fromBase then
 		if carry.fromBase.owner == player then
+			if player:GetAttribute("BatOut") ~= true then
+				notify(player, "Alert", "🏏 방망이를 들어야 되찾을 수 있어요! ([2] 키 또는 🏏 버튼)")
+				return
+			end
 			swingBat(player)
 			returnStolen(target, "방망이로 되찾음")
 		else
@@ -681,6 +710,8 @@ snatchHandler = function(player: Player, target: State, prompt: ProximityPrompt)
 			notify(player, "Alert", "잠깐! 조금 뒤에 되찾을 수 있어요.")
 		elseif state.carry then
 			notify(player, "Alert", "이미 로봇을 들고 있어요.")
+		elseif player:GetAttribute("BatOut") ~= true then
+			notify(player, "Alert", "🏏 방망이를 들어야 되찾을 수 있어요! ([2] 키 또는 🏏 버튼)")
 		else
 			swingBat(player)
 			returnSnatched(target, "방망이로 되찾음")
@@ -1391,6 +1422,8 @@ actionRemote.OnServerEvent:Connect(function(player: Player, action: unknown, arg
 		buyUpgrade(state, arg)
 	elseif action == "Expand" then
 		buyExpand(state)
+	elseif action == "Bat" and typeof(arg) == "boolean" then
+		setBat(player, arg)
 	elseif action == "Swap" and typeof(arg) == "table" then
 		local request = arg :: any
 		swapPads(state, request.from, request.to)
@@ -1709,6 +1742,7 @@ local function onCharacterAdded(state: State, character: Model)
 	if not root then
 		return
 	end
+	setBat(state.player, false) -- 다시 태어나면 맨손
 	task.wait() -- 기본 스폰 배치가 끝난 뒤에 옮긴다
 	if state.player:GetAttribute("Mode") == "Junkyard" and state.base then
 		character:PivotTo(spawnCFrame(state.base))
@@ -1823,6 +1857,7 @@ Players.PlayerRemoving:Connect(function(player)
 	if not state then
 		return
 	end
+	batTracks[player] = nil
 	if state.carry and state.carry.fromBase then
 		returnStolen(state, "도둑이 나감")
 	elseif state.carry and state.carry.snatchedFrom then

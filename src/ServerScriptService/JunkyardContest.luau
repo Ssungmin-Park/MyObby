@@ -69,7 +69,8 @@ function Contest.record(player: Player, kind: string, amount: number)
 	if not entry then
 		return
 	end
-	entry.rawScore += if kind == "Income" then amount / math.max(entry.income, 1) else amount
+	-- 수입왕: 대회가 시작한 뒤 새로 늘어난 초당 수입만 센다 (시작할 때 수입 대비라 부자가 아니어도 이길 수 있다)
+	entry.rawScore += if kind == "Income" then math.max(0, amount - entry.income) / math.max(entry.income, 1) else amount
 	-- 점수판에 표시하는 소수 둘째 자리까지 비교한다.
 	local units = math.round(entry.rawScore * 100)
 	if units ~= entry.units then

@@ -172,9 +172,9 @@ do
 		("🏆 서버 대회 — %d분마다 %d분 동안 열려요"):format(Config.Contest.Interval // 60, Config.Contest.Duration // 60),
 		("· 서버에 %d명 이상 있을 때 열리고, 시작할 때 있던 사람이 참가해요"):format(Config.Contest.MinPlayers),
 		"",
-		"💰 수입왕: 처음보다 수입을 얼마나 키웠나 겨뤄요",
-		"   점수 = 대회 동안 번 돈 ÷ 시작할 때 내 초당 수입",
-		"   → 부자가 아니어도 1등 가능! 좋은 로봇을 빨리 더 놓으세요",
+		"💰 수입왕: 대회가 시작하고 나서부터 모은 로봇의 수입으로만 겨루는 대회예요!",
+		"   점수 = 새로 놓은 로봇이 대회 동안 번 돈 ÷ 시작할 때 내 초당 수입",
+		"   → 내 원래 수입 대비라서 부자가 아니어도 1등 가능! 로봇을 빨리 더 놓으세요",
 		"",
 		"🛒 수집왕: 벨트에서 산 로봇 등급만큼 점수",
 		"   " .. table.concat(points, " · "),
@@ -1108,7 +1108,6 @@ local function fitWindows()
 	local panelWidth = 250 * hud
 	contestPanel.Position = UDim2.new(1, -12, 0, 10 + 150 * hud + 6)
 	toastArea.Position = UDim2.new(0.5, -(panelWidth + 24) / 2, 0, 96)
-	mythicBanner.Position = UDim2.new(0.5, -(panelWidth + 24) / 2, 0, 8) -- 커져도 오른쪽 패널에 닿지 않게
 	toastArea.Size = UDim2.new(1, -(panelWidth + 36), 0, 200)
 	-- 상점은 큰 화면에서 최대 2배까지 키운다 (기본 440×400)
 	shopScale.Scale = math.clamp(math.min((size.Y - 80) / 400, (size.X - 40) / 440), 0.55, 2)
@@ -1361,7 +1360,7 @@ local function styleCarryPrompt(object: ProximityPrompt, carrier: Player?)
 	local mine = ownerId == player.UserId or victimId == player.UserId
 	local gloves = workspace:GetServerTimeNow() < ((player:GetAttribute("GlovesUntil") or 0) :: number)
 	object.Enabled = carrier ~= player and (ownerId == 0 or ownerId == player.UserId)
-	object.ActionText = if mine then "🏏 되찾기" else "빼앗기"
+	object.ActionText = if mine then (if player:GetAttribute("BatOut") == true then "🏏 되찾기" else "🏏 되찾기 ([2] 방망이 들기)") else "빼앗기"
 	object.HoldDuration = if mine then 0 elseif gloves then Config.GlovesHold else Config.StealHold -- 되찾기는 한 번 누르기
 end
 local function syncSnatchPrompts()
@@ -1481,6 +1480,29 @@ if player.Character then
 	watchOwnCharacter(player.Character)
 end
 player.CharacterAdded:Connect(watchOwnCharacter)
+-- 방망이: [2] 들기 / [1] 맨손, 휴대폰은 화면 버튼. 든 동안에만 도둑맞은 로봇을 되찾을 수 있다 (서버가 확인)
+local batButton = button(gui, "🏏 방망이 [2]", UDim2.new(1, -12, 0.55, 0), UDim2.fromOffset(130, 44), Color3.fromRGB(150, 100, 55))
+batButton.AnchorPoint = Vector2.new(1, 0.5)
+batButton.TextSize = 15
+hudScale(batButton)
+batButton.Activated:Connect(function()
+	actionRemote:FireServer("Bat", player:GetAttribute("BatOut") ~= true)
+end)
+UserInputService.InputBegan:Connect(function(input: InputObject, processed: boolean)
+	if processed then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.Two then
+		actionRemote:FireServer("Bat", true)
+	elseif input.KeyCode == Enum.KeyCode.One then
+		actionRemote:FireServer("Bat", false)
+	end
+end)
+player:GetAttributeChangedSignal("BatOut"):Connect(function()
+	batButton.Text = if player:GetAttribute("BatOut") == true then "✋ 맨손 [1]" else "🏏 방망이 [2]"
+	syncSnatchPrompts()
+end)
+
 -- 기지 안 로봇 재배치: 내 받침대마다 [F] 버튼. 옮길 로봇을 고르고 → 다른 받침대를 고르면 맞바꾼다 (서버가 다시 확인)
 local movePrompts: { [BasePart]: ProximityPrompt } = {}
 local moveFrom: number? = nil

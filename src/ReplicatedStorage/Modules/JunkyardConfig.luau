@@ -168,7 +168,7 @@ Config.Contest = {
 	Order = { "Income", "Collect" },
 	-- goal = 대회 중 화면에 보이는 한 줄 설명
 	Types = {
-		Income = { name = "수입왕", mark = "💰", goal = "처음보다 수입을 많이 키우면 1등! (로봇을 빨리 더 놓으세요)" },
+		Income = { name = "수입왕", mark = "💰", goal = "대회가 시작하고 나서부터 모은 로봇의 수입으로만 겨루는 대회예요!" },
 		Collect = { name = "수집왕", mark = "🛒", goal = "벨트에서 로봇을 사면 점수! 높은 등급일수록 많이" },
 	} :: { [string]: { name: string, mark: string, goal: string } },
 	RarityPoints = { Common = 1, Uncommon = 2, Rare = 4, Epic = 7, Legendary = 10, Mythic = 15 } :: { [string]: number },
