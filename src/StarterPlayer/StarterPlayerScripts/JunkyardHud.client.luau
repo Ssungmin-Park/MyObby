@@ -1279,9 +1279,36 @@ RunService.Heartbeat:Connect(function(dt)
 	fitWindows()
 	renderDonate()
 end)
+-- 들고 가는 로봇의 "빼앗기" 버튼: 내 로봇 것은 숨기고, 도둑 장갑이면 짧게 (서버도 같은 시간으로 확인)
+local function syncSnatchPrompts()
+	local gloves = workspace:GetServerTimeNow() < ((player:GetAttribute("GlovesUntil") or 0) :: number)
+	for _, other in Players:GetPlayers() do
+		local character = other.Character
+		if character then
+			for _, object in character:GetDescendants() do
+				if object:IsA("ProximityPrompt") and object.Name == "SnatchPrompt" then
+					object.Enabled = other ~= player
+					object.HoldDuration = if gloves then Config.GlovesHold else Config.StealHold
+				end
+			end
+		end
+	end
+end
+local function watchOwnCharacter(character: Model)
+	character.DescendantAdded:Connect(function(object)
+		if object:IsA("ProximityPrompt") and object.Name == "SnatchPrompt" then
+			object.Enabled = false -- 내가 들고 있는 로봇은 내가 빼앗을 수 없다
+		end
+	end)
+end
+if player.Character then
+	watchOwnCharacter(player.Character)
+end
+player.CharacterAdded:Connect(watchOwnCharacter)
 task.spawn(function()
 	while true do
 		syncPadPrompts()
+		syncSnatchPrompts()
 		task.wait(1)
 	end
 end)
