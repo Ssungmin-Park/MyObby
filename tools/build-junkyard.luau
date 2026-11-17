@@ -162,6 +162,15 @@ local function buildJunkyard(): Model
 	local obbyPrompt = prompt(toObby, "실험실 탈출 코스", "이동", 0, 7)
 	obbyPrompt.Name = "PortalPrompt"
 
+	-- 전체 서버 순위판 2개 (2026-11-17): 서쪽 끝, 동쪽(기지 쪽)을 본다. 글씨는 JunkyardRanking이 실행 중에 그린다
+	local rankings = Instance.new("Folder")
+	rankings.Name = "Rankings"
+	rankings.Parent = model
+	for name, z in { RebirthBoard = 70, EarnedBoard = 130 } do
+		local board = part(rankings, name, Vector3.new(296, 47.5, z), Vector3.new(18, 14, 1), dark)
+		board.CFrame = CFrame.lookAt(board.Position, board.Position + Vector3.new(1, 0, 0)) -- 앞면이 +X
+	end
+
 	-- 오비 시작 발판의 고물상 입구 (연구소 입구 반대쪽)
 	local spawnPad = workspace:FindFirstChild("SpawnLocation")
 	assert(spawnPad and spawnPad:IsA("BasePart"), "SpawnLocation 없음")

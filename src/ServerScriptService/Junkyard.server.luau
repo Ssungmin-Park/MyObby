@@ -17,6 +17,7 @@ local Config = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("J
 local Belt = require(script.Parent:WaitForChild("JunkyardBelt"))
 local JunkyardSave = require(script.Parent:WaitForChild("JunkyardSave"))
 local JunkyardStore = require(script.Parent:WaitForChild("JunkyardStore"))
+local JunkyardRanking = require(script.Parent:WaitForChild("JunkyardRanking"))
 
 local junkyard = workspace:WaitForChild("Junkyard")
 local basesFolder = junkyard:WaitForChild("Bases")
@@ -72,6 +73,7 @@ type State = {
 	holdStart: { [ProximityPrompt]: number }, -- 받침대 버튼을 누르기 시작한 시각 (누르는 시간 검증)
 	passes: { [string]: boolean }, -- 가진 게임패스 (접속할 때 확인)
 	empCharges: number, -- Robux로 산 무료 EMP 남은 횟수 (저장됨)
+	totalEarned: number, -- 로봇이 벌어 준 누적 수입 (저장됨, 환생해도 유지, 전체 서버 순위표)
 }
 
 local bases: { Base } = {}
@@ -536,7 +538,7 @@ local function snapshot(state: State): JunkyardSave.Data
 			money += Config.robotValue(carry.robotId)
 		end
 	end
-	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades), empCharges = state.empCharges, rebirth = state.rebirth, variantCatalog = table.clone(state.variantCatalog) }
+	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades), empCharges = state.empCharges, rebirth = state.rebirth, variantCatalog = table.clone(state.variantCatalog), totalEarned = math.floor(state.totalEarned) }
 end
 
 -- 행동 ----------------------------------------------------------------------------
@@ -1021,6 +1023,29 @@ Belt.start(beltRemote, function(robotId: string)
 end)
 JunkyardSave.start()
 
+-- 전체 서버 순위표: 저장을 불러온 플레이어만 점수를 올린다 (불러오기 실패·기지 없음은 제외)
+do
+	local rankings = workspace:FindFirstChild("Junkyard") and workspace.Junkyard:FindFirstChild("Rankings")
+	local boardParts: { [string]: BasePart } = {}
+	if rankings then
+		for id, name in { Rebirth = "RebirthBoard", Earned = "EarnedBoard" } do
+			local part = rankings:FindFirstChild(name)
+			if part and part:IsA("BasePart") then
+				boardParts[id] = part
+			end
+		end
+	end
+	JunkyardRanking.start(boardParts, function()
+		local scores: { [Player]: JunkyardRanking.Scores } = {}
+		for player, state in states do
+			if not state.loading and player:GetAttribute("SaveOff") == false then
+				scores[player] = { rebirth = state.rebirth, earned = state.totalEarned }
+			end
+		end
+		return scores
+	end)
+end
+
 -- Robux 상품 (3-2) -------------------------------------------------------------
 local function syncPasses(state: State)
 	local owned = {}
@@ -1144,6 +1169,7 @@ local function loadPlayer(state: State)
 	end
 	if data then
 		setMoney(state, data.money)
+		state.totalEarned = data.totalEarned
 		state.rebirth = data.rebirth
 		syncRebirth(state)
 		setCatalog(state, data.catalog, data.variantCatalog)
@@ -1167,6 +1193,7 @@ local function loadPlayer(state: State)
 			if boost then Config.OfflineBoostRate else nil, if boost then Config.OfflineBoostHours else nil)
 		if gained > 0 then
 			base.vault += gained
+			state.totalEarned += gained
 			base.model:SetAttribute("Vault", math.floor(base.vault))
 			notify(player, "Money", ("떠나 있는 동안 금고에 +%s"):format(Config.formatMoney(gained)))
 		end
@@ -1226,6 +1253,7 @@ local function onPlayerAdded(player: Player)
 		variantCatalog = {},
 		rebirth = 0,
 		rebirthValue = nil,
+		totalEarned = 0,
 	}
 	for _, id in Config.UpgradeOrder do
 		state.upgrades[id] = 0
@@ -1298,6 +1326,15 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 	if state.carry and state.carry.fromBase then
 		returnStolen(state, "도둑이 나감")
+	end
+	-- 나가기 전 마지막 점수를 순위표에 올린다 (저장을 불러온 사람만)
+	if not state.loading and player:GetAttribute("SaveOff") == false then
+		local userId = player.UserId
+		local scores = { rebirth = state.rebirth, earned = state.totalEarned }
+		task.spawn(function()
+			JunkyardRanking.submit(userId, scores)
+			JunkyardRanking.forget(userId)
+		end)
 	end
 	JunkyardSave.finish(player) -- 기지를 비우기 전에 지금 값을 모아 저장 (금고·들고 있던 로봇 포함)
 	if state.base then
@@ -1467,7 +1504,9 @@ task.spawn(function()
 			for _, base in bases do
 				local owner = base.owner
 				if owner and states[owner] then
-					base.vault += baseIncome(base, states[owner])
+					local income = baseIncome(base, states[owner])
+					base.vault += income
+					states[owner].totalEarned += income
 					local amount = math.floor(base.vault)
 					base.model:SetAttribute("Vault", amount)
 					local vault = base.model:FindFirstChild("Vault")

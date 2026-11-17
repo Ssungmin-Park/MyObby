@@ -11,9 +11,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Codex** — 환생·변종 2인 검증, 테스트 훅 2개, 도감과 기본 리더보드 겹침 수정 |
+| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — **전체 서버 순위표(B-15)** 구현·Studio 반영·자동 테스트. 그 전 Codex: 환생·변종 2인 검증, 테스트 훅 2개, 도감과 기본 리더보드 겹침 수정 |
 | 작업 시점 | 2026-11-17 |
-| 다음 작업 AI | 도감과 기본 리더보드 겹침 수정의 화면 재시험. 그다음 **전체 서버 순위표**(OrderedDataStore, 계획 승인 먼저). 서버 최대 인원은 2026-11-17 사용자가 Creator Hub에서 50 → 8로 바꿈 |
+| 다음 작업 AI | ① 도감과 기본 리더보드 겹침 수정의 화면 재시험(Codex 남은 일, G-0) ② 순위판을 실제 화면에서 보기(사용자) ③ 다음 기능 계획: 서버 대회(15분)·도감 완성 보상·3-3 협력 거대 로봇 중 사용자와 결정 |
 | 게임 이름 | 마이오비 (Studio place 이름) / **주력: 로봇 고물상 타이쿤**(멀티플레이). 부가: 실험실 탈출 오비, 로봇 작업장(꼬마 로봇 연구소) |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -22,7 +22,7 @@
 | Studio 모드 | 작업 종료 시 **Edit 모드** (Play 테스트 종료함) |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-17 Codex. `Junkyard`에 음수 UserId용 Studio 테스트 훅 2개 추가. `JunkyardHud`에서 도감을 보는 동안 기본 리더보드를 숨김. Studio와 `src/` 스크립트 18개 체크섬 일치. |
+| 마지막 게임 수정 | 2026-11-17 Claude Code: **전체 서버 순위표** — 새 ModuleScript `ServerScriptService/JunkyardRanking`, `Junkyard`(누적 수입 `totalEarned`·순위 연결), `JunkyardSave`(`totalEarned` 필드), 맵 `Workspace/Junkyard/Rankings/RebirthBoard·EarnedBoard`. Studio ↔ `src/` 스크립트 19개 체크섬 일치. ⚠ 이번 Studio 수정은 끝나지 않은 다른 ChangeHistory 기록이 남아 있어 **Ctrl+Z 기록 없이** 들어갔다 |
 | Studio 저장 상태 | `persistedToCloud = true`. **2026-11-17 Studio 업데이트로 재시작된 뒤에도 3-2까지의 스크립트 18개(체크섬 일치)·고물상 맵(받침대 14칸)·Remote 6개가 모두 남아 있어 클라우드 저장을 간접 확인했다.** AI는 저장·Publish하지 않는다 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
 | 실제 저장 데이터 | 테스트로 **사용자 본인 키**에 값이 남아 있다: `Progress_v1` = Stage 11, `RobotLab_v1` = 부품 10·삐삐 Lv.1, `Junkyard_v1` = 돈 약 31·받침대 삐삐/너트/스펀지(일반 세트 완성). 지우려면(RemoveAsync) 사용자 승인 필요 |
@@ -176,6 +176,24 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
   - 떠나 있는 동안 기지는 서버에서 비워지므로 아무도 훔칠 수 없다. 기지 6개가 꽉 차서 기지가 없는 플레이어는 불러오지도 저장하지도 않는다.
 
 **클라이언트 `StarterPlayerScripts/JunkyardHud`** — 잠긴 기지마다 위에 "🛡 방어막 N초" 빌보드(모두에게 보임, 300스터드), 왼쪽 위 패널(돈, 초당·도감 배수, 운반 상태, 방어막 버튼, 도감 버튼), 도감 창(18칸 + 세트 보너스 진행), 위쪽 알림, 벨트 로봇 직접 그리기와 구매 프롬프트, 받침대 버튼 문구(내 기지 "팔기 +금액" / 남의 기지 "훔치기"). Mode가 Junkyard일 때만 보인다.
+
+### B-15. 전체 서버 순위표 (2026-11-17, 구현 · 자동 테스트 통과)
+
+**목적:** 서버가 8명씩 나뉘어도 모든 서버의 플레이어와 경쟁하게 한다. 고물상 서쪽 끝(X 296, 동쪽을 봄)에 순위판 2개, 상위 10명.
+
+**저장소 (`ServerScriptService/JunkyardRanking`, OrderedDataStore — 형식 변경 금지)**
+- `JunkyardRank_Rebirth_v1`: 키 `Player_<UserId>`, 값 = 환생 단계 × 1e9 + min(누적 수입 ÷ 1000, 1e9 − 1). 환생이 같으면 많이 번 사람이 위.
+- `JunkyardRank_Earned_v1`: 키 `Player_<UserId>`, 값 = 누적 수입(정수, 최대 1e15).
+- 진행 데이터(`Junkyard_v1`)와 따로 있다. 점수는 `UpdateAsync`로 **저장된 값보다 클 때만** 쓴다(불러오기 실패한 접속이 기록을 낮추지 않게). 모든 호출 pcall + 3회 재시도. 바뀐 점수만 보낸다. UserId 0 이하(Studio 테스트 플레이어)는 올리지 않는다.
+- 60초마다: 저장을 불러온 플레이어(`loading=false`, `SaveOff=false`)의 점수 올리기 → 두 순위 상위 10명 읽기 → 순위판 글씨 갱신(서버가 SurfaceGui `RankGui`를 실행 중에 만든다. Edit 모드에서는 빈 판). 퇴장할 때도 한 번 올린다. 읽기 실패 시 지난 순위를 두고 "순위를 잠시 불러오지 못했어요".
+- 이름은 `Players:GetNameFromUserIdAsync`(기억해 둠).
+
+**누적 수입 (`totalEarned`)**: 로봇이 금고에 벌어 준 돈(1초 수입 + 오프라인 수입)의 합. 판매·디버그 돈·Robux 대체 지급은 넣지 않는다. 환생해도 유지. `Junkyard_v1` Data에 필드 추가(version 1 유지) — 이 필드가 없던 옛 데이터는 **그때 가진 돈**으로 시작한다.
+
+**테스트 (2026-11-17, Claude Code)**
+- 자동(가짜 저장소) 17항목 PASS: 환생 점수 순서(환생 우선·같으면 수입), 복원, 표시(💎5, 1.2M), 음수 UserId 제외, 기록이 낮아지지 않음, 늘어난 값 반영, 순위 순서, 옛 데이터 기본값, 소수·NaN 처리, 순위판 행·빈 행·실패 안내.
+- Play(실제 저장소): 시작 직후 빈 순위판 "1. -", 1분 뒤 `1. dev_02park / 환생 ⭐0`, `1. dev_02park / 86.5K` 표시. 서버 오류·경고 0. **사용자 본인 계정이 두 순위 저장소에 올라가 있다**(실제 플레이어가 생기면 자연히 밀려남).
+- **미검증:** 순위판의 실제 화면 모양(Studio 캡처가 흰 화면만 나옴 — 계산상 720×560 판 안에 들어감), 여러 서버 동시 갱신, 이름 조회 실패 시 표시.
 
 ### B-14. 로봇 고물상 4단계: 환생과 변종 (2026-11-17, 구현 · 성공 경로 미검증)
 

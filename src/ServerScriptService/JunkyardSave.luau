@@ -10,6 +10,7 @@
 --                     upgrades = { [업그레이드 id] = 단계 }, empCharges = 정수 }
 --                   ← upgrades는 3-1, empCharges(Robux로 산 무료 EMP)는 3-2에서 추가 (옛 데이터는 0으로 읽힘)
 --                   ← rebirth(환생 단계), variantCatalog({ ["Pippi@Gold"] = true })는 4단계에서 추가. 받침대 값은 변종 키도 허용
+--                   ← totalEarned(로봇이 벌어 준 누적 수입, 환생해도 유지)는 순위표에서 추가. 옛 데이터는 그때 가진 돈으로 시작
 --
 -- 안전 원칙
 --   1. 세션 잠금: 데이터를 쓰는 서버가 lock을 남긴다. 다른 서버의 lock이 살아 있으면 기다리고,
@@ -40,6 +41,7 @@ export type Data = {
 	empCharges: number, -- Robux 상품으로 받은 무료 EMP 남은 횟수
 	rebirth: number, -- 환생 단계
 	variantCatalog: { [string]: boolean }, -- 모은 변종 키
+	totalEarned: number, -- 누적 수입 (전체 서버 순위표용)
 }
 export type LoadStatus = "new" | "ok" | "failed" | "locked"
 export type SaveStatus = "ok" | "failed" | "lostLock"
@@ -80,18 +82,25 @@ local function defaultUpgrades(): { [string]: number }
 end
 
 function JunkyardSave.newData(): Data
-	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {} }
+	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0 }
 end
 
 -- 저장소에서 읽은 값을 허용 범위로 정리해서 항상 올바른 Data를 돌려준다.
 function JunkyardSave.sanitize(raw: any): Data
-	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {} }
+	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0 }
 	if typeof(raw) ~= "table" then
 		return JunkyardSave.newData()
 	end
 	local money = raw.money
 	if typeof(money) == "number" and money == money then -- money == money 는 NaN 검사
 		data.money = math.floor(math.clamp(money, 0, MAX_MONEY))
+	end
+	-- 누적 수입: 이 필드가 없던 옛 데이터는 지금 가진 돈만큼 이미 번 것으로 본다
+	local earned = raw.totalEarned
+	if typeof(earned) == "number" and earned == earned then
+		data.totalEarned = math.floor(math.clamp(earned, 0, MAX_MONEY))
+	else
+		data.totalEarned = data.money
 	end
 	if typeof(raw.catalog) == "table" then
 		for _, robot in Config.Robots do
@@ -151,6 +160,7 @@ local function snapshot(data: Data): Data
 		empCharges = math.floor(data.empCharges),
 		rebirth = math.floor(data.rebirth),
 		variantCatalog = table.clone(data.variantCatalog),
+		totalEarned = math.floor(data.totalEarned),
 	}
 end
 
