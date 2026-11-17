@@ -10,6 +10,7 @@ local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local StarterGui = game:GetService("StarterGui")
+local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("JunkyardConfig"))
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -114,6 +115,8 @@ corner(catalog, 12)
 local catalogMax = Instance.new("UISizeConstraint")
 catalogMax.MaxSize = Vector2.new(420, 420)
 catalogMax.Parent = catalog
+local catalogScale = Instance.new("UIScale") -- 작은 화면(휴대폰 가로)에서 창 전체를 줄인다
+catalogScale.Parent = catalog
 local catalogTitle = label(catalog, UDim2.fromOffset(14, 8), UDim2.new(1, -170, 0, 26), 18, white)
 local closeButton = button(catalog, "X", UDim2.new(1, -46, 0, 8), UDim2.fromOffset(36, 30), Color3.fromRGB(120, 60, 60))
 local catalogPage = 0 -- 0 = 기본 도감, 1~3 = 변종 도감 (금색·다이아·무지개)
@@ -130,6 +133,9 @@ end
 local bonusLabel = label(catalog, UDim2.fromOffset(14, 312), UDim2.new(1, -28, 0, 100), 12, muted)
 catalogButton.Activated:Connect(function()
 	catalog.Visible = not catalog.Visible
+	if catalog.Visible and player:GetAttribute("TutorialStep") == 5 then
+		actionRemote:FireServer("Tutorial", "Catalog")
+	end
 end)
 closeButton.Activated:Connect(function()
 	catalog.Visible = false
@@ -151,6 +157,8 @@ corner(shop, 12)
 local shopMax = Instance.new("UISizeConstraint")
 shopMax.MaxSize = Vector2.new(440, 400)
 shopMax.Parent = shop
+local shopScale = Instance.new("UIScale")
+shopScale.Parent = shop
 label(shop, UDim2.fromOffset(14, 8), UDim2.new(1, -70, 0, 26), 18, white).Text = "🛒 상점"
 local shopClose = button(shop, "X", UDim2.new(1, -46, 0, 8), UDim2.fromOffset(36, 30), Color3.fromRGB(120, 60, 60))
 
@@ -258,6 +266,9 @@ end
 shopButton.Activated:Connect(function()
 	shop.Visible = not shop.Visible
 	catalog.Visible = false
+	if shop.Visible and player:GetAttribute("TutorialStep") == 4 then
+		actionRemote:FireServer("Tutorial", "Shop")
+	end
 end)
 shopClose.Activated:Connect(function()
 	shop.Visible = false
@@ -396,8 +407,9 @@ end
 -- 알림 (위쪽 가운데에 잠깐 떴다 사라짐)
 local toastArea = Instance.new("Frame")
 toastArea.AnchorPoint = Vector2.new(0.5, 0)
-toastArea.Position = UDim2.new(0.5, 0, 0, 60)
-toastArea.Size = UDim2.new(0.8, 0, 0, 200)
+-- 왼쪽 위 패널(폭 250) 오른쪽 영역의 가운데, 안내 배너 아래 (휴대폰에서 패널을 가리지 않게)
+toastArea.Position = UDim2.new(0.5, 131, 0, 70)
+toastArea.Size = UDim2.new(1, -286, 0, 200)
 toastArea.BackgroundTransparency = 1
 toastArea.Parent = gui
 local toastLayout = Instance.new("UIListLayout")
@@ -709,6 +721,103 @@ local function render()
 	bonusLabel.Text = table.concat(lines, "   ")
 end
 
+-- 첫 접속 안내 (튜토리얼) --------------------------------------------------------------
+-- 서버가 정한 단계(플레이어 속성 TutorialStep 1~5, 0 = 끝)를 보여 주기만 한다
+local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+local tutorialTexts = {
+	"🛒 가운데 벨트의 로봇에 다가가서 " .. (if touch then "구매 버튼을 누르세요" else "[E]를 눌러 사세요") .. " (싼 일반 로봇부터!)",
+	"📦 로봇을 든 채로 내 기지(화살표) 안에 들어가면 받침대에 놓여요",
+	"💰 로봇이 금고에 돈을 쌓아요. 금고(노란 상자)를 밟아 돈을 받으세요",
+	"🛒 왼쪽 위 [상점]을 열어 방해·방어·도움 아이템을 구경해 보세요",
+	"📖 [도감]을 열어 앞으로 모을 로봇을 확인해 보세요",
+}
+local tutorialBar = Instance.new("Frame")
+tutorialBar.Position = UDim2.fromOffset(274, 10) -- 왼쪽 위 패널(폭 250) 오른쪽에 붙여 겹치지 않게
+tutorialBar.Size = UDim2.new(1, -286, 0, 52)
+tutorialBar.BackgroundColor3 = Color3.fromRGB(150, 110, 20)
+tutorialBar.BackgroundTransparency = 0.08
+tutorialBar.Visible = false
+tutorialBar.Parent = gui
+corner(tutorialBar, 10)
+local tutorialMax = Instance.new("UISizeConstraint")
+tutorialMax.MaxSize = Vector2.new(560, 52)
+tutorialMax.Parent = tutorialBar
+local tutorialLabel = label(tutorialBar, UDim2.fromOffset(12, 4), UDim2.new(1, -96, 1, -8), 13, white)
+local skipButton = button(tutorialBar, "건너뛰기", UDim2.new(1, -80, 0.5, -18), UDim2.fromOffset(72, 36), Color3.fromRGB(90, 70, 20))
+skipButton.TextSize = 12
+skipButton.Activated:Connect(function()
+	actionRemote:FireServer("TutorialSkip")
+end)
+-- 해야 할 곳 위에 뜨는 화살표 (내 화면에만 보임)
+local arrow = Instance.new("BillboardGui")
+arrow.Name = "TutorialArrow"
+arrow.Size = UDim2.fromOffset(70, 70)
+arrow.AlwaysOnTop = true
+arrow.Enabled = false
+arrow.ResetOnSpawn = false
+arrow.Parent = gui.Parent -- BillboardGui는 ScreenGui 안에서는 보이지 않아 PlayerGui에 둔다
+local arrowText = Instance.new("TextLabel")
+arrowText.Size = UDim2.fromScale(1, 1)
+arrowText.BackgroundTransparency = 1
+arrowText.Text = "⬇"
+arrowText.TextScaled = true
+arrowText.TextColor3 = Color3.fromRGB(255, 220, 90)
+arrowText.TextStrokeTransparency = 0.2
+arrowText.Parent = arrow
+local highlightStroke = Instance.new("UIStroke") -- 4·5단계에 상점·도감 버튼 테두리를 반짝인다
+highlightStroke.Color = Color3.fromRGB(255, 220, 90)
+highlightStroke.Thickness = 3
+highlightStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+local function myBase(): Instance?
+	for _, base in basesFolder:GetChildren() do
+		if base:GetAttribute("OwnerUserId") == player.UserId then
+			return base
+		end
+	end
+	return nil
+end
+
+local function renderTutorial()
+	local step = (player:GetAttribute("TutorialStep") or 0) :: number
+	local text = tutorialTexts[step]
+	tutorialBar.Visible = text ~= nil
+	if not text then
+		arrow.Enabled = false
+		highlightStroke.Parent = nil
+		return
+	end
+	tutorialLabel.Text = ("안내 %d/%d  %s"):format(step, #tutorialTexts, text)
+	local base = myBase()
+	local target: Instance? = nil
+	local height = 6
+	if step == 1 then
+		target = beltPart
+	elseif step == 2 then
+		target = base and base:FindFirstChild("Floor")
+		height = 10
+	elseif step == 3 then
+		target = base and base:FindFirstChild("Vault")
+		height = 4
+	end
+	arrow.Adornee = target
+	arrow.StudsOffsetWorldSpace = Vector3.new(0, height + math.sin(os.clock() * 4) * 0.6, 0)
+	arrow.Enabled = target ~= nil
+	highlightStroke.Parent = if step == 4 then shopButton elseif step == 5 then catalogButton else nil
+end
+
+-- 작은 화면(휴대폰)에서 상점·도감 창이 화면 밖으로 나가지 않게 줄인다
+local function fitWindows()
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return
+	end
+	local size = camera.ViewportSize
+	local scale = math.clamp(math.min((size.Y - 70) / 420, (size.X - 20) / 440), 0.55, 1)
+	catalogScale.Scale = scale
+	shopScale.Scale = scale
+end
+
 -- 방어막 남은 시간: 모든 기지 위에 크게 띄운다 (누구 기지가 잠겼는지 멀리서도 보이게)
 local shieldLabels: { [Instance]: TextLabel } = {}
 local function syncShieldTimers()
@@ -757,6 +866,8 @@ RunService.Heartbeat:Connect(function(dt)
 	render()
 	syncShieldTimers()
 	renderShop()
+	renderTutorial()
+	fitWindows()
 end)
 task.spawn(function()
 	while true do

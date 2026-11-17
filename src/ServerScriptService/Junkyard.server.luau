@@ -72,6 +72,7 @@ type State = {
 	passes: { [string]: boolean }, -- 가진 게임패스 (접속할 때 확인)
 	empCharges: number, -- Robux로 산 무료 EMP 남은 횟수 (저장됨)
 	totalEarned: number, -- 로봇이 벌어 준 누적 수입 (저장됨, 환생해도 유지, 전체 서버 순위표)
+	tutorial: number, -- 첫 접속 안내 단계 (1~5, 0 = 끝남, 저장됨)
 }
 
 local bases: { Base } = {}
@@ -538,7 +539,37 @@ local function snapshot(state: State): JunkyardSave.Data
 			money += Config.robotValue(carry.robotId)
 		end
 	end
-	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades), empCharges = state.empCharges, rebirth = state.rebirth, variantCatalog = table.clone(state.variantCatalog), totalEarned = math.floor(state.totalEarned) }
+	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades), empCharges = state.empCharges, rebirth = state.rebirth, variantCatalog = table.clone(state.variantCatalog), totalEarned = math.floor(state.totalEarned), tutorial = state.tutorial }
+end
+
+-- 첫 접속 안내 (튜토리얼) ------------------------------------------------------------
+-- 단계: 1 벨트에서 사기 → 2 받침대에 놓기 → 3 금고 받기(보상) → 4 상점 열기 → 5 도감 열기. 0 = 끝남(저장됨)
+-- 1~3단계는 서버가 실제 행동을 보고 넘긴다. 4~5단계는 화면을 연 것이라 클라이언트가 알려 주고, 보상은 없다.
+local TUTORIAL_STEPS = { "Buy", "Place", "Collect", "Shop", "Catalog" }
+local TUTORIAL_REWARD = 100 -- 3단계(첫 금고 받기) 보상. 단계는 앞으로만 가고 저장되므로 한 번만 받는다
+
+local function setTutorial(state: State, step: number)
+	state.tutorial = step
+	state.player:SetAttribute("TutorialStep", step)
+end
+
+local function advanceTutorial(state: State, stepName: string)
+	if state.tutorial == 0 or TUTORIAL_STEPS[state.tutorial] ~= stepName then
+		return
+	end
+	if stepName == "Collect" then
+		setMoney(state, state.money + TUTORIAL_REWARD)
+		notify(state.player, "Money", ("🎉 첫 수입 성공! 안내 보상 +%s"):format(Config.formatMoney(TUTORIAL_REWARD)))
+	end
+	local nextStep = state.tutorial + 1
+	if nextStep > #TUTORIAL_STEPS then
+		nextStep = 0
+		notify(state.player, "Info", "안내 끝! 로봇을 모으고, 지키고, 훔쳐서 순위판에 이름을 올려 보세요.")
+	end
+	setTutorial(state, nextStep)
+	if stepName == "Collect" or nextStep == 0 then
+		JunkyardSave.saveNow(state.player) -- 보상을 받은 단계는 바로 저장 (다시 받지 않게)
+	end
 end
 
 -- 행동 ----------------------------------------------------------------------------
@@ -588,6 +619,7 @@ local function buy(state: State, itemId: number)
 		notify(state.player, "Info", ("%s 변종이 나왔어요! %s"):format(Config.Variants[variantId].mark, robotLabel(robotKey)))
 	end
 	notify(state.player, "Info", ("%s 구매! 기지로 가져가세요."):format(robotLabel(item.robotId)))
+	advanceTutorial(state, "Buy")
 end
 
 -- 방어막 시간·충전 시간 (방어막 강화 단계 + VIP 게임패스)
@@ -871,6 +903,7 @@ local function tryPlace(state: State)
 	addToCatalog(state, robotId)
 	refreshIncome(state)
 	notify(state.player, "Info", ("%s을(를) 받침대에 놓았어요."):format(robotLabel(robotId)))
+	advanceTutorial(state, "Place")
 end
 
 -- 연결 ----------------------------------------------------------------------------
@@ -954,6 +987,7 @@ for _, model in basesFolder:GetChildren() do
 		base.model:SetAttribute("Vault", math.floor(base.vault))
 		setMoney(state, state.money + amount)
 		notify(owner, "Money", "+" .. Config.formatMoney(amount))
+		advanceTutorial(state, "Collect")
 	end)
 end
 
@@ -973,6 +1007,11 @@ actionRemote.OnServerEvent:Connect(function(player: Player, action: unknown, arg
 		useItem(state, arg)
 	elseif action == "Rebirth" then
 		rebirth(state)
+	elseif action == "Tutorial" and (arg == "Shop" or arg == "Catalog") then
+		advanceTutorial(state, arg :: string) -- 화면을 연 단계만 (보상 없음, 순서가 맞을 때만)
+	elseif action == "TutorialSkip" and state.tutorial ~= 0 then
+		setTutorial(state, 0)
+		JunkyardSave.saveNow(state.player)
 	end
 end)
 
@@ -1128,6 +1167,7 @@ local function loadPlayer(state: State)
 	if data then
 		setMoney(state, data.money)
 		state.totalEarned = data.totalEarned
+		setTutorial(state, data.tutorial)
 		state.rebirth = data.rebirth
 		syncRebirth(state)
 		setCatalog(state, data.catalog, data.variantCatalog)
@@ -1212,6 +1252,7 @@ local function onPlayerAdded(player: Player)
 		rebirth = 0,
 		rebirthValue = nil,
 		totalEarned = 0,
+		tutorial = 0,
 	}
 	for _, id in Config.UpgradeOrder do
 		state.upgrades[id] = 0
@@ -1378,6 +1419,20 @@ if game:GetService("RunService"):IsStudio() then
 			syncRebirth(state)
 			recomputeMultiplier(state)
 			refreshIncome(state)
+		end
+	end)
+	-- 첫 접속 안내 시험: 안내 단계를 정한다 (0~5). Studio에서만, DebugMoneyUserId 대상
+	workspace:GetAttributeChangedSignal("DebugSetTutorial"):Connect(function()
+		local step = workspace:GetAttribute("DebugSetTutorial")
+		local userId = workspace:GetAttribute("DebugMoneyUserId")
+		workspace:SetAttribute("DebugSetTutorial", nil)
+		if typeof(userId) ~= "number" or typeof(step) ~= "number" or step < 0 or step > 5 or step ~= math.floor(step) then
+			return
+		end
+		local player = Players:GetPlayerByUserId(userId)
+		local state = player and states[player]
+		if state and not state.loading then
+			setTutorial(state, step)
 		end
 	end)
 end

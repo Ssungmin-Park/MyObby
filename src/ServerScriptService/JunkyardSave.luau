@@ -11,6 +11,7 @@
 --                   ← upgrades는 3-1, empCharges(Robux로 산 무료 EMP)는 3-2에서 추가 (옛 데이터는 0으로 읽힘)
 --                   ← rebirth(환생 단계), variantCatalog({ ["Pippi@Gold"] = true })는 4단계에서 추가. 받침대 값은 변종 키도 허용
 --                   ← totalEarned(로봇이 벌어 준 누적 수입, 환생해도 유지)는 순위표에서 추가. 옛 데이터는 그때 가진 돈으로 시작
+--                   ← tutorial(첫 접속 안내 단계 1~5, 0 = 끝남)은 안내 기능에서 추가. 옛 데이터는 0(이미 해 본 사람)
 --
 -- 안전 원칙
 --   1. 세션 잠금: 데이터를 쓰는 서버가 lock을 남긴다. 다른 서버의 lock이 살아 있으면 기다리고,
@@ -42,6 +43,7 @@ export type Data = {
 	rebirth: number, -- 환생 단계
 	variantCatalog: { [string]: boolean }, -- 모은 변종 키
 	totalEarned: number, -- 누적 수입 (전체 서버 순위표용)
+	tutorial: number, -- 첫 접속 안내 단계 (1~5, 0 = 끝남)
 }
 export type LoadStatus = "new" | "ok" | "failed" | "locked"
 export type SaveStatus = "ok" | "failed" | "lostLock"
@@ -82,12 +84,12 @@ local function defaultUpgrades(): { [string]: number }
 end
 
 function JunkyardSave.newData(): Data
-	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0 }
+	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 1 }
 end
 
 -- 저장소에서 읽은 값을 허용 범위로 정리해서 항상 올바른 Data를 돌려준다.
 function JunkyardSave.sanitize(raw: any): Data
-	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0 }
+	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 0 }
 	if typeof(raw) ~= "table" then
 		return JunkyardSave.newData()
 	end
@@ -101,6 +103,11 @@ function JunkyardSave.sanitize(raw: any): Data
 		data.totalEarned = math.floor(math.clamp(earned, 0, MAX_MONEY))
 	else
 		data.totalEarned = data.money
+	end
+	-- 안내 단계: 없으면(옛 데이터) 0 = 이미 끝난 것으로 본다
+	local tutorial = raw.tutorial
+	if typeof(tutorial) == "number" and tutorial == tutorial then
+		data.tutorial = math.floor(math.clamp(tutorial, 0, 5))
 	end
 	if typeof(raw.catalog) == "table" then
 		for _, robot in Config.Robots do
@@ -161,6 +168,7 @@ local function snapshot(data: Data): Data
 		rebirth = math.floor(data.rebirth),
 		variantCatalog = table.clone(data.variantCatalog),
 		totalEarned = math.floor(data.totalEarned),
+		tutorial = math.floor(data.tutorial),
 	}
 end
 
