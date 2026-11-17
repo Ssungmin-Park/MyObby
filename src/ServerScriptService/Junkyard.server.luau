@@ -21,8 +21,6 @@ local JunkyardRanking = require(script.Parent:WaitForChild("JunkyardRanking"))
 
 local junkyard = workspace:WaitForChild("Junkyard")
 local basesFolder = junkyard:WaitForChild("Bases")
-local checkpoints = workspace:WaitForChild("Checkpoints")
-local obbySpawn = workspace:WaitForChild("SpawnLocation") :: BasePart
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local beltRemote = remotes:WaitForChild("JunkyardBelt") :: RemoteEvent
 local actionRemote = remotes:WaitForChild("JunkyardAction") :: RemoteEvent
@@ -78,6 +76,8 @@ type State = {
 
 local bases: { Base } = {}
 local states: { [Player]: State } = {}
+
+local FALL_Y = 30 -- 고물상 바닥(윗면 Y 40.5)보다 이만큼 아래로 떨어지면 기지로 돌려보낸다
 
 local function now(): number
 	return workspace:GetServerTimeNow()
@@ -873,33 +873,6 @@ local function tryPlace(state: State)
 	notify(state.player, "Info", ("%s을(를) 받침대에 놓았어요."):format(robotLabel(robotId)))
 end
 
--- 오비 ↔ 고물상 이동
-local function goToObby(state: State)
-	if state.carry then
-		notify(state.player, "Alert", "로봇을 들고는 갈 수 없어요. 먼저 기지에 두세요.")
-		return
-	end
-	local character = state.player.Character
-	if not character then
-		return
-	end
-	state.player:SetAttribute("Mode", "Obby")
-	local stats = state.player:FindFirstChild("leaderstats")
-	local stage = stats and stats:FindFirstChild("Stage")
-	local checkpoint = if stage and stage:IsA("IntValue") then checkpoints:FindFirstChild(tostring(stage.Value)) else nil
-	local destination = if checkpoint and checkpoint:IsA("BasePart") then checkpoint else obbySpawn
-	character:PivotTo(destination.CFrame + Vector3.new(0, destination.Size.Y / 2 + 3, 0))
-end
-
-local function goToJunkyard(state: State)
-	local character = state.player.Character
-	if not character or not state.base then
-		return
-	end
-	state.player:SetAttribute("Mode", "Junkyard")
-	character:PivotTo(spawnCFrame(state.base))
-end
-
 -- 연결 ----------------------------------------------------------------------------
 for _, model in basesFolder:GetChildren() do
 	if not model:IsA("Model") then
@@ -983,21 +956,6 @@ for _, model in basesFolder:GetChildren() do
 		notify(owner, "Money", "+" .. Config.formatMoney(amount))
 	end)
 end
-
-local function portal(name: string, handler: (State) -> ())
-	local part = junkyard:FindFirstChild(name)
-	local prompt = part and part:FindFirstChild("PortalPrompt")
-	if prompt and prompt:IsA("ProximityPrompt") then
-		prompt.Triggered:Connect(function(player: Player)
-			local state = states[player]
-			if state then
-				handler(state)
-			end
-		end)
-	end
-end
-portal("ObbyPortal", goToObby)
-portal("JunkyardPortal", goToJunkyard)
 
 actionRemote.OnServerEvent:Connect(function(player: Player, action: unknown, arg: unknown)
 	local state = states[player]
@@ -1269,11 +1227,11 @@ local function onPlayerAdded(player: Player)
 	if assignBase(state) then
 		task.spawn(loadPlayer, state) -- 저장된 돈·도감·받침대 로봇을 불러온다
 	else
-		player:SetAttribute("Mode", "Obby")
+		player:SetAttribute("Mode", "Spectator") -- 기지 없음: 구경만 (HUD 숨김)
 		player:SetAttribute("SaveOff", true)
 		state.loading = false
 		player:SetAttribute("Loading", false)
-		notify(player, "Alert", "이 서버의 기지가 모두 찼어요. 오비를 즐겨 주세요! (이번 접속은 고물상 진행이 저장되지 않아요)")
+		notify(player, "Alert", "이 서버의 기지가 모두 찼어요. 구경은 할 수 있지만 진행은 저장되지 않아요. 다른 서버로 다시 들어와 주세요!")
 	end
 	refreshIncome(state)
 
@@ -1291,11 +1249,13 @@ local function onPlayerAdded(player: Player)
 		task.spawn(onCharacterAdded, state, player.Character)
 	end
 
-	-- 리더보드: Leaderstats가 저장된 진행을 불러온 뒤 leaderstats를 만든다
-	task.spawn(function()
-		local stats = player:WaitForChild("leaderstats", 60)
-		if not stats or not states[player] then
-			return
+	-- 리더보드 (2026-11-17 오비 보관 뒤로는 이 스크립트가 leaderstats를 직접 만든다)
+	do
+		local stats = player:FindFirstChild("leaderstats")
+		if not stats then
+			stats = Instance.new("Folder")
+			stats.Name = "leaderstats" -- 이 이름이어야 화면 오른쪽 위 리더보드에 표시된다
+			stats.Parent = player
 		end
 		local moneyValue = Instance.new("IntValue")
 		moneyValue.Name = "돈"
@@ -1312,7 +1272,7 @@ local function onPlayerAdded(player: Player)
 		state.moneyValue = moneyValue
 		state.incomeValue = incomeValue
 		refreshIncome(state)
-	end)
+	end
 end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
@@ -1458,6 +1418,20 @@ task.spawn(function()
 			elseif shield.Transparency < 1 then
 				shield.Transparency = 1
 				base.model:SetAttribute("LockedUntil", 0)
+			end
+		end
+		-- 고물상 바닥 밖으로 떨어지면 자기 기지로 돌려보낸다 (훔친 로봇은 먼저 주인에게 돌아간다)
+		for player, state in states do
+			local root = rootOf(player)
+			local base = state.base
+			if root and base and root.Position.Y < FALL_Y and player:GetAttribute("Mode") == "Junkyard" then
+				if state.carry and state.carry.fromBase then
+					returnStolen(state, "도둑이 떨어짐")
+				end
+				local character = player.Character
+				if character then
+					character:PivotTo(spawnCFrame(base))
+				end
 			end
 		end
 		-- 기절·느려짐이 끝나면 속도를 되돌린다

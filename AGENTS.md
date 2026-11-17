@@ -9,14 +9,14 @@
 
 ## 1. 프로젝트 목적과 게임 콘셉트
 
-- **장르:** 로블록스 오비(장애물 코스) 게임
-- **콘셉트:** "실험실 탈출" — 실험실에 갇힌 플레이어가 레이저 복도, 회전 레이저, 움직이는 화물 발판, 보안문을 지나 EXIT까지 탈출한다.
-- **핵심 플레이:** 시작 발판(Stage 0) → 체크포인트 1~10을 순서대로 밟으며 점프·장애물 통과 → 체크포인트 11(EXIT) 도달 시 탈출 성공. 떨어지거나 레이저에 닿으면 마지막 체크포인트에서 다시 시작한다. 리더보드에 현재 스테이지가 보인다.
+- **장르:** 로블록스 멀티플레이 수집·경쟁 타이쿤 — **"로봇 고물상 타이쿤"** (2026-11-17부터 이 게임 하나에 집중)
+- **콘셉트:** 고물상 컨베이어에 흘러오는 로봇을 사서 내 기지 받침대에 두면 돈을 번다. 남의 로봇을 훔치고, 방어막으로 지키고, 도감을 채우고, 환생해서 변종을 모은다. 서버 8명(기지 8개), 전체 서버 순위표.
+- **핵심 플레이:** 접속 → 고물상 시작 발판 → 자기 기지로 이동 → 벨트에서 로봇 구매 → 받침대 배치 → 금고 수입 → 상점(방해·방어·도움·환생·Robux) → 환생 → 변종 수집·순위 경쟁.
+- **보관된 모드:** 예전의 오비 "실험실 탈출"(스테이지 10개 + EXIT)과 "로봇 작업장(꼬마 로봇 연구소)"은 **`ServerStorage/ArchivedModes`에 보관**했다(실행되지 않음, 삭제 금지). 각 객체의 `OriginalPath` 속성이 원래 위치다. 저장 데이터 `Progress_v1`·`RobotLab_v1`도 그대로 있다.
 - **목적:** 출시 가능한 게임을 만드는 것, 그리고 개발 과정을 공개 GitHub 저장소에 남겨 **포트폴리오**로 쓰는 것.
 - **개발 단계 계획:**
-  1. **1단계 그레이박스** — 재미 검증. 색·재질·장식을 넣지 않는다. (예외: 닿으면 죽는 파트는 `Transparency 0.4`로만 구분)
-  2. **2단계 시스템** — 진행 저장(DataStore), 스테이지 스킵 상품(Developer Product), 보상형 광고
-  3. **3단계 비주얼** — 재질, 조명, 모델, 사운드, 썸네일/아이콘
+  1. ✅ 기본 루프(벨트·기지·훔치기·방어막·도감) → ✅ 저장 → ✅ 상점·열차 이벤트 → ✅ Robux 상품 → ✅ 환생·변종 → ✅ 전체 서버 순위표
+  2. 다음: 첫 접속 안내·모바일 점검 → 서버 대회 → 도감 완성 보상 → 협력 거대 로봇 → 비주얼·사운드·썸네일 → 공개 (순서는 `HANDOFF.md` G)
 - 현재 단계와 진행 상황은 `HANDOFF.md`에 있다.
 
 ## 2. 개발 환경과 사용 기술
@@ -50,44 +50,40 @@ README.md      포트폴리오용 소개 페이지 (GitHub 첫 화면)
 docs/screenshots/   README용 Studio 캡처
 src/           Studio 스크립트의 거울 (Studio 경로 그대로)
   ServerScriptService/
-    Leaderstats.server.luau   리더보드 leaderstats.Stage 생성 + 저장된 진행 불러오기
-    ProgressSave.luau         진행 저장 모듈 (DataStore Progress_v1)
-    RobotLab.server.luau      로봇 작업장 판정
-    RobotLabSave.luau         로봇 작업장 저장 모듈 (DataStore RobotLab_v1, 세션 잠금)
-    Checkpoints.server.luau   체크포인트 진행 판정 (바로 다음 번호만 인정)
-    Respawn.server.luau       KillZone 낙사 + 마지막 체크포인트 리스폰 (RespawnTime 1초)
-    Hazards.server.luau       태그 기반 장애물 구동 (KillPart/Spinner/Mover/TimedDoor)
-    Finish.server.luau        골인(IsFinish) 도달 시 Escaped 이벤트 발송
-  StarterPlayer/StarterPlayerScripts/
-    EscapeMessage.client.luau "탈출 성공!" 4초 표시
+    Junkyard.server.luau      고물상 서버 로직 (기지 배정·구매·훔치기·상점·환생·leaderstats·떨어짐 복귀)
+    JunkyardBelt.luau         컨베이어 벨트 (등장 시각만 보내고 위치는 클라이언트가 계산)
+    JunkyardEvents.server.luau  희귀 로봇 열차 이벤트
+    JunkyardSave.luau         저장 모듈 (DataStore Junkyard_v1, 세션 잠금)
+    JunkyardStore.luau        Robux 결제 (ProcessReceipt, 영수증 Receipts_v1)
+    JunkyardRanking.luau      전체 서버 순위표 (OrderedDataStore)
+  ReplicatedStorage/Modules/JunkyardConfig.luau   밸런스·로봇·상품 데이터 (서버·클라 공용)
+  StarterPlayer/StarterPlayerScripts/JunkyardHud.client.luau   화면 표시 (패널·상점·도감·벨트 표시)
+  ServerStorage/ArchivedModes/  보관된 오비(Obby)·로봇 작업장(RobotLab) 스크립트 — 실행 안 됨
+tools/         맵 생성 스크립트 (build-junkyard.luau 등)
 .gitignore / .gitattributes   민감 파일 제외 / LF 줄바꿈 고정
 ```
 
 파일 이름 규칙: Script → `.server.luau`, LocalScript → `.client.luau`, ModuleScript → `.luau`
-예: `ServerScriptService/Hazards` → `src/ServerScriptService/Hazards.server.luau`
+예: `ServerScriptService/Junkyard` → `src/ServerScriptService/Junkyard.server.luau`
 
 ### Studio 안 구조
 
 ```
 Workspace/
-  Stages/Stage01~Stage10        스테이지별 Model
-  Checkpoints/1~11              체크포인트 파트. 이름 = 스테이지 번호.
-                                11 = EXIT(골인), 속성 IsFinish = true
-  KillZone                      Y=20, 2048×2048 낙사 판정 바닥
-  SpawnLocation                 시작 발판 (Y=40)
-  Baseplate                     기본 바닥 (Y=-8)
-ServerScriptService/            서버 Script 5개 + ModuleScript ProgressSave (위 src/와 1:1)
-ReplicatedStorage/Remotes/Escaped   RemoteEvent (서버 → 클라이언트 전용)
-ReplicatedStorage/Modules/RobotLabConfig   로봇 작업장 밸런스 데이터 (서버·클라이언트 공용)
-ReplicatedStorage/Remotes/RobotLabState, RobotLabAction   로봇 작업장 상태(서버→클라)·요청(클라→서버, 서버 검증)
-Workspace/RobotLab/             로봇 작업장 맵 (Interactions = 장치, SpawnPoints = 부품·로봇 출현 지점)
-ServerStorage/RobotLabV1Backup  연구소 v1 스크립트·장치 백업 — 승인 없이 삭제 금지
-StarterPlayer/StarterPlayerScripts/EscapeMessage   LocalScript
-StarterGui, StarterPack, ReplicatedFirst, SoundService, Teams   비어 있음
+  Junkyard/                     고물상 맵 (Floor, Belt, Bases/Base1~8, Rankings/RebirthBoard·EarnedBoard,
+                                JunkyardSpawn = 시작 발판 X 302, Y 41, Z 100)
+  Baseplate                     기본 바닥 (Y=-8). 고물상 밖으로 떨어지면 Junkyard가 기지로 돌려보낸다(Y < 30)
+ServerScriptService/            Junkyard, JunkyardBelt, JunkyardEvents, JunkyardSave, JunkyardStore, JunkyardRanking
+ReplicatedStorage/Modules/JunkyardConfig
+ReplicatedStorage/Remotes/      JunkyardBelt, JunkyardAction, JunkyardNotify 등 (고물상용)
+StarterPlayer/StarterPlayerScripts/JunkyardHud   LocalScript
 Lighting/                       템플릿 기본 효과(Sky, Atmosphere, Bloom, SunRays, DepthOfField)만 있음
 ServerStorage/
+  ArchivedModes/Obby/           오비 맵(Stages, Checkpoints, KillZone, 옛 SpawnLocation, 포털 2개)·스크립트·Remote Escaped — 보관, 삭제 금지
+  ArchivedModes/RobotLab/       로봇 작업장 맵·스크립트·RobotLabConfig·Remote 2개 — 보관, 삭제 금지
   ObbyServer_backup             옛 단일 스크립트 (Disabled) — 백업
   StagesBackup/Stage04~10       장애물 추가 전 스테이지 — 백업
+  RobotLabV1Backup              연구소 v1 백업 — 승인 없이 삭제 금지
 ```
 
 ## 4. 현재 구현된 주요 기능 (안정 기능 목록)
@@ -113,9 +109,9 @@ ServerStorage/
 
 - 진행 저장: 오비 Stage(`Progress_v1`)와 로봇 작업장(`RobotLab_v1`)을 DataStore에 저장한다. 2026-11-17 실제 저장소로 재접속 복원을 확인했다. Studio API 접근은 **파일 → 체험 설정 → 보안**에서 켠다(켜져 있음).
 
-**로봇 고물상 타이쿤 (현재 주력, 멀티플레이):** 접속하면 고물상 기지에서 시작한다. 가운데 컨베이어에서 로봇을 사서 기지 받침대에 두면 초당 수입, 남의 로봇 훔치기·붙잡기·방어막, 도감 세트 보너스. 플레이어 속성 `Mode`("Junkyard"/"Obby")로 어느 모드인지 구분하고 `Respawn`은 Junkyard 모드면 관여하지 않는다. Studio 경로: `Workspace/Junkyard`, `ServerScriptService/Junkyard`·`JunkyardBelt`, `StarterPlayer/StarterPlayerScripts/JunkyardHud`, `ReplicatedStorage/Modules/JunkyardConfig`, `Remotes/JunkyardBelt·JunkyardAction·JunkyardNotify`. 저장은 `ServerScriptService/JunkyardSave`(DataStore `Junkyard_v1`, 세션 잠금, 형식 변경 금지 — 필드 추가는 sanitize에 기본값을 넣어 옛 데이터 호환). 상점·열차 이벤트(3-1)는 `JunkyardConfig`의 Upgrades/Items/Train*, `ServerScriptService/JunkyardEvents`. Robux 결제(3-2)는 `ServerScriptService/JunkyardStore` 한 곳에서만 `ProcessReceipt`를 설정하고, 영수증은 DataStore `Receipts_v1`에 기록해 중복 지급을 막는다. 상품 id는 `JunkyardConfig.GamePasses`/`Products`. 환생·변종(4단계): 로봇 키는 `"id"` 또는 `"id@변종"`이며 벨트에는 기본 로봇만 흐르고 변종은 살 때 서버가 정한다. 전체 서버 순위표는 `ServerScriptService/JunkyardRanking`(OrderedDataStore `JunkyardRank_Rebirth_v1`·`JunkyardRank_Earned_v1`, 더 클 때만 기록, 형식 변경 금지)과 맵 `Workspace/Junkyard/Rankings`. 상세는 HANDOFF B-11~B-15.
+**로봇 고물상 타이쿤 (이 게임의 전부, 멀티플레이):** 접속하면 고물상 기지에서 시작한다(2026-11-17부터 오비·작업장 없음). 가운데 컨베이어에서 로봇을 사서 기지 받침대에 두면 초당 수입, 남의 로봇 훔치기·붙잡기·방어막, 도감 세트 보너스. 플레이어 속성 `Mode`는 "Junkyard"(기지 있음) 또는 "Spectator"(서버 꽉 참, HUD 숨김). leaderstats(돈·초당·환생)는 `Junkyard`가 직접 만든다. Studio 경로: `Workspace/Junkyard`, `ServerScriptService/Junkyard`·`JunkyardBelt`, `StarterPlayer/StarterPlayerScripts/JunkyardHud`, `ReplicatedStorage/Modules/JunkyardConfig`, `Remotes/JunkyardBelt·JunkyardAction·JunkyardNotify`. 저장은 `ServerScriptService/JunkyardSave`(DataStore `Junkyard_v1`, 세션 잠금, 형식 변경 금지 — 필드 추가는 sanitize에 기본값을 넣어 옛 데이터 호환). 상점·열차 이벤트(3-1)는 `JunkyardConfig`의 Upgrades/Items/Train*, `ServerScriptService/JunkyardEvents`. Robux 결제(3-2)는 `ServerScriptService/JunkyardStore` 한 곳에서만 `ProcessReceipt`를 설정하고, 영수증은 DataStore `Receipts_v1`에 기록해 중복 지급을 막는다. 상품 id는 `JunkyardConfig.GamePasses`/`Products`. 환생·변종(4단계): 로봇 키는 `"id"` 또는 `"id@변종"`이며 벨트에는 기본 로봇만 흐르고 변종은 살 때 서버가 정한다. 전체 서버 순위표는 `ServerScriptService/JunkyardRanking`(OrderedDataStore `JunkyardRank_Rebirth_v1`·`JunkyardRank_Earned_v1`, 더 클 때만 기록, 형식 변경 금지)과 맵 `Workspace/Junkyard/Rankings`. 상세는 HANDOFF B-11~B-15.
 
-**로봇 작업장 (꼬마 로봇 연구소 확장, 이전 주력 → 부가 모드):** 시작 발판과 EXIT에서 입장하는 비점프형 모드. 부품 줍기 → 로봇 수리(실제 시간) → 도우미 수입 → 업그레이드·구역 열기 루프. Studio 경로는 `Workspace/RobotLab`, `ServerScriptService/RobotLab`, `StarterPlayer/StarterPlayerScripts/RobotLabHud`, `ReplicatedStorage/Modules/RobotLabConfig`. 밸런스는 Config 숫자만 바꿔 조정한다. 로봇·업그레이드·구역 id는 저장 데이터 키가 될 예정이므로 바꾸지 않는다. 재접속 저장과 Robux 상품은 미구현이다. 상세는 HANDOFF B-10.
+**(보관됨) 로봇 작업장 (꼬마 로봇 연구소 확장):** 2026-11-17 `ServerStorage/ArchivedModes/RobotLab`으로 보관. 아래는 보관 전 설명이다. 시작 발판과 EXIT에서 입장하는 비점프형 모드. 부품 줍기 → 로봇 수리(실제 시간) → 도우미 수입 → 업그레이드·구역 열기 루프. Studio 경로는 `Workspace/RobotLab`, `ServerScriptService/RobotLab`, `StarterPlayer/StarterPlayerScripts/RobotLabHud`, `ReplicatedStorage/Modules/RobotLabConfig`. 밸런스는 Config 숫자만 바꿔 조정한다. 로봇·업그레이드·구역 id는 저장 데이터 키가 될 예정이므로 바꾸지 않는다. 재접속 저장과 Robux 상품은 미구현이다. 상세는 HANDOFF B-10.
 
 ## 5. 코드 작성 규칙과 아키텍처 원칙
 
@@ -184,22 +180,19 @@ ServerStorage/
 5. 사용자에게 **Studio 저장(Ctrl+S)** 을 안내한다. 이 place는 클라우드 저장이고, AI는 저장하지 않는다.
 
 ### 회귀 테스트 체크리스트
-서버 쪽에서 캐릭터를 `PivotTo`로 옮기는 자동 테스트다. 기능을 바꾼 뒤에는 관련 항목을 다시 확인한다.
+서버 쪽에서 캐릭터를 `PivotTo`로 옮기거나 Remote·Prompt를 실제로 보내는 자동 테스트다. 기능을 바꾼 뒤에는 관련 항목을 다시 확인한다. 2인 테스트는 Studio 테스트 탭 → "클라이언트 및 서버"(UserId 음수 테스트 계정)로 한다.
 
-1. 입장 시 `leaderstats.Stage = 0`
-2. 체크포인트 1 → 2 순서대로 밟으면 Stage가 1, 2가 된다
-3. 건너뛰기 방지: 2에서 5를 밟아도 2 유지
-4. 뒤로 가기 방지: 2에서 1을 밟아도 2 유지
-5. KillPart에 닿으면 사망
-6. 마지막 체크포인트 위에서 리스폰 (수평 거리 1 미만)
-7. KillZone 낙사
-8. Mover 발판의 X 좌표가 변한다
-9. Spinner 막대 각도가 변한다
-10. TimedDoor 두 문의 `CanCollide`가 서로 반대다
-11. 1~11을 순서대로 밟으면 Stage 11, 클라이언트 `PlayerGui.EscapeMessage`가 생긴다 (4초 안에 확인)
-12. 출력 로그에 에러·경고 없음
+1. 입장 시 `Mode = "Junkyard"`, 빈 기지 배정, 기지 스폰 위치로 이동, `SaveOff = false`
+2. leaderstats에 돈·초당·환생 (Stage 없음)
+3. 벨트 로봇 구매 → 받침대 배치 → 초당 수입 증가, 금고에 쌓이고 밟으면 돈
+4. 팔기·훔치기는 누르기 시간 검증 후 동작, 주인이 붙잡으면 복귀, 방어막 중 침입 거절
+5. 바닥 밖으로 떨어지면(Y < 30) 1초 안에 자기 기지로 복귀, 훔친 로봇은 주인에게 복귀
+6. 상점 업그레이드·아이템, 환생 조건 거절/성공 (사용자 본인 저장으로 성공 환생은 승인 필요)
+7. 재접속 시 돈·도감·받침대·환생·누적 수입 복원
+8. 순위판에 1분 안에 점수 표시 (UserId 음수 제외)
+9. 서버·클라이언트 출력 로그에 에러·경고 없음
 
-**한계:** 자동 테스트는 캐릭터를 순간이동시키므로 **실제 점프 감각이나 모바일 조작은 검증하지 못한다.** 이것은 사용자가 직접 플레이해서 확인한다.
+**한계:** 자동 테스트는 캐릭터를 순간이동시키므로 **실제 조작감이나 모바일 화면은 검증하지 못한다.** 이것은 사용자가 직접 플레이해서 확인한다.
 
 ### 스크립트 내보내기 (Studio → `src/`)
 - Studio의 각 스크립트 `Source`를 `src/<Studio 경로>.<종류>.luau`에 그대로 저장한다.
@@ -218,7 +211,7 @@ ServerStorage/
 
 - **삭제·대규모 재작성 금지.** 객체·스크립트 삭제, 구조 변경, 새 시스템 추가 전에는 계획을 보여주고 사용자 승인을 받는다.
   - 기존 스크립트는 통째로 다시 쓰지 말고 필요한 부분만 고친다.
-- **백업은 사용자 승인 없이 지우지 않는다:** `ServerStorage/ObbyServer_backup`, `ServerStorage/StagesBackup`.
+- **백업·보관은 사용자 승인 없이 지우지 않는다:** `ServerStorage/ArchivedModes`, `ServerStorage/ObbyServer_backup`, `ServerStorage/StagesBackup`, `ServerStorage/RobotLabV1Backup`.
 - **체크포인트 이름(`1`~`11`)과 `IsFinish` 속성, `leaderstats.Stage` 이름은 바꾸지 않는다.** 여러 스크립트가 여기에 의존한다.
 - **2단계에서 DataStore를 넣은 뒤**에는 키 이름이나 데이터 형식을 바꾸지 않는다. 바꾸면 플레이어 진행이 사라진다. 바꿔야 하면 마이그레이션 계획을 먼저 승인받는다.
 - **Studio와 `src/`가 어긋나지 않게 한다.** Studio 스크립트를 바꿨으면 같은 작업 안에서 `src/`도 갱신한다.

@@ -11,9 +11,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — **전체 서버 순위표(B-15)** 구현·Studio 반영·자동 테스트. 그 전 Codex: 환생·변종 2인 검증, 테스트 훅 2개, 도감과 기본 리더보드 겹침 수정 |
+| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — **고물상 단독 게임으로 정리(B-16)**: 오비·로봇 작업장을 `ServerStorage/ArchivedModes`에 보관, 시작 발판을 고물상으로, leaderstats 직접 생성, 떨어짐 복귀. 그 전: 전체 서버 순위표(B-15) |
 | 작업 시점 | 2026-11-17 |
-| 다음 작업 AI | ① 도감과 기본 리더보드 겹침 수정의 화면 재시험(Codex 남은 일, G-0) ② 순위판을 실제 화면에서 보기(사용자) ③ 다음 기능 계획: 서버 대회(15분)·도감 완성 보상·3-3 협력 거대 로봇 중 사용자와 결정 |
+| 다음 작업 AI | ① **첫 접속 안내 + 모바일 화면 점검**(G 우선순위 1) ② Codex 남은 일: 도감 화면 재시험(G-0) ③ 서버 대회 → 도감 완성 보상 → 협력 거대 로봇 → 비주얼·사운드·썸네일. 큰 기능은 계획 승인 먼저 |
 | 게임 이름 | 마이오비 (Studio place 이름) / **주력: 로봇 고물상 타이쿤**(멀티플레이). 부가: 실험실 탈출 오비, 로봇 작업장(꼬마 로봇 연구소) |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -22,7 +22,7 @@
 | Studio 모드 | 작업 종료 시 **Edit 모드** (Play 테스트 종료함) |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-17 Claude Code: **전체 서버 순위표** — 새 ModuleScript `ServerScriptService/JunkyardRanking`, `Junkyard`(누적 수입 `totalEarned`·순위 연결), `JunkyardSave`(`totalEarned` 필드), 맵 `Workspace/Junkyard/Rankings/RebirthBoard·EarnedBoard`. Studio ↔ `src/` 스크립트 19개 체크섬 일치. ⚠ 이번 Studio 수정은 끝나지 않은 다른 ChangeHistory 기록이 남아 있어 **Ctrl+Z 기록 없이** 들어갔다 |
+| 마지막 게임 수정 | 2026-11-17 Claude Code: **고물상 단독** — Studio 객체 21개를 `ServerStorage/ArchivedModes/{Obby,RobotLab}`로 이동(삭제 없음, 각 `OriginalPath` 속성), `Workspace/Junkyard/JunkyardSpawn` 추가, `Junkyard` 수정(체크포인트·옛 SpawnLocation 의존 제거, 포털 제거, leaderstats 직접 생성, 꽉 찬 서버는 `Mode="Spectator"`, Y<30 떨어짐 복귀). `src/`도 같은 위치로 이동, 스크립트 19개 체크섬 일치. ⚠ 끝나지 않은 다른 ChangeHistory 기록 때문에 **Ctrl+Z 기록 없이** 들어갔다 |
 | Studio 저장 상태 | `persistedToCloud = true`. **2026-11-17 Studio 업데이트로 재시작된 뒤에도 3-2까지의 스크립트 18개(체크섬 일치)·고물상 맵(받침대 14칸)·Remote 6개가 모두 남아 있어 클라우드 저장을 간접 확인했다.** AI는 저장·Publish하지 않는다 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
 | 실제 저장 데이터 | 테스트로 **사용자 본인 키**에 값이 남아 있다: `Progress_v1` = Stage 11, `RobotLab_v1` = 부품 10·삐삐 Lv.1, `Junkyard_v1` = 돈 약 31·받침대 삐삐/너트/스펀지(일반 세트 완성). 지우려면(RemoveAsync) 사용자 승인 필요 |
@@ -176,6 +176,22 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
   - 떠나 있는 동안 기지는 서버에서 비워지므로 아무도 훔칠 수 없다. 기지 6개가 꽉 차서 기지가 없는 플레이어는 불러오지도 저장하지도 않는다.
 
 **클라이언트 `StarterPlayerScripts/JunkyardHud`** — 잠긴 기지마다 위에 "🛡 방어막 N초" 빌보드(모두에게 보임, 300스터드), 왼쪽 위 패널(돈, 초당·도감 배수, 운반 상태, 방어막 버튼, 도감 버튼), 도감 창(18칸 + 세트 보너스 진행), 위쪽 알림, 벨트 로봇 직접 그리기와 구매 프롬프트, 받침대 버튼 문구(내 기지 "팔기 +금액" / 남의 기지 "훔치기"). Mode가 Junkyard일 때만 보인다.
+
+### B-16. 고물상 단독 게임으로 정리 (2026-11-17, 사용자 승인 · 자동 테스트 통과)
+
+**이유:** 사용자 요청 — 접속하자마자 고물상만 하게, 이전 오비·꼬마 로봇 맵에 신경 쓰지 않게.
+
+**보관 (`ServerStorage/ArchivedModes`, 삭제 없음, 각 객체 `OriginalPath` 속성 = 원래 위치)**
+- `Obby/Workspace`: Stages, Checkpoints, KillZone(실제 Y 0.5), SpawnLocation(원래 (0,40,0) 12×1×12), Junkyard의 ObbyPortal·JunkyardPortal
+- `Obby/ServerScriptService`: Checkpoints, Respawn, Finish, Hazards, Leaderstats, ProgressSave / `Obby/StarterPlayerScripts`: EscapeMessage / `Obby/Remotes`: Escaped
+- `RobotLab/Workspace`: RobotLab / `RobotLab/ServerScriptService`: RobotLab, RobotLabSave / `RobotLab/StarterPlayerScripts`: RobotLabHud / `RobotLab/Modules`: RobotLabConfig / `RobotLab/Remotes`: RobotLabState, RobotLabAction
+- `src/`도 `src/ServerStorage/ArchivedModes/...`로 같은 구조(git mv). DataStore `Progress_v1`·`RobotLab_v1`은 손대지 않음.
+- 되살리려면: 각 객체를 `OriginalPath` 위치로 되돌리고, `Junkyard`의 leaderstats 생성 순서(옛 Leaderstats가 Stage를 먼저 만들었음)와 포털 코드(git 이력 56bd22c 이전)를 복원해야 한다.
+
+**`Junkyard` 변경:** `workspace:WaitForChild("Checkpoints"/"SpawnLocation")` 제거, `goToObby/goToJunkyard/portal` 제거, leaderstats 폴더를 직접 만들고 돈·초당·환생을 바로 붙임(60초 기다림 제거), 기지가 없으면 `Mode="Spectator"`(HUD 숨김) + 안내, 0.2초 루프에서 `Y < FALL_Y(30)`이면 훔친 로봇을 주인에게 돌려보내고 자기 기지 스폰으로 이동.
+**맵:** `Workspace/Junkyard/JunkyardSpawn`(SpawnLocation, (302, 41, 100), 8×1×8, Neutral, ForceField 0초). `tools/build-junkyard.luau`도 포털 대신 이 발판을 만든다.
+
+**테스트 (2026-11-17, Claude Code, 혼자 Play)**: Mode=Junkyard·SaveOff=false·Base1 배정·기지 스폰 위치, leaderstats `돈, 초당, 환생`(Stage 없음), X 250으로 옮겨 떨어뜨리자 0.8초 만에 기지로 복귀, Workspace에 Stages·RobotLab 없음, 클라이언트 GUI는 JunkyardHud(켜짐)뿐, 서버·클라이언트 오류·경고 0. **미검증:** 2인 이상에서 기지 배정·스폰, 훔친 로봇 들고 떨어질 때 복귀(코드만), 꽉 찬 서버 Spectator 안내.
 
 ### B-15. 전체 서버 순위표 (2026-11-17, 구현 · 자동 테스트 통과)
 

@@ -1,7 +1,7 @@
 --!strict
 -- 로봇 고물상 맵 생성 (2026-11-17, Claude Code)
--- Studio Edit에서 ChangeHistoryService 기록 안에서 실행한다. Workspace/Junkyard 모델을 만들고,
--- 오비 시작 발판에 "로봇 고물상" 입구를 붙인다.
+-- Studio Edit에서 ChangeHistoryService 기록 안에서 실행한다. Workspace/Junkyard 모델을 만든다.
+-- (2026-11-17부터 고물상 단독 게임: 시작 발판 JunkyardSpawn이 이 모델 안에 있고, 오비 입구는 만들지 않는다)
 -- 배치: 가운데(X 290~510, Z 0~200, 바닥 윗면 Y 40.5)에 동→서 컨베이어 벨트(Z 100),
 --       북쪽 기지 4개(Z 23~57)와 남쪽 기지 4개(Z 143~177). 기지 입구는 벨트 쪽.
 --       (2026-11-17 기지 6 → 8개: 7·8번은 X 520. 서버 최대 인원도 8명으로 맞춘다)
@@ -155,12 +155,19 @@ local function buildJunkyard(): Model
 		spawn.CanTouch = false
 	end
 
-	-- 오비로 가는 입구 ------------------------------------------------------------
-	local toObby = part(model, "ObbyPortal", Vector3.new(298, 42.5, 100), Vector3.new(2, 4, 4), Color3.fromRGB(126, 225, 195))
-	toObby.CanCollide = false
-	billboard(toObby, "Sign", "실험실 탈출 코스", 3.5, 60)
-	local obbyPrompt = prompt(toObby, "실험실 탈출 코스", "이동", 0, 7)
-	obbyPrompt.Name = "PortalPrompt"
+	-- 시작 발판 (2026-11-17 고물상 단독 게임: 오비 SpawnLocation 대신 여기서 태어나 바로 기지로 옮겨진다)
+	-- (예전의 오비 입구 ObbyPortal·JunkyardPortal은 ServerStorage/ArchivedModes/Obby에 보관)
+	local spawnPad = Instance.new("SpawnLocation")
+	spawnPad.Name = "JunkyardSpawn"
+	spawnPad.Size = Vector3.new(8, 1, 8)
+	spawnPad.Position = Vector3.new(302, 41, 100)
+	spawnPad.Anchored = true
+	spawnPad.Neutral = true
+	spawnPad.Duration = 0
+	spawnPad.Color = Color3.fromRGB(240, 200, 80)
+	spawnPad.TopSurface = Enum.SurfaceType.Smooth
+	spawnPad.BottomSurface = Enum.SurfaceType.Smooth
+	spawnPad.Parent = model
 
 	-- 전체 서버 순위판 2개 (2026-11-17): 서쪽 끝, 동쪽(기지 쪽)을 본다. 글씨는 JunkyardRanking이 실행 중에 그린다
 	local rankings = Instance.new("Folder")
@@ -170,17 +177,6 @@ local function buildJunkyard(): Model
 		local board = part(rankings, name, Vector3.new(296, 47.5, z), Vector3.new(18, 14, 1), dark)
 		board.CFrame = CFrame.lookAt(board.Position, board.Position + Vector3.new(1, 0, 0)) -- 앞면이 +X
 	end
-
-	-- 오비 시작 발판의 고물상 입구 (연구소 입구 반대쪽)
-	local spawnPad = workspace:FindFirstChild("SpawnLocation")
-	assert(spawnPad and spawnPad:IsA("BasePart"), "SpawnLocation 없음")
-	local back = part(model, "JunkyardPortal",
-		spawnPad.Position + Vector3.new(-(spawnPad.Size.X / 2 - 1.3), spawnPad.Size.Y / 2 + 1.4, -spawnPad.Size.Z / 4),
-		Vector3.new(1.2, 2.8, 2.1), Color3.fromRGB(240, 200, 80))
-	back.CanCollide = false
-	billboard(back, "Sign", "로봇 고물상", 2.3, 35)
-	local backPrompt = prompt(back, "로봇 고물상", "이동", 0, 7)
-	backPrompt.Name = "PortalPrompt"
 
 	return model
 end
