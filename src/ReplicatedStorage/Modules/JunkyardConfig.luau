@@ -140,11 +140,12 @@ Config.Upgrades = {
 export type Item = { name: string, desc: string, category: string, minPrice: number, incomeSeconds: number }
 Config.ItemOrder = { "EMP", "Gloves" }
 Config.Items = {
-	EMP = { name = "EMP", desc = "주변 10스터드의 다른 사람을 3초 동안 멈추고, 훔쳐 가던 로봇을 떨어뜨리게 해요", category = "Attack", minPrice = 500, incomeSeconds = 60 },
+	EMP = { name = "EMP", desc = "방어막이 켜진 남의 기지 가까이에서 쓰면 그 방어막 남은 시간이 절반으로 줄어요", category = "Attack", minPrice = 500, incomeSeconds = 60 },
 	Gloves = { name = "도둑 장갑", desc = "5분 동안 훔치기가 1.5초 → 0.6초로 빨라져요", category = "Attack", minPrice = 1000, incomeSeconds = 90 },
 } :: { [string]: Item }
-Config.EmpRange = 10
-Config.EmpStun = 3 -- 초
+Config.EmpRange = 40 -- 이 거리 안(기지 가운데 기준, 수평)에 방어막 켜진 남의 기지가 있어야 EMP를 쓸 수 있다
+Config.EmpShieldCut = 0.5 -- EMP를 맞은 방어막의 남은 시간에 곱하는 값 (0.5 = 절반)
+Config.EmpStun = 3 -- (지금은 안 씀) 예전 EMP의 멈춤 시간
 Config.EmpCooldown = 30
 Config.GlovesDuration = 300
 Config.GlovesHold = 0.6
@@ -297,7 +298,8 @@ Config.RebirthCostGrowth = 3 -- 환생할 때마다 필요한 돈 ×3
 Config.RebirthRequiresRarity = "Mythic" -- 도감에 이 등급 로봇이 1종 이상 있어야 환생 가능
 Config.RebirthIncomeBonus = 0.5 -- 환생 1번마다 수입 +50% (영구)
 Config.RebirthShopGrowth = 2 -- 환생 1번마다 상점 업그레이드 가격 ×2 (아이템은 원래 수입에 따라 오르고, 구역 확장은 환생해도 남으므로 그대로)
-Config.ProtectionGap = 2 -- 환생 단계가 이만큼 이상 높은 사람은 내 로봇을 훔칠 수 없다 (초보 보호)
+Config.ProtectionGap = 1 -- 환생 단계가 이만큼 이상 높은 사람은 내 로봇을 훔칠 수 없다 (초보 보호, 2026-11-18 2 → 1)
+Config.NewbieProtectEarned = 50000 -- 새싹 보호: 환생 0번이고 누적 수입이 이보다 적으면 훔치기·빼앗기·EMP를 당하지 않는다 (대략 처음 30분)
 export type Variant = { name: string, mark: string, minRebirth: number, chance: number, income: number, color: Color3, pageBonus: number }
 Config.VariantOrder = { "Gold", "Diamond", "Rainbow" }
 Config.Variants = {

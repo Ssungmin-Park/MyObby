@@ -588,6 +588,11 @@ local function returnSnatched(state: State, reason: string): boolean
 	return true
 end
 
+-- 새싹 보호: 막 시작한 사람(환생 0번, 누적 수입이 적음)은 훔치기·빼앗기·EMP를 당하지 않는다
+local function isNewbie(state: State): boolean
+	return state.rebirth <= 0 and state.totalEarned < Config.NewbieProtectEarned
+end
+
 -- 변종 로봇은 그 변종이 열린(환생 단계가 충분한) 사람만 가질 수 있다. 훔치기·빼앗기로 환생을 건너뛰지 못하게
 local function variantLock(state: State, key: string): string?
 	local variant = Config.variantOf(key)
@@ -705,6 +710,10 @@ snatchHandler = function(player: Player, target: State, prompt: ProximityPrompt)
 	end
 	if state.rebirth - target.rebirth >= Config.ProtectionGap then
 		notify(player, "Alert", ("초보 보호: 환생 단계가 %d 이상 낮은 사람의 로봇은 빼앗을 수 없어요."):format(Config.ProtectionGap))
+		return
+	end
+	if isNewbie(target) then
+		notify(player, "Alert", "🌱 새싹 보호 중인 사람의 로봇은 빼앗을 수 없어요.")
 		return
 	end
 	local locked = variantLock(state, carry.robotId)
@@ -975,6 +984,10 @@ local function steal(state: State, base: Base, padIndex: number)
 		notify(state.player, "Alert", ("초보 보호: 환생 단계가 %d 이상 낮은 사람의 로봇은 훔칠 수 없어요."):format(Config.ProtectionGap))
 		return
 	end
+	if victim and isNewbie(victim) then
+		notify(state.player, "Alert", "🌱 새싹 보호 중인 사람의 로봇은 훔칠 수 없어요.")
+		return
+	end
 	if now() < base.lockedUntil then
 		notify(state.player, "Alert", "방어막이 켜진 기지예요.")
 		return
@@ -1086,6 +1099,31 @@ local function useItem(state: State, id: string)
 	if not root then
 		return
 	end
+	-- EMP는 방어막이 켜진 남의 기지 가까이에서만 (가장 가까운 기지 하나). 없으면 돈을 쓰지 않고 거절
+	local empTarget: Base? = nil
+	if id == "EMP" then
+		local nearest = Config.EmpRange
+		for _, base in bases do
+			local owner = base.owner
+			if owner and owner ~= state.player and t < base.lockedUntil then
+				local offset = root.Position - base.center
+				local distance = Vector3.new(offset.X, 0, offset.Z).Magnitude
+				if distance <= nearest then
+					nearest = distance
+					empTarget = base
+				end
+			end
+		end
+		if not empTarget then
+			notify(state.player, "Alert", "⚡ EMP는 방어막이 켜진 남의 기지 가까이에서 써야 해요.")
+			return
+		end
+		local ownerState = if empTarget.owner then states[empTarget.owner] else nil
+		if ownerState and isNewbie(ownerState) then
+			notify(state.player, "Alert", "🌱 새싹 보호 중인 사람의 기지에는 EMP를 쓸 수 없어요.")
+			return
+		end
+	end
 	-- Robux로 산 무료 EMP가 있으면 돈 대신 그것을 쓴다
 	local free = id == "EMP" and state.empCharges > 0
 	local price = if free then 0 else Config.itemPrice(id, (state.player:GetAttribute("Income") or 0) :: number)
@@ -1099,27 +1137,22 @@ local function useItem(state: State, id: string)
 	else
 		setMoney(state, state.money - price)
 	end
-	if id == "EMP" then
+	if id == "EMP" and empTarget then
+		-- 방어막 남은 시간을 줄인다 (다시 켤 수 있는 시각도 같은 만큼 당긴다)
 		state.empReadyAt = t + Config.EmpCooldown
 		empBurst(root.Position)
-		local hit = 0
-		for other, otherState in states do
-			local otherRoot = rootOf(other)
-			if other ~= state.player and otherRoot and other:GetAttribute("Mode") == "Junkyard"
-				and (otherRoot.Position - root.Position).Magnitude <= Config.EmpRange then
-				hit += 1
-				otherState.stunnedUntil = t + Config.EmpStun
-				applySpeed(otherState)
-				syncUpgradeAttributes(otherState)
-				if otherState.carry and otherState.carry.fromBase then
-					returnStolen(otherState, "EMP에 맞음")
-				elseif otherState.carry and otherState.carry.snatchedFrom then
-					returnSnatched(otherState, "EMP에 맞음")
-				end
-				notify(other, "Alert", ("⚡ %s님의 EMP에 맞았어요! %d초 동안 못 움직여요."):format(state.player.DisplayName, Config.EmpStun))
-			end
+		local left = empTarget.lockedUntil - t
+		local cut = left * (1 - Config.EmpShieldCut)
+		empTarget.lockedUntil -= cut
+		empTarget.lockCooldownUntil -= cut
+		empTarget.model:SetAttribute("LockedUntil", empTarget.lockedUntil)
+		local owner = empTarget.owner
+		if owner then
+			owner:SetAttribute("LockedUntil", empTarget.lockedUntil)
+			owner:SetAttribute("LockCooldownUntil", empTarget.lockCooldownUntil)
+			notify(owner, "Stolen", ("⚡ %s님의 EMP! 방어막이 절반으로 줄었어요 (남은 %d초)"):format(state.player.DisplayName, math.ceil(left - cut)))
 		end
-		notify(state.player, "Info", ("⚡ EMP 발사! %d명을 멈췄어요."):format(hit))
+		notify(state.player, "Info", ("⚡ EMP 명중! %s님의 방어막이 %d초 → %d초"):format(if owner then owner.DisplayName else "?", math.ceil(left), math.ceil(left - cut)))
 	else
 		state.glovesUntil = t + Config.GlovesDuration
 		notify(state.player, "Info", ("🧤 도둑 장갑 착용! %d분 동안 훔치기가 빨라져요."):format(Config.GlovesDuration // 60))
@@ -1315,6 +1348,35 @@ for _, model in basesFolder:GetChildren() do
 	end)
 end
 
+-- 기지 안 로봇 재배치: 두 받침대의 로봇을 맞바꾼다 (빈 받침대면 그냥 옮긴다). 내 기지 안에서만
+local function swapPads(state: State, from: unknown, to: unknown)
+	local base = state.base
+	local root = rootOf(state.player)
+	if not base or state.loading or not root or typeof(from) ~= "number" or typeof(to) ~= "number" then
+		return
+	end
+	local limit = math.min(#base.pads, padLimit(base))
+	if from ~= math.floor(from) or to ~= math.floor(to) or from == to or from < 1 or to < 1 or from > limit or to > limit then
+		return
+	end
+	if not insideBase(base, root.Position) then
+		notify(state.player, "Alert", "내 기지 안에서만 로봇을 옮길 수 있어요.")
+		return
+	end
+	if base.reserved[from] or base.reserved[to] then
+		notify(state.player, "Alert", "도둑이 들고 가는 중인 자리는 옮길 수 없어요.")
+		return
+	end
+	local robotFrom = base.robots[from]
+	if not robotFrom then
+		return
+	end
+	local robotTo = base.robots[to]
+	setPadRobot(base, from, robotTo)
+	setPadRobot(base, to, robotFrom)
+	refreshIncome(state)
+end
+
 actionRemote.OnServerEvent:Connect(function(player: Player, action: unknown, arg: unknown)
 	local state = states[player]
 	if not state or typeof(action) ~= "string" or os.clock() - state.lastAction < 0.15 then
@@ -1329,6 +1391,9 @@ actionRemote.OnServerEvent:Connect(function(player: Player, action: unknown, arg
 		buyUpgrade(state, arg)
 	elseif action == "Expand" then
 		buyExpand(state)
+	elseif action == "Swap" and typeof(arg) == "table" then
+		local request = arg :: any
+		swapPads(state, request.from, request.to)
 	elseif action == "Item" and typeof(arg) == "string" then
 		useItem(state, arg)
 	elseif action == "Rebirth" then
@@ -1592,6 +1657,7 @@ local function loadPlayer(state: State)
 	if data then
 		setMoney(state, data.money)
 		state.totalEarned = data.totalEarned
+		player:SetAttribute("Newbie", isNewbie(state))
 		setTutorial(state, data.tutorial)
 		state.rebirth = data.rebirth
 		syncRebirth(state)
@@ -1986,6 +2052,17 @@ task.spawn(function()
 					JunkyardContest.record(owner, "Income", income)
 					base.vault += income
 					states[owner].totalEarned += income
+					-- 새싹 보호가 끝나는 순간 알린다
+					local ownerState = states[owner]
+					if not ownerState.loading then
+						local newbie = isNewbie(ownerState)
+						if owner:GetAttribute("Newbie") ~= newbie then
+							if owner:GetAttribute("Newbie") == true and not newbie then
+								notify(owner, "Alert", "🌱 새싹 보호가 끝났어요! 이제 로봇을 도둑맞을 수 있으니 방어막을 잘 쓰세요.")
+							end
+							owner:SetAttribute("Newbie", newbie)
+						end
+					end
 					local amount = math.floor(base.vault)
 					base.model:SetAttribute("Vault", amount)
 					local vault = base.model:FindFirstChild("Vault")

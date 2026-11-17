@@ -458,7 +458,7 @@ local function renderShop()
 				local ready = ((player:GetAttribute("EmpReadyAt") or 0) :: number) - t
 				entry.info.Text = if ready > 0 then ("충전 중 %d초"):format(math.ceil(ready))
 					elseif empCharges > 0 then ("무료 EMP %d개 남음 · 누르면 무료로 사용"):format(empCharges)
-					else "사면 바로 터져요 · 가격은 내 수입에 따라 올라요"
+					else "방어막 켜진 남의 기지 근처에서 쓰세요 · 가격은 내 수입에 따라 올라요"
 				if ready > 0 then
 					price = nil
 				elseif empCharges > 0 then
@@ -820,7 +820,8 @@ local function render()
 		carryLabel.Text = ("%s %s 운반 중 → 빈 받침대로\n무게 −%d · %s"):format(if stolen then "🦹 훔친" else "📦", if robot then robot.name else carrying, Config.carrySlow(carrying), speedText)
 		carryLabel.TextColor3 = if stolen then Color3.fromRGB(255, 140, 140) else white
 	else
-		carryLabel.Text = "로봇을 기지에 놓으면 돈을 벌어요.\n" .. speedText .. " · 받침대를 채울수록 빨라져요"
+		carryLabel.Text = (if player:GetAttribute("Newbie") == true then "🌱 새싹 보호 중: 아무도 못 훔쳐 가요" else "로봇을 기지에 놓으면 돈을 벌어요.")
+			.. "\n" .. speedText .. " · 받침대를 채울수록 빨라져요"
 		carryLabel.TextColor3 = muted
 	end
 
@@ -1328,9 +1329,53 @@ task.spawn(function()
 	if not cctvGui then
 		return
 	end
-	local view = cctvGui:WaitForChild("View") :: ViewportFrame
-	local live = cctvGui:WaitForChild("Live") :: TextLabel
-	local clock = cctvGui:WaitForChild("Clock") :: TextLabel
+	-- 서버가 월드에 만든 화면 속 모형은 그려지지 않는다 → 내 PlayerGui에 복사본(Adornee = 화면)을 만들어 그린다.
+	-- 서버 화면이 바뀌면(모형·글자) 0.5초 뒤 다시 복사한다.
+	local serverGui = cctvGui :: SurfaceGui
+	local serverView = serverGui:WaitForChild("View") :: ViewportFrame
+	local view = serverView
+	local live = serverGui:WaitForChild("Live") :: TextLabel
+	local clock = serverGui:WaitForChild("Clock") :: TextLabel
+	local pending = false
+	local function mirror()
+		pending = false
+		local old = player.PlayerGui:FindFirstChild("CCTVLocal")
+		if old then
+			old:Destroy()
+		end
+		local copy = serverGui:Clone()
+		copy.Name = "CCTVLocal"
+		copy.ResetOnSpawn = false
+		copy.Adornee = screen
+		copy.Enabled = true
+		local copyView = copy:FindFirstChild("View") :: ViewportFrame
+		local camera = Instance.new("Camera")
+		camera.FieldOfView = 45
+		camera.Parent = copyView
+		copyView.CurrentCamera = camera
+		copy.Parent = player.PlayerGui
+		view = copyView
+		live = copy:FindFirstChild("Live") :: TextLabel
+		clock = copy:FindFirstChild("Clock") :: TextLabel
+		serverGui.Enabled = false
+	end
+	local function requestMirror()
+		if not pending then
+			pending = true
+			task.delay(0.5, mirror)
+		end
+	end
+	serverGui.DescendantAdded:Connect(requestMirror)
+	serverGui.DescendantRemoving:Connect(requestMirror)
+	for _, name in { "Title", "Info", "NoSignal" } do
+		local textLabel = serverGui:FindFirstChild(name)
+		if textLabel and textLabel:IsA("TextLabel") then
+			textLabel:GetPropertyChangedSignal("Text"):Connect(requestMirror)
+			textLabel:GetPropertyChangedSignal("Visible"):Connect(requestMirror)
+		end
+	end
+	serverView.AttributeChanged:Connect(requestMirror)
+	mirror()
 	local lastSecond = -1
 	RunService.RenderStepped:Connect(function()
 		-- 화면 카메라는 서버에서 넘어오지 않을 수 있어 내 화면에서 만든다
@@ -1380,10 +1425,78 @@ if player.Character then
 	watchOwnCharacter(player.Character)
 end
 player.CharacterAdded:Connect(watchOwnCharacter)
+-- 기지 안 로봇 재배치: 내 받침대마다 [F] 버튼. 옮길 로봇을 고르고 → 다른 받침대를 고르면 맞바꾼다 (서버가 다시 확인)
+local movePrompts: { [BasePart]: ProximityPrompt } = {}
+local moveFrom: number? = nil
+local moveBox = Instance.new("SelectionBox")
+moveBox.Color3 = Color3.fromRGB(255, 220, 90)
+moveBox.LineThickness = 0.15
+moveBox.Parent = player:WaitForChild("PlayerGui")
+local function syncMovePrompts()
+	local index = player:GetAttribute("BaseIndex")
+	local base = if typeof(index) == "number" then basesFolder:FindFirstChild("Base" .. index) else nil
+	local pads = base and base:FindFirstChild("Pads")
+	for pad, prompt in movePrompts do
+		if not pads or pad.Parent ~= pads then
+			prompt:Destroy()
+			movePrompts[pad] = nil
+		end
+	end
+	if not pads then
+		moveFrom = nil
+		moveBox.Adornee = nil
+		return
+	end
+	for _, pad in pads:GetChildren() do
+		local padIndex = pad:GetAttribute("PadIndex")
+		if pad:IsA("BasePart") and typeof(padIndex) == "number" then
+			local prompt = movePrompts[pad]
+			if not prompt then
+				local newPrompt = Instance.new("ProximityPrompt")
+				newPrompt.Name = "MovePrompt"
+				newPrompt.ObjectText = "🔀 재배치"
+				newPrompt.KeyboardKeyCode = Enum.KeyCode.F
+				newPrompt.GamepadKeyCode = Enum.KeyCode.ButtonY
+				newPrompt.HoldDuration = 0
+				newPrompt.MaxActivationDistance = 8
+				newPrompt.RequiresLineOfSight = false
+				newPrompt.UIOffset = Vector2.new(0, 72) -- 팔기·훔치기 버튼과 겹치지 않게 아래로
+				newPrompt.Parent = pad
+				newPrompt.Triggered:Connect(function()
+					local key = pad:GetAttribute("RobotKey")
+					local has = typeof(key) == "string" and key ~= ""
+					if moveFrom == nil then
+						if has then
+							moveFrom = padIndex
+							moveBox.Adornee = pad
+							toast("Info", "🔀 옮길 받침대에서 [F]를 누르세요 (같은 곳을 다시 누르면 취소)")
+						end
+					elseif moveFrom == padIndex then
+						moveFrom = nil
+						moveBox.Adornee = nil
+					else
+						actionRemote:FireServer("Swap", { from = moveFrom, to = padIndex })
+						moveFrom = nil
+						moveBox.Adornee = nil
+					end
+					syncMovePrompts()
+				end)
+				movePrompts[pad] = newPrompt
+				prompt = newPrompt
+			end
+			local key = pad:GetAttribute("RobotKey")
+			local has = typeof(key) == "string" and key ~= ""
+			-- 숨은(확장 전)·잠긴 받침대는 제외 (투명도 0.7 이상)
+			prompt.Enabled = pad.Transparency < 0.6 and (moveFrom ~= nil or has)
+			prompt.ActionText = if moveFrom == padIndex then "취소" elseif moveFrom then (if has then "맞바꾸기" else "여기로") else "옮기기"
+		end
+	end
+end
 task.spawn(function()
 	while true do
 		syncPadPrompts()
 		syncSnatchPrompts()
+		syncMovePrompts()
 		task.wait(1)
 	end
 end)
