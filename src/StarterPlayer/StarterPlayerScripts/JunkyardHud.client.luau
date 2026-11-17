@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local MarketplaceService = game:GetService("MarketplaceService")
+local StarterGui = game:GetService("StarterGui")
 
 local Config = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("JunkyardConfig"))
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -93,6 +94,22 @@ catalog.BackgroundColor3 = dark
 catalog.BackgroundTransparency = 0.05
 catalog.Visible = false
 catalog.Parent = gui
+-- 기본 리더보드가 좁은 화면에서 도감 버튼을 가리지 않게 한다.
+local previousPlayerListEnabled: boolean? = nil
+local function syncPlayerList()
+	local playerList = Enum.CoreGuiType.PlayerList
+	if catalog.Visible and gui.Enabled then
+		if previousPlayerListEnabled == nil then
+			previousPlayerListEnabled = StarterGui:GetCoreGuiEnabled(playerList)
+			StarterGui:SetCoreGuiEnabled(playerList, false)
+		end
+	elseif previousPlayerListEnabled ~= nil then
+		StarterGui:SetCoreGuiEnabled(playerList, previousPlayerListEnabled)
+		previousPlayerListEnabled = nil
+	end
+end
+catalog:GetPropertyChangedSignal("Visible"):Connect(syncPlayerList)
+gui:GetPropertyChangedSignal("Enabled"):Connect(syncPlayerList)
 corner(catalog, 12)
 local catalogMax = Instance.new("UISizeConstraint")
 catalogMax.MaxSize = Vector2.new(420, 420)

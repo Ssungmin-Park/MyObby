@@ -1345,6 +1345,44 @@ if game:GetService("RunService"):IsStudio() then
 			onPassOwned(player, key)
 		end
 	end)
+	-- 환생·변종 테스트용 지급은 로컬 서버의 테스트 플레이어에게만 허용한다.
+	workspace:GetAttributeChangedSignal("DebugGiveRobot"):Connect(function()
+		local key = workspace:GetAttribute("DebugGiveRobot")
+		local userId = workspace:GetAttribute("DebugMoneyUserId")
+		workspace:SetAttribute("DebugGiveRobot", nil)
+		if typeof(userId) ~= "number" or userId >= 0 or typeof(key) ~= "string" or not Config.isValidKey(key) then
+			return
+		end
+		local player = Players:GetPlayerByUserId(userId)
+		local state = player and states[player]
+		local base = state and state.base
+		if not state or state.loading or not base then
+			return
+		end
+		local slot = freePad(base)
+		if slot then
+			setPadRobot(base, slot, key)
+			addToCatalog(state, key)
+			refreshIncome(state)
+		end
+	end)
+	workspace:GetAttributeChangedSignal("DebugSetRebirth"):Connect(function()
+		local level = workspace:GetAttribute("DebugSetRebirth")
+		local userId = workspace:GetAttribute("DebugMoneyUserId")
+		workspace:SetAttribute("DebugSetRebirth", nil)
+		if typeof(userId) ~= "number" or userId >= 0 or typeof(level) ~= "number"
+			or level < 0 or level > 20 or level ~= math.floor(level) then
+			return
+		end
+		local player = Players:GetPlayerByUserId(userId)
+		local state = player and states[player]
+		if state and not state.loading then
+			state.rebirth = level
+			syncRebirth(state)
+			recomputeMultiplier(state)
+			refreshIncome(state)
+		end
+	end)
 end
 
 -- 0.2초마다: 배치, 붙잡기, 방어막 / 1초마다: 수입 -------------------------------------
