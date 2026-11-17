@@ -18,6 +18,7 @@ local Belt = require(script.Parent:WaitForChild("JunkyardBelt"))
 local JunkyardSave = require(script.Parent:WaitForChild("JunkyardSave"))
 local JunkyardStore = require(script.Parent:WaitForChild("JunkyardStore"))
 local JunkyardRanking = require(script.Parent:WaitForChild("JunkyardRanking"))
+local JunkyardContest = require(script.Parent:WaitForChild("JunkyardContest"))
 
 local junkyard = workspace:WaitForChild("Junkyard")
 local basesFolder = junkyard:WaitForChild("Bases")
@@ -264,8 +265,9 @@ local function applyTitle(state: State)
 	end
 	local _, best = Config.catalogMultiplier(state.catalog)
 	local vip = state.passes.VipBase == true
+	local contestTitle = state.player:GetAttribute("ContestTitle")
 	local tag = head:FindFirstChild("TitleTag") :: BillboardGui?
-	if not best and not vip and state.rebirth <= 0 then
+	if not best and not vip and state.rebirth <= 0 and typeof(contestTitle) ~= "string" then
 		if tag then
 			tag:Destroy()
 		end
@@ -291,6 +293,9 @@ local function applyTitle(state: State)
 	local rarity = if best then Config.Rarities[best] else nil
 	local label = (tag :: BillboardGui):FindFirstChild("Label") :: TextLabel
 	local words = {}
+	if typeof(contestTitle) == "string" then
+		table.insert(words, contestTitle)
+	end
 	if state.rebirth > 0 then
 		table.insert(words, Config.rebirthMark(state.rebirth))
 	end
@@ -620,6 +625,10 @@ local function buy(state: State, itemId: number)
 	end
 	notify(state.player, "Info", ("%s 구매! 기지로 가져가세요."):format(robotLabel(item.robotId)))
 	advanceTutorial(state, "Buy")
+	local robot = Config.getRobot(item.robotId)
+	if robot then
+		JunkyardContest.record(state.player, "Collect", Config.Contest.RarityPoints[robot.rarity])
+	end
 end
 
 -- 방어막 시간·충전 시간 (방어막 강화 단계 + VIP 게임패스)
@@ -1052,6 +1061,48 @@ local function syncPasses(state: State)
 	state.player:SetAttribute("Passes", HttpService:JSONEncode(owned))
 	state.player:SetAttribute("EmpCharges", state.empCharges)
 end
+
+JunkyardContest.start({
+	getPlayers = function()
+		local participants = {}
+		for player, state in states do
+			if state.base and not state.loading and player:GetAttribute("SaveOff") == false then
+				table.insert(participants, player)
+			end
+		end
+		return participants
+	end,
+	incomeOf = function(player)
+		local state = states[player]
+		return if state.base then baseIncome(state.base, state) else 0
+	end,
+	grant = function(player, rank, money)
+		local state = states[player]
+		if not state then
+			return
+		end
+		if money > 0 then
+			setMoney(state, state.money + money)
+		end
+		if rank == 1 then
+			state.empCharges += 1
+			syncPasses(state)
+		end
+		if money > 0 or rank == 1 then
+			JunkyardSave.saveNow(player)
+		end
+		local reward = ("대회 %d위 · 보상 %s 돈"):format(rank, Config.formatMoney(money))
+		notify(player, "Info", if rank == 1 then reward .. " + 무료 EMP 1개" else reward)
+	end,
+	setTitle = function(player, title)
+		local state = states[player]
+		if state then
+			player:SetAttribute("ContestTitle", title)
+			applyTitle(state)
+		end
+	end,
+	notifyAll = notifyAll,
+})
 
 -- 희귀 로봇 비 확정 선물: 희귀 이상 등급 중에서 원래 가중치 비율로 뽑는다 (확률은 상점에 공개)
 local function rollRainGift(): string
@@ -1534,6 +1585,7 @@ task.spawn(function()
 				local owner = base.owner
 				if owner and states[owner] then
 					local income = baseIncome(base, states[owner])
+					JunkyardContest.record(owner, "Income", income)
 					base.vault += income
 					states[owner].totalEarned += income
 					local amount = math.floor(base.vault)

@@ -82,6 +82,52 @@ local lockButton = button(panel, "방어막", UDim2.fromOffset(12, 92), UDim2.fr
 local shopButton = button(panel, "🛒 상점", UDim2.fromOffset(106, 92), UDim2.fromOffset(68, 32), Color3.fromRGB(170, 120, 40))
 local catalogButton = button(panel, "도감", UDim2.fromOffset(178, 92), UDim2.fromOffset(60, 32), Color3.fromRGB(70, 82, 96))
 local trainLabel = label(panel, UDim2.fromOffset(12, 128), UDim2.new(1, -24, 0, 18), 12, Color3.fromRGB(255, 210, 120))
+local contestPanel = Instance.new("Frame")
+contestPanel.Name = "ContestPanel"
+contestPanel.Position = UDim2.fromOffset(12, 166)
+contestPanel.Size = UDim2.fromOffset(250, 30)
+contestPanel.BackgroundColor3 = dark
+contestPanel.BackgroundTransparency = 0.12
+contestPanel.Parent = gui
+corner(contestPanel, 10)
+local contestHeader = label(contestPanel, UDim2.fromOffset(12, 4), UDim2.new(1, -24, 0, 22), 13, Color3.fromRGB(255, 210, 120))
+local contestTop = label(contestPanel, UDim2.fromOffset(12, 26), UDim2.new(1, -24, 0, 54), 12, white)
+contestTop.TextYAlignment = Enum.TextYAlignment.Top
+local contestOwn = label(contestPanel, UDim2.fromOffset(12, 80), UDim2.new(1, -24, 0, 22), 12, muted)
+local lastContestTop: string? = nil
+
+local function renderContest(t: number)
+	local kind = workspace:GetAttribute("ContestType")
+	local endsAt = (workspace:GetAttribute("ContestEndsAt") or 0) :: number
+	local contest = if typeof(kind) == "string" then Config.Contest.Types[kind] else nil
+	local running = contest ~= nil and endsAt > t
+	contestTop.Visible = running
+	contestOwn.Visible = running
+	contestPanel.Size = UDim2.fromOffset(250, if running then 108 else 30)
+	if not contest or not running then
+		local left = math.max(0, math.ceil(((workspace:GetAttribute("NextContestAt") or 0) :: number) - t))
+		contestHeader.Text = ("🏆 다음 서버 대회 %d:%02d"):format(left // 60, left % 60)
+		return
+	end
+
+	local left = math.ceil(endsAt - t)
+	contestHeader.Text = ("%s %s · %d:%02d 남음"):format(contest.mark, contest.name, left // 60, left % 60)
+	local encoded = (workspace:GetAttribute("ContestTop") or "[]") :: string
+	if encoded ~= lastContestTop then
+		lastContestTop = encoded
+		local entries = HttpService:JSONDecode(encoded) :: { { name: string, score: number } }
+		local lines = {}
+		for rank, entry in entries do
+			table.insert(lines, ("%d. %s · %g점"):format(rank, entry.name, entry.score))
+		end
+		contestTop.Text = if #lines > 0 then table.concat(lines, "\n") else "아직 득점한 사람이 없어요."
+	end
+	local rank = player:GetAttribute("ContestRank")
+	local score = (player:GetAttribute("ContestScore") or 0) :: number
+	contestOwn.Text = if typeof(rank) ~= "number" then "다음 대회부터 참가할 수 있어요."
+		elseif rank > 0 then ("나 · %d위 · %g점"):format(rank, score)
+		else ("나 · %g점"):format(score)
+end
 -- 저장 상태 (오른쪽 위 작은 글씨): 불러오는 중 / 저장 안 됨
 local saveLabel = label(panel, UDim2.new(1, -112, 0, 6), UDim2.fromOffset(100, 18), 12, Color3.fromRGB(255, 150, 150))
 saveLabel.TextXAlignment = Enum.TextXAlignment.Right
@@ -608,6 +654,8 @@ end
 -- 화면 갱신 ----------------------------------------------------------------------
 local function render()
 	gui.Enabled = player:GetAttribute("Mode") == "Junkyard"
+	contestPanel.Visible = not shop.Visible and not catalog.Visible
+	renderContest(workspace:GetServerTimeNow())
 	local money = (player:GetAttribute("Money") or 0) :: number
 	local income = (player:GetAttribute("Income") or 0) :: number
 	local multiplier = (player:GetAttribute("Multiplier") or 1) :: number

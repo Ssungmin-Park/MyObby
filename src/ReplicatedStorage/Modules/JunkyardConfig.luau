@@ -103,6 +103,26 @@ Config.TrainDuration = 30
 Config.TrainInterval = 1
 Config.TrainRarities = { Rare = true, Epic = true, Legendary = true, Mythic = true }
 
+-- 서버 대회. 보상 시간은 참가자 자신의 시작 시점 초당 수입에 곱한다.
+Config.Contest = {
+	Interval = 900,
+	Duration = 300,
+	Warning = 60,
+	MinPlayers = 2,
+	Order = { "Income", "Collect" },
+	Types = {
+		Income = { name = "수입왕", mark = "💰" },
+		Collect = { name = "수집왕", mark = "🛒" },
+	} :: { [string]: { name: string, mark: string } },
+	RarityPoints = { Common = 1, Uncommon = 2, Rare = 4, Epic = 7, Legendary = 10, Mythic = 15 } :: { [string]: number },
+	Rewards = {
+		{ seconds = 120, minimum = 500 },
+		{ seconds = 60, minimum = 250 },
+		{ seconds = 30, minimum = 100 },
+	},
+	ParticipationSeconds = 10,
+}
+
 -- Robux 상품 (3-2) -------------------------------------------------------------
 -- id는 사용자가 Creator Dashboard에서 상품을 만든 뒤 넣는다. 0이면 아직 없음 → 상점에 "준비 중".
 -- robux는 화면 표시용 예상 가격이다. 실제 가격은 Creator Dashboard에서 정한 값이 결제창에 나온다.

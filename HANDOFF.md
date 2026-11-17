@@ -11,9 +11,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** (Claude Opus 5.5) — **첫 접속 안내 + 모바일 화면 맞춤(B-17)**. 그 전: 고물상 단독 정리(B-16), 전체 서버 순위표(B-15) |
+| 마지막 작업 AI | **Codex** — 수입왕·수집왕 서버 대회 구현, Studio 2인 테스트(B-18) |
 | 작업 시점 | 2026-11-17 |
-| 다음 작업 AI | **Codex: G-1 서버 대회** — 사용자와 숫자·종류 확정 후 구현(계획은 G-1에 상세). 그 밖에: 사용자 휴대폰 화면 확인, 새 계정 안내 시험, 도감 화면 재시험(G-0). 이후 도감 완성 보상 → 협력 거대 로봇 → 비주얼·사운드·썸네일 |
+| 다음 작업 AI | 휴대폰에서 대회·상점·도감 화면 확인, 새 계정 안내 시험. 이후 도감 완성 보상 → 협력 거대 로봇 → 비주얼·사운드·썸네일 |
 | 게임 이름 | 마이오비 (Studio place 이름) / **주력: 로봇 고물상 타이쿤**(멀티플레이). 부가: 실험실 탈출 오비, 로봇 작업장(꼬마 로봇 연구소) |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
@@ -22,7 +22,7 @@
 | Studio 모드 | 작업 종료 시 **Edit 모드** (Play 테스트 종료함) |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-17 Claude Code: **첫 접속 안내** — `Junkyard`(안내 5단계 판정·보상 100·`TutorialStep` 속성·Studio 훅 `DebugSetTutorial`), `JunkyardSave`(`tutorial` 필드), `JunkyardHud`(안내 배너·화살표·버튼 반짝임, 상점·도감 UIScale, 알림 위치). 스크립트 Studio ↔ `src/` 체크섬 일치. ⚠ Ctrl+Z 기록 없이 들어감(끝나지 않은 다른 기록) |
+| 마지막 게임 수정 | 2026-11-17 Codex. `JunkyardContest` 추가, `JunkyardConfig`·`Junkyard`·`JunkyardHud` 연결. 수정 4개 Studio ↔ `src/` 체크섬 일치. 대회 변경의 클라우드 저장 여부 미확인 |
 | Studio 저장 상태 | `persistedToCloud = true`. **2026-11-17 Studio 업데이트로 재시작된 뒤에도 3-2까지의 스크립트 18개(체크섬 일치)·고물상 맵(받침대 14칸)·Remote 6개가 모두 남아 있어 클라우드 저장을 간접 확인했다.** AI는 저장·Publish하지 않는다 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
 | 실제 저장 데이터 | 테스트로 **사용자 본인 키**에 값이 남아 있다: `Progress_v1` = Stage 11, `RobotLab_v1` = 부품 10·삐삐 Lv.1, `Junkyard_v1` = 돈 약 31·받침대 삐삐/너트/스펀지(일반 세트 완성). 지우려면(RemoveAsync) 사용자 승인 필요 |
@@ -176,6 +176,14 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
   - 떠나 있는 동안 기지는 서버에서 비워지므로 아무도 훔칠 수 없다. 기지 6개가 꽉 차서 기지가 없는 플레이어는 불러오지도 저장하지도 않는다.
 
 **클라이언트 `StarterPlayerScripts/JunkyardHud`** — 잠긴 기지마다 위에 "🛡 방어막 N초" 빌보드(모두에게 보임, 300스터드), 왼쪽 위 패널(돈, 초당·도감 배수, 운반 상태, 방어막 버튼, 도감 버튼), 도감 창(18칸 + 세트 보너스 진행), 위쪽 알림, 벨트 로봇 직접 그리기와 구매 프롬프트, 받침대 버튼 문구(내 기지 "팔기 +금액" / 남의 기지 "훔치기"). Mode가 Junkyard일 때만 보인다.
+
+### B-18. 서버 대회 (2026-11-17, 사용자 승인 · Studio 2인 검증)
+
+- 시작 간격 15분, 경기 5분, 시작 60초 전 예고. 참가 가능 인원 2명 이상일 때 수입왕·수집왕이 번갈아 열린다. 로딩을 마치고 저장 가능한 기지를 가진 플레이어가 경기 시작 때 참가하며, 도중 입장자는 다음 경기에 참가한다. 퇴장자는 현재 순위에서 제외된다.
+- 수입왕 점수는 경기 중 기지 로봇 수입을 `max(시작 초당 수입, 1)`로 나눈 값이다. 소수 둘째 자리로 표시하고 같은 점수는 먼저 도달한 선수가 앞선다. 수집왕은 성공한 벨트 구매의 기본 등급에 따라 1·2·4·7·10·15점이다.
+- 시상은 양의 점수만 대상으로 한다. 1~3위는 각자 시작 초당 수입의 120·60·30초분을 받으며 최소 500·250·100이다. 그 외 득점자는 10초분을 받는다. 1위는 무료 EMP 1회와 다음 대회 종료까지 임시 칭호를 받는다. 돈과 EMP는 기존 저장 경로를 사용한다.
+- 서버 모듈 `ServerScriptService/JunkyardContest`가 일정·순위를 관리하고, `Junkyard`가 수입과 구매를 전달하고 보상을 지급한다. `JunkyardHud`는 공유 속성으로 다음 대회 시간, 현재 상위 3명과 자신의 순위·점수를 표시한다.
+- Studio 2인 테스트에서 서로 다른 시작 수입의 정규화(3점씩), 수입 변화에 따른 순위 변경, 실제 구매 1점과 화면 표시, 상금·EMP·칭호 지급, 0점 제외, 다음 시상에서 이전 칭호 제거 확인. 서버와 클라이언트 로그에 오류·경고 없음. 가상 시간 검증에서 경고·1인 연기·종목 순환·동점·퇴장·마감 검증. 전체 15분을 실시간으로 기다리는 검증과 실제 휴대폰 화면은 미검증.
 
 ### B-17. 첫 접속 안내(튜토리얼) + 모바일 화면 맞춤 (2026-11-17, 사용자 승인 · 자동 테스트 통과)
 
@@ -571,51 +579,12 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 ## G. 다음 개발 계획 (우선순위 순)
 
-### G-1. 다음 작업 지시서: 서버 대회 (15분마다) — 2026-11-17 Claude Code 작성, **계획 단계(사용자가 Codex와 상의 후 확정)**
+### G-1. 서버 대회 (2026-11-17, 구현 및 Studio 2인 검증)
 
-> 사용자가 Claude Code 사용량이 부족해 이 계획을 Codex에게 넘긴다. **사용자와 숫자·대회 종류를 확정한 뒤 구현한다** (AGENTS §8: 새 시스템은 계획 승인 먼저). 아래 "기본값"은 Claude 제안이며 사용자 미확정이다.
-
-**목표:** 같은 서버 사람끼리 짧게 경쟁하는 이유를 만든다. 전체 서버 순위표(B-15)는 오래 한 사람이 유리하므로, 서버 대회는 **방금 들어온 사람도 1등을 노릴 수 있게** 한다.
-
-**0. 시작 전 확인 (필수)**
-- AGENTS.md, 이 HANDOFF(B-11~B-17)를 읽고 `git status`(미커밋 없음), `git log --oneline -5`(최신 `[Claude] HANDOFF: 서버 대회 계획…` 또는 그 뒤).
-- `list_roblox_studios` → placeId `77293997616106`만. Studio ↔ `src/` 체크섬(`h=(h*31+byte)%1000000007`) 기대값(커밋 e608dd9 기준, 바이트/체크섬):
-  `ServerScriptService/Junkyard` 58066/198497332, `JunkyardSave` 14604/859810946, `JunkyardRanking` 10542/371778132, `JunkyardStore` 4862/945542680, `JunkyardBelt` 4913/275621720, `JunkyardEvents` 1733/471819683, `ReplicatedStorage/Modules/JunkyardConfig` 15470/977588474, `StarterPlayerScripts/JunkyardHud` 36221/958851504. 다르면 작업 전에 사용자에게 보고.
-- ⚠ Studio에 끝나지 않은 ChangeHistory 기록이 남아 있어 `TryBeginRecording`이 nil을 돌려준다(2026-11-17). nil이면 기록 없이 진행하고 `FinishRecording(nil)`을 부르지 말 것(“Argument 1 missing or nil” 오류). Studio를 껐다 켜면 풀릴 수 있다.
-
-**1. 규칙 (기본값 — 사용자 확정 필요)**
-- 일정: **15분마다 5분 대회**, 시작 60초 전 전체 알림. **접속자 2명 이상**일 때만 시작(혼자면 "다른 플레이어를 기다리는 중", 다음 주기로 미룸).
-- 종류(차례로 돌아감):
-  | id | 이름 | 점수 |
-  |---|---|---|
-  | `Income` | 💰 수입왕 | 대회 중 내 기지 로봇이 번 돈 ÷ max(대회 시작 때 내 초당 수입, 1) → "몇 초어치 벌었나". 부자가 늘 이기지 않게 하고, 대회 중 로봇을 늘린 사람이 이긴다 |
-  | `Steal` | 🦹 도둑왕 | 대회 중 훔친 로봇을 **내 기지 받침대에 놓은** 횟수. **같은 피해자에게서는 대회당 2번까지만** 인정(친구끼리 주고받기 방지) |
-  | `Collect` | 🛒 수집왕 | 대회 중 벨트에서 산 로봇의 등급 점수 합: 일반 1·고급 2·희귀 5·영웅 12·전설 25·신화 50 |
-- 보상(대회 시작 때 기록한 각자 초당 수입 `inc` 기준):
-  - 🥇 1등: `max(inc × 120, 500)` 돈 + 무료 EMP 1개(`empCharges += 1`, 저장됨) + 다음 대회 끝까지 머리 위 칭호 "👑 수입왕/도둑왕/수집왕"(임시, 저장 안 함)
-  - 🥈 2등 `max(inc × 60, 250)`, 🥉 3등 `max(inc × 30, 100)`, 점수 > 0 참가상 `inc × 10`
-  - 결과는 전체 알림(1~3등 이름·점수), 수상자 개인 알림. 동점은 먼저 그 점수에 도달한 사람이 위.
-
-**2. 구현 위치 (기존 코드 재사용, 새 시스템은 모듈 하나)**
-- `ReplicatedStorage/Modules/JunkyardConfig`: `Config.Contest = { Interval = 900, Duration = 300, Warning = 60, MinPlayers = 2, Order = {"Income","Steal","Collect"}, Types = {Income={name="수입왕", mark="💰"}, ...}, RarityPoints = {Common=1, Uncommon=2, Rare=5, Epic=12, Legendary=25, Mythic=50}, StealPerVictim = 2, Rewards = { {seconds=120, min=500}, {seconds=60, min=250}, {seconds=30, min=100} }, ParticipationSeconds = 10 }` (클라이언트도 이름·시간 표시에 씀).
-- 새 ModuleScript `ServerScriptService/JunkyardContest` (+ `src/ServerScriptService/JunkyardContest.luau`): 일정 루프, 점수표, 순위, 결과 계산. API 제안:
-  - `start(callbacks)` — callbacks: `getPlayers() -> {Player}`, `incomeOf(player) -> number`, `grant(player, rank, money, contestId)`, `notifyAll(text)`, `notify(player, text)`.
-  - `record(player, kind, amount, victimUserId?)` — 진행 중이고 kind가 현재 대회와 같을 때만 점수 추가.
-  - 상태 공개(서버 → 클라이언트, 속성만 사용, 새 Remote 불필요): workspace `ContestType`(""=없음), `ContestEndsAt`, `NextContestAt`(서버 시간 `GetServerTimeNow`), `ContestTop`(JSON `[{name, score}]` 상위 3), 플레이어 `ContestScore`, `ContestTitle`.
-- `ServerScriptService/Junkyard` 연결 지점(모두 이미 있는 함수):
-  - 1초 수입 루프 `local income = baseIncome(base, states[owner])` 바로 뒤 → `JunkyardContest.record(owner, "Income", income)` (오프라인 수입은 넣지 않음)
-  - `buy(state, itemId)` 성공 끝(`advanceTutorial(state, "Buy")` 근처) → `record(player, "Collect", RarityPoints[rarity])` (item.robotId의 등급, 변종이어도 기본 등급 점수)
-  - `tryPlace(state)`에서 `victimBase`가 있을 때(훔친 로봇 배치 성공) → `record(player, "Steal", 1, victimBase.owner and victimBase.owner.UserId)`
-  - 보상 `grant`: `setMoney`, `state.empCharges += 1` 후 기존 동기화 함수, 칭호는 `applyTitle(state)`가 `ContestTitle` 속성도 함께 표시하도록 확장(환생 표시 유지).
-  - Studio 전용 훅(기존 `IsStudio()` 블록에): `DebugContestNow` = 종류 id 문자열 → 즉시 시작(MinPlayers 무시 옵션 포함해 혼자 시험 가능하게).
-- `JunkyardEvents`(10분 열차)와 겹쳐도 무방. 열차는 수집왕에 유리하지만 모두에게 같다.
-- `StarterPlayerScripts/JunkyardHud`: 왼쪽 위 패널 아래(y ≈ 166)에 대회 상자(폭 250): "🦹 도둑왕 대회 2:31 남음 / 1. 이름 3 / 2. … / 3. … / 나: 2위 · 2점". 대회가 없으면 `trainLabel` 줄에 "다음 대회 m:ss" 추가 또는 상자 숨김. 휴대폰에서 다른 창과 겹치지 않는지 확인(B-17 배율 참고).
-- **저장 형식 변경 없음.** 보상 돈·EMP는 기존 저장 경로로 저장된다.
-
-**3. 테스트**
-- 혼자 Play: `DebugContestNow`로 3종 각각 시작 → 점수 증가(수입 루프·구매·훔치기 배치는 2인 필요), `ContestEndsAt` 후 종료·보상 계산(혼자면 1등 보상 공식 확인), 칭호 표시, 다음 대회 시간, 오류 0.
-- 2인 로컬 서버(UserId 음수): 도둑왕(같은 피해자 3번째부터 0점), 수입왕 공정성(초당 수입 큰 쪽과 작은 쪽), 동점 처리, 대회 중 퇴장한 사람 제외, 2명 미만이면 시작 안 함.
-- 결과는 HANDOFF B-18로 기록("자동 테스트 통과"/"미검증" 구분), README 체크박스, NOTES 한 줄, 커밋 `[Codex] …`.
+- 규칙과 테스트 결과는 B-18에 있다. 첫 버전은 수입왕·수집왕을 번갈아 열며 도둑왕은 후속 후보로 남겼다.
+- 실제 휴대폰에서 상점·도감과 대회 패널을 번갈아 열어 겹침과 글자 크기를 확인한다.
+- 실제 15분 주기 대체 검증은 가상 시간으로 했다. 2인 로컬 실행에서 실제 수입, 구매, 점수판, 지급과 칭호를 확인했다.
+- 재시험은 Studio 서버 런타임에서 `workspace:SetAttribute("DebugContestDuration", 20)` 후 `workspace:SetAttribute("DebugContestNow", "Income")` 또는 `"Collect"`를 실행한다. 길이 속성을 생략하면 표준 300초며 훅은 Studio에서만 동작한다. 사용자 저장에 테스트 보상을 남기지 않으려면 음수 UserId인 두 로컬 플레이어를 사용한다.
 
 
 ### G-0. Codex 지시서: 환생·변종(B-14) 2인 로컬 테스트 (2026-11-17 Claude Code 작성, 사용자가 Codex에게 넘김)
