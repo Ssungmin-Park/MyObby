@@ -88,7 +88,8 @@ lighting.OutdoorAmbient = Color3.fromRGB(170, 170, 181)
 lighting.ExposureCompensation = 0.15
 local camera = workspace.CurrentCamera
 if camera then
-	camera.CFrame = CFrame.lookAt(Vector3.new(-20, 14, -30), Vector3.new(0, 4, 1))
+	camera.FieldOfView = 48
+	camera.CFrame = CFrame.lookAt(Vector3.new(0, 11, -30), Vector3.new(0, 4, 1))
 end
 if recording then
 	history:FinishRecording(recording, Enum.FinishRecordingOperation.Commit)

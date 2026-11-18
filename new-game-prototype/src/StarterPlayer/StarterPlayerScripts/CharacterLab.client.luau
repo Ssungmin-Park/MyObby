@@ -25,7 +25,7 @@ for _, object in displays:GetDescendants() do
 	end
 end
 
-type Piece = { part: BasePart, pose: CFrame, upper: boolean, transparency: number }
+type Piece = { part: BasePart, pose: CFrame, upper: boolean, transparency: number, size: Vector3 }
 type Actor = { model: Model, kind: string, root: CFrame, scale: number, baseScale: number, height: number, pieces: { Piece }, hinge: CFrame }
 local actors: { Actor } = {}
 
@@ -37,7 +37,7 @@ local function actor(kind: string, ground: Vector3)
 	local pieces: { Piece } = {}
 	for _, object in model:GetDescendants() do
 		if object:IsA("BasePart") then
-			table.insert(pieces, { part = object, pose = model:GetPivot():ToObjectSpace(object.CFrame), upper = object:GetAttribute("LabUpper") == true, transparency = object.Transparency })
+			table.insert(pieces, { part = object, pose = model:GetPivot():ToObjectSpace(object.CFrame), upper = object:GetAttribute("LabUpper") == true, transparency = object.Transparency, size = object.Size })
 		end
 	end
 	local _, size = model:GetBoundingBox()
@@ -66,6 +66,7 @@ lab:GetAttributeChangedSignal("Crowd"):Connect(rebuild)
 local gui = Instance.new("ScreenGui")
 gui.Name = "CharacterLabGui"
 gui.ResetOnSpawn = false
+gui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local function rounded(parent: Instance)
@@ -161,10 +162,39 @@ lab:GetAttributeChangedSignal("ShotId"):Connect(function()
 end)
 
 local camera = workspace.CurrentCamera
-if camera then
-	camera.CameraType = Enum.CameraType.Scriptable
-	camera.FieldOfView = 48
-	camera.CFrame = CFrame.lookAt(Vector3.new(-17, 12, -30), Vector3.new(0, 4, 1))
+local avatarParts: { BasePart } = {}
+-- 기본 캐릭터 카메라가 초기화된 뒤에도 시험장 구도를 유지한다.
+RunService:BindToRenderStep("CharacterLabCamera", Enum.RenderPriority.Camera.Value + 1, function()
+	camera = workspace.CurrentCamera
+	if camera then
+		camera.CameraType = Enum.CameraType.Scriptable
+		camera.FieldOfView = 48
+		camera.CFrame = CFrame.lookAt(Vector3.new(0, 11, -30), Vector3.new(0, 4, 1))
+	end
+	for _, part in avatarParts do
+		part.LocalTransparencyModifier = 1
+	end
+	local touchGui = player.PlayerGui:FindFirstChild("TouchGui")
+	if touchGui and touchGui:IsA("ScreenGui") then
+		touchGui.Enabled = false -- 고정 카메라 시험장에서 기본 이동 조이스틱을 숨긴다.
+	end
+end)
+local function hideCharacter(character: Model)
+	avatarParts = {}
+	local function hide(object: Instance)
+		if object:IsA("BasePart") then
+			object.LocalTransparencyModifier = 1
+			table.insert(avatarParts, object)
+		end
+	end
+	for _, object in character:GetDescendants() do
+		hide(object)
+	end
+	character.DescendantAdded:Connect(hide)
+end
+player.CharacterAdded:Connect(hideCharacter)
+if player.Character then
+	hideCharacter(player.Character)
 end
 
 RunService.RenderStepped:Connect(function(dt)
@@ -193,6 +223,11 @@ RunService.RenderStepped:Connect(function(dt)
 			local root = entry.root * CFrame.new(0, entry.height * 0.5, recoil * 0.85) * CFrame.Angles(-recoil * 0.22, 0, breathe)
 			for _, piece in entry.pieces do
 				local pose = piece.pose
+				if piece.part.Name == "EyeWhite" then
+					piece.part.Size = piece.size * Vector3.new(1 + recoil * 0.3, 1 + recoil * 0.3, 1)
+				elseif piece.part.Name == "EyePupil" then
+					pose *= CFrame.new(0, recoil * 0.18, 0)
+				end
 				if piece.upper then
 					pose = entry.hinge * CFrame.Angles(close + recoil * 0.12, 0, 0) * entry.hinge:Inverse() * pose
 				end
@@ -205,5 +240,16 @@ RunService.RenderStepped:Connect(function(dt)
 	buttons.Crowd.Text = if lab:GetAttribute("Crowd") == true then "두 마리만" else "여러 마리"
 	if camera then
 		controlScale.Scale = math.min(1.1, (camera.ViewportSize.X - 24) / 750)
+		if camera.ViewportSize.Y < 500 then
+			status.AnchorPoint = Vector2.new(0.5, 0)
+			status.Position = UDim2.new(0.5, 0, 0, 6)
+			status.Size = UDim2.fromOffset(math.min(360, camera.ViewportSize.X - 24), 48)
+			status.TextSize = 14
+		else
+			status.AnchorPoint = Vector2.zero
+			status.Position = UDim2.fromOffset(16, 16)
+			status.Size = UDim2.fromOffset(390, 88)
+			status.TextSize = 18
+		end
 	end
 end)
