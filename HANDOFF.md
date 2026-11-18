@@ -11,18 +11,18 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Codex** — G-3-1 벨트 방향 3분 교대(B-38), 칭호 선택·수집 혜택·완성자 정비왕·기부 큰 알림(B-39), 대회 설명 5초 유지(B-40). 음수 UserId 1인 Play·재접속 검증 완료. 2인 항목은 미검증. |
-| 작업 시점 | 2026-11-18 |
+| 마지막 작업 AI | **Claude Code** — 알림 글씨 키움·방망이 설명(B-41). 그 전: Codex B-38~B-40(벨트 방향 교대, 칭호 모음, 대회 설명 5초). 다음 후보: 방망이 업그레이드(현질) 설계 — 사용자 승인 대기(G-4). |
+| 작업 시점 | 2026-11-19 |
 | 다음 작업 AI | 사용자: **Studio Ctrl+S 저장** 후 필요할 때 직접 게시. 다음 AI: G-3의 2인 확인 목록을 음수 UserId 로컬 서버로 검증한다. 게임패스 판매·가격·공개 준비는 사용자와 별도 확인. |
 | 게임 이름 | **로봇 고물상 타이쿤** (`list_roblox_studios` 현재 이름), 단독 운영. 오비·로봇 작업장은 `ServerStorage/ArchivedModes`에 보관. |
 | Place ID | `77293997616106` |
 | Universe ID (GameId) | `10777081510` |
 | 소유 | 개인 계정 (CreatorType = User) |
-| Studio 인스턴스 ID | 2026-11-18 `list_roblox_studios` 조회 결과 `5b5bf7a4-2c6f-4bc8-be38-ffdb536ee898`. 새 세션마다 다시 확인한다 |
+| Studio 인스턴스 ID | 2026-11-19 `list_roblox_studios` 조회 결과 `4781b351-b25f-4cf7-866f-c5fa906d1c2f`. 새 세션마다 다시 확인한다 |
 | Studio 모드 | **Edit 모드**. 2026-11-18 Codex가 자신이 실행한 1인 로컬 테스트 종료. |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-18 Codex B-38~B-40. 스크립트 11개 Studio = `src/` 일치 — `JunkyardConfig` 29252 B / 869541321, `Junkyard` 82577 / 799994241, `JunkyardHud` 72173 / 856198487, `JunkyardContest` 6644 / 622978211, `JunkyardBelt` 7083 / 740310580, `JunkyardCCTV` 10127 / 499888406, `JunkyardEvents` 1733 / 471819683, `JunkyardGiantRobot` 9911 / 457266346, `JunkyardRanking` 12574 / 72233971, `JunkyardSave` 16189 / 703528569, `JunkyardStore` 4862 / 945542680. 이번 지도 변경 없음. 사용자 Ctrl+S 저장 필요. |
+| 마지막 게임 수정 | 2026-11-19 Claude Code B-41. `JunkyardHud` 73418 B / 581000655 (나머지 10개는 Codex B-38~B-40 값 그대로: `JunkyardConfig` 29252 / 869541321, `Junkyard` 82577 / 799994241, `JunkyardContest` 6644 / 622978211, `JunkyardBelt` 7083 / 740310580, `JunkyardCCTV` 10127 / 499888406, `JunkyardEvents` 1733 / 471819683, `JunkyardGiantRobot` 9911 / 457266346, `JunkyardRanking` 12574 / 72233971, `JunkyardSave` 16189 / 703528569, `JunkyardStore` 4862 / 945542680) — Studio와 일치. 시작할 때 11개 모두 Codex 기록과 일치 확인. **사용자 Ctrl+S 저장·게시 필요** |
 | Studio 저장 상태 | B-38~B-40은 Studio Edit에 반영, 수정 스크립트 6개를 원문 대조 후 `src/`로 내보냄. 클라우드 저장 완료는 미확인. 사용자가 Ctrl+S로 저장한다. AI 저장·게시 실행 없음. 기존 ServerStorage 백업·보관 유지. |
 | 휴대폰 미리보기 | 사용자 직접 확인(2026-11-17). Studio 휴대폰 미리보기에서 상점·도감·대회 상자·안내 띠에 문제 없음 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
@@ -188,6 +188,14 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 - 수정 경로. `ReplicatedStorage/Modules/JunkyardConfig`, `ServerScriptService/Junkyard`, `ServerScriptService/JunkyardSave`, `ServerScriptService/JunkyardGiantRobot`, `StarterPlayer/StarterPlayerScripts/JunkyardHud`와 같은 `src/` 경로.
 - **1인 실제 검증**. UserId -1, SaveOff=false. 옛 신화 도감에서 신화 수집가·+1% 자동 지급. 진행률 99.99% 뒤 실제 Donate → Active·정비왕·총 +2%. 같은 칭호 재획득해도 +2% 유지. 칭호 창 실제 클릭·스크롤로 정비왕 선택 → 머리 위 표시. 숨겨도 +2% 유지, 미획득 FullCatalog 선택 거절. 종료·재접속 후 두 칭호·선택 Mechanic·+2% 복원. sanitize의 옛 돈/받침대/확장 유지·새 기본값·알 수 없는 칭호와 잘못된 선택 제거, 13종 보너스 합 0.13 확인.
 - **표시 경로 시험**. 타인 기부와 같은 서버 Remote를 한 명에게 보내 중앙 연출 표시·문구 TextFits 확인(측정 크기 약 657×125). **미검증**. 실제 2인 타인 기부 전달, 최고 기부자와 마지막 기부자가 다를 때 지급, 동시 마지막 기부, 실제 2인 대회 우승 칭호 획득/복원, 새 UI의 실제 모바일 화면·터치.
+
+### B-41. 알림 글씨 키움·방망이 설명 (2026-11-19 Claude Code, 사용자 신고 · 혼자 Play 확인)
+
+- 사용자: 알림 글씨가 너무 작다, 방망이로만 막을 수 있다는 설명이 필요하다.
+- 알림(toast): 글씨 15 → `19 × 화면 배율`, 높이 30 → `40 × 배율`, 최대 폭 460 → `640 × 배율`. 배율 `toastScale`은 `fitWindows`가 HUD 배율(hud, 0.85~1.45)로 맞춘다. 알림 영역 높이 300. 화면 1069×900에서 글씨 26·높이 56·TextFits 확인.
+- 도둑맞은 순간(`Stolen` 알림이 "⚠"로 시작 — 받침대 훔치기·빼앗기, EMP 알림은 제외) 화면 가운데 큰 알림 3초: "⚠ 도둑이야! / [2]를 눌러 🏏 방망이를 들고 도둑이 든 로봇을 누르면 되찾아요"(휴대폰은 "🏏 버튼으로", 이미 들었으면 "방망이를 든 채로").
+- 🏏 방망이 버튼 아래 설명 2줄 "도둑맞으면 방망이를 들고 / 도둑이 든 로봇을 누르세요"(버튼 UIScale 따라 커짐).
+- 확인: 서버에서 Stolen 알림을 직접 보내 큰 알림 문구·알림 크기·설명 위치 TextFits, 출력 오류 0. 실제 2인 도둑맞기는 미검증.
 
 ### B-40. 대회 시작 설명 5초 유지 (2026-11-18 Codex, 사용자 요청)
 

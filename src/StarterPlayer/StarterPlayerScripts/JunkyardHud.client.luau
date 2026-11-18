@@ -579,8 +579,9 @@ local toastArea = Instance.new("Frame")
 toastArea.AnchorPoint = Vector2.new(0.5, 0)
 -- 오른쪽 위 패널의 왼쪽 영역 가운데, 신화 타이머 아래. 위치·폭은 fitWindows가 패널 배율에 맞춰 고친다
 toastArea.Position = UDim2.new(0.5, -131, 0, 96)
-toastArea.Size = UDim2.new(1, -286, 0, 200)
+toastArea.Size = UDim2.new(1, -286, 0, 300)
 toastArea.BackgroundTransparency = 1
+local toastScale = 1 -- 알림 글씨 배율 (fitWindows가 화면 크기에 맞춰 정한다)
 toastArea.Parent = gui
 local toastLayout = Instance.new("UIListLayout")
 toastLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -595,18 +596,19 @@ local toastColors = {
 }
 local function toast(kind: string, text: string)
 	local box = Instance.new("TextLabel")
-	box.Size = UDim2.new(1, 0, 0, 30)
+	local height = math.floor(40 * toastScale)
+	box.Size = UDim2.new(1, 0, 0, height)
 	box.BackgroundColor3 = toastColors[kind] or toastColors.Info
 	box.BackgroundTransparency = 0.1
 	box.TextColor3 = white
 	box.Font = Enum.Font.GothamBold
-	box.TextSize = 15
+	box.TextSize = math.floor(19 * toastScale)
 	box.TextWrapped = true
 	box.Text = text
 	box.Parent = toastArea
 	corner(box, 8)
 	local constraint = Instance.new("UISizeConstraint")
-	constraint.MaxSize = Vector2.new(460, 30)
+	constraint.MaxSize = Vector2.new(math.floor(640 * toastScale), height)
 	constraint.Parent = box
 	-- 너무 많이 쌓이면 오래된 것부터 지운다
 	local count = 0
@@ -710,6 +712,12 @@ notifyRemote.OnClientEvent:Connect(function(kind: unknown, text: unknown, userId
 			showDonateBurst(text)
 		else
 			toast(if kind == "Alarm" or kind == "Stolen" then "Alert" else kind, text)
+			-- 도둑맞은 순간(⚠로 시작하는 Stolen)은 되찾는 방법을 화면 가운데에 크게 알려 준다
+			if kind == "Stolen" and string.sub(text, 1, 3) == "⚠" then
+				local touchOnly = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+				local how = if player:GetAttribute("BatOut") == true then "🏏 방망이를 든 채로" elseif touchOnly then "🏏 버튼으로 방망이를 들고" else "[2]를 눌러 🏏 방망이를 들고"
+				showDonateBurst(("⚠ 도둑이야!\n%s 도둑이 든 로봇을 누르면 되찾아요"):format(how), 3)
+			end
 		end
 		if kind == "Alarm" and typeof(userId) == "number" then
 			highlightIntruder(userId)
@@ -1125,7 +1133,8 @@ local function fitWindows()
 	local panelWidth = 250 * hud
 	contestPanel.Position = UDim2.new(1, -12, 0, 10 + 188 * hud + 6)
 	toastArea.Position = UDim2.new(0.5, -(panelWidth + 24) / 2, 0, 96)
-	toastArea.Size = UDim2.new(1, -(panelWidth + 36), 0, 200)
+	toastArea.Size = UDim2.new(1, -(panelWidth + 36), 0, 300)
+	toastScale = hud
 	-- 상점은 큰 화면에서 최대 2배까지 키운다 (기본 440×400)
 	shopScale.Scale = math.clamp(math.min((size.Y - 80) / 400, (size.X - 40) / 440), 0.55, 2)
 end
@@ -1502,6 +1511,12 @@ local batButton = button(gui, "🏏 방망이 [2]", UDim2.new(1, -12, 0.55, 0), 
 batButton.AnchorPoint = Vector2.new(1, 0.5)
 batButton.TextSize = 15
 hudScale(batButton)
+-- 방망이 버튼 아래 한 줄 설명 (방망이를 들어야만 도둑맞은 로봇을 되찾을 수 있다)
+local batHint = label(batButton, UDim2.new(0, -40, 1, 4), UDim2.new(1, 40, 0, 32), 11, Color3.fromRGB(255, 225, 150))
+batHint.TextXAlignment = Enum.TextXAlignment.Right
+batHint.TextWrapped = true
+batHint.TextStrokeTransparency = 0.3
+batHint.Text = "도둑맞으면 방망이를 들고\n도둑이 든 로봇을 누르세요"
 batButton.Activated:Connect(function()
 	actionRemote:FireServer("Bat", player:GetAttribute("BatOut") ~= true)
 end)
