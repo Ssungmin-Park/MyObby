@@ -87,6 +87,7 @@ local function fire()
 end
 
 action.OnServerEvent:Connect(function(player: Player, kind: unknown)
+	if player:GetAttribute("StationeryPractice") == true then return end
 	if typeof(kind) ~= "string" or os.clock() - (lastAction[player] or 0) < 0.15 then
 		return
 	end

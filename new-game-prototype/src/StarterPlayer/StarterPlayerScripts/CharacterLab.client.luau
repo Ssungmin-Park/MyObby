@@ -248,6 +248,7 @@ local camera = workspace.CurrentCamera
 local avatarParts: { BasePart } = {}
 -- 기본 캐릭터 카메라가 초기화된 뒤에도 시험장 구도를 유지한다.
 RunService:BindToRenderStep("CharacterLabCamera", Enum.RenderPriority.Camera.Value + 1, function()
+	if player:GetAttribute("StationeryPractice") == true then return end
 	camera = workspace.CurrentCamera
 	if camera then
 		camera.CameraType = Enum.CameraType.Scriptable

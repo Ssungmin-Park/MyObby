@@ -723,7 +723,7 @@ notifyRemote.OnClientEvent:Connect(function(kind: unknown, text: unknown, userId
 			if kind == "Stolen" and string.sub(text, 1, 3) == "⚠" then
 				local touchOnly = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 				local how = if player:GetAttribute("BatOut") == true then "🏏 방망이를 든 채로" elseif touchOnly then "🏏 버튼으로 방망이를 들고" else "[2]를 눌러 🏏 방망이를 들고"
-				showDonateBurst(("⚠ 도둑이야!\n%s 도둑이 든 로봇을 누르면 되찾아요"):format(how), 3)
+				showDonateBurst(("⚠ 도둑이야!\n%s 도둑이 든 로봇을 %s 되찾아요"):format(how, if touchOnly then "누르면" else "[R]로 누르면"), 3)
 			end
 		end
 		if kind == "Alarm" and typeof(userId) == "number" then
@@ -1386,6 +1386,11 @@ local function styleCarryPrompt(object: ProximityPrompt, carrier: Player?)
 	-- 되찾기 버튼 거리: 방망이 단계만큼 조금 더 멀리서 (서버도 같은 값으로 확인)
 	local batLevel = Config.BatLevels[(player:GetAttribute("BatLevel") or 1) :: number] or Config.BatLevels[1]
 	object.MaxActivationDistance = 9 + (if mine then batLevel.range else 0)
+	-- 되찾기는 [R] 키로, 다른 버튼에 가려지지 않게 항상 보인다.
+	-- (내 기지 안에서는 받침대 [E] 버튼이 많아 같은 키면 되찾기 버튼이 숨겨졌다 — 2인 테스트 B-49)
+	object.KeyboardKeyCode = if mine then Enum.KeyCode.R else Enum.KeyCode.E
+	object.GamepadKeyCode = if mine then Enum.KeyCode.ButtonY else Enum.KeyCode.ButtonX
+	object.Exclusivity = if mine then Enum.ProximityPromptExclusivity.AlwaysShow else Enum.ProximityPromptExclusivity.OnePerButton
 end
 local function syncSnatchPrompts()
 	for _, other in Players:GetPlayers() do

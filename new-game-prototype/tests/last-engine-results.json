@@ -1,0 +1,113 @@
+{
+  "checks": 118,
+  "comparison": {
+    "1": {
+      "firstContact": 7.699999999999989,
+      "seconds": 30.100000000000158,
+      "ours": "Attack",
+      "bot": "Attack",
+      "winner": 0,
+      "hp": {
+        "1": 600,
+        "2": 600
+      },
+      "reason": "공격 병력 소진"
+    },
+    "2": {
+      "firstContact": 7.699999999999989,
+      "seconds": 47.3000000000004,
+      "ours": "Attack",
+      "bot": "Balanced",
+      "winner": 0,
+      "hp": {
+        "1": 600,
+        "2": 600
+      },
+      "reason": "공격 병력 소진"
+    },
+    "3": {
+      "firstContact": 7.699999999999989,
+      "seconds": 58.30000000000056,
+      "ours": "Attack",
+      "bot": "Defense",
+      "winner": 1,
+      "hp": {
+        "1": 600,
+        "2": 0
+      },
+      "reason": "본부 파괴"
+    },
+    "4": {
+      "firstContact": 7.699999999999989,
+      "seconds": 63.90000000000064,
+      "ours": "Balanced",
+      "bot": "Attack",
+      "winner": 2,
+      "hp": {
+        "1": 0,
+        "2": 600
+      },
+      "reason": "본부 파괴"
+    },
+    "5": {
+      "firstContact": 7.699999999999989,
+      "seconds": 28.80000000000014,
+      "ours": "Balanced",
+      "bot": "Balanced",
+      "winner": 0,
+      "hp": {
+        "1": 600,
+        "2": 600
+      },
+      "reason": "공격 병력 소진"
+    },
+    "6": {
+      "firstContact": 7.699999999999989,
+      "seconds": 81.19999999999966,
+      "ours": "Balanced",
+      "bot": "Defense",
+      "winner": 1,
+      "hp": {
+        "1": 600,
+        "2": 0
+      },
+      "reason": "본부 파괴"
+    },
+    "7": {
+      "firstContact": 7.699999999999989,
+      "seconds": 58.90000000000057,
+      "ours": "Defense",
+      "bot": "Attack",
+      "winner": 2,
+      "hp": {
+        "1": 0,
+        "2": 600
+      },
+      "reason": "본부 파괴"
+    },
+    "8": {
+      "firstContact": 7.699999999999989,
+      "seconds": 67.50000000000044,
+      "ours": "Defense",
+      "bot": "Balanced",
+      "winner": 2,
+      "hp": {
+        "1": 0,
+        "2": 600
+      },
+      "reason": "본부 파괴"
+    },
+    "9": {
+      "firstContact": 7.699999999999989,
+      "seconds": 19.80000000000001,
+      "ours": "Defense",
+      "bot": "Defense",
+      "winner": 0,
+      "hp": {
+        "1": 600,
+        "2": 600
+      },
+      "reason": "공격 병력 소진"
+    }
+  }
+}

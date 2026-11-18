@@ -1,5 +1,7 @@
 # Codex 지시서: 로봇 고물상 타이쿤 2인 테스트 (2026-11-19 Claude Code 작성)
 
+> **2026-11-19 Claude가 이 지시서대로 직접 진행해 끝냈다(HANDOFF B-49).** 다시 돌릴 때만 쓴다.
+
 > **이 문서는 "로봇 고물상 타이쿤"(폴더 `C:\RobloxProjects\MyObby`, placeId `77293997616106`) 전용이다.**
 > 지금 Codex가 함께 만들고 있는 **새 게임(문방구 캐릭터 시험장, `new-game-prototype/`, `docs/NEW_GAME_DESIGN.md`)과는 관계없다.**
 > 이 테스트 중에는 새 게임 파일을 열거나 고치거나 커밋하지 않는다. 새 게임 Studio 창이 열려 있으면 그 창에는 명령을 보내지 않는다.
@@ -29,7 +31,7 @@
 | ServerScriptService.JunkyardContest | 6644 | 622978211 |
 | ServerScriptService.JunkyardCCTV | 10127 | 499888406 |
 | ServerScriptService.JunkyardGiantRobot | 9911 | 457266346 |
-| StarterPlayer.StarterPlayerScripts.JunkyardHud | 86058 | 940999470 |
+| StarterPlayer.StarterPlayerScripts.JunkyardHud | 86609 | 509309590 |
 
 ## 2. 2인 테스트 시작 (사용자가 누른다)
 - 사용자에게 부탁한다: **Studio 테스트 탭 → "클라이언트 및 서버" → 플레이어 수 2 → 시작.** MCP 도구로는 이 화면을 시작할 수 없다.
