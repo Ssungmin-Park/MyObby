@@ -14,20 +14,31 @@ local player = Players.LocalPlayer
 local lab = workspace:WaitForChild("CharacterLab")
 local assets = ReplicatedStorage:WaitForChild("CharacterLabAssets")
 local action = ReplicatedStorage:WaitForChild("CharacterLabRemotes"):WaitForChild("Action") :: RemoteEvent
+local shotRemote = ReplicatedStorage.CharacterLabRemotes:WaitForChild("Shot") :: RemoteEvent
 local folder = Instance.new("Folder")
 folder.Name = "CharacterLabLocal"
 folder.Parent = workspace
 
 local displays = lab:WaitForChild("Displays")
-for _, object in displays:GetDescendants() do
+local function hidePreview(object: Instance)
 	if object:IsA("BasePart") then
 		object.LocalTransparencyModifier = 1
+		object.Transparency = 1
+		object.CastShadow = false
 	end
+end
+-- 모델 부품이 클라이언트 초기화 뒤에 복제되는 경우에도 미리보기를 숨긴다.
+displays.DescendantAdded:Connect(hidePreview)
+for _, object in displays:GetDescendants() do
+	hidePreview(object)
 end
 
 type Piece = { part: BasePart, pose: CFrame, upper: boolean, transparency: number, size: Vector3 }
 type Actor = { model: Model, kind: string, root: CFrame, scale: number, baseScale: number, height: number, pieces: { Piece }, hinge: CFrame }
 local actors: { Actor } = {}
+type Projectile = { model: Model, parts: { BasePart }, origin: Vector3, target: Vector3, firedAt: number, hitAt: number, linked: boolean }
+local projectiles: { Projectile } = {}
+local turn = 0
 
 local function actor(kind: string, ground: Vector3)
 	local template = assets:WaitForChild(kind) :: Model
@@ -120,11 +131,26 @@ for index, spec in {
 	end)
 	buttons[spec[1]] = button
 end
+local linkedButton = Instance.new("TextButton")
+linkedButton.Name = "Linked"
+linkedButton.AnchorPoint = Vector2.new(1, 0)
+linkedButton.Position = UDim2.new(1, -16, 0, 16)
+linkedButton.Size = UDim2.fromOffset(140, 44)
+linkedButton.BackgroundColor3 = Color3.fromRGB(149, 76, 92)
+linkedButton.TextColor3 = Color3.fromRGB(255, 247, 237)
+linkedButton.Font = Enum.Font.GothamBold
+linkedButton.TextSize = 15
+linkedButton.Text = "연결 시험 [T]"
+linkedButton.Parent = gui
+rounded(linkedButton)
+linkedButton.Activated:Connect(function()
+	action:FireServer("Linked")
+end)
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
 		return
 	end
-	local kind = ({ [Enum.KeyCode.Q] = "Hit", [Enum.KeyCode.E] = "Fire", [Enum.KeyCode.R] = "Reset" })[input.KeyCode]
+	local kind = ({ [Enum.KeyCode.Q] = "Hit", [Enum.KeyCode.E] = "Fire", [Enum.KeyCode.R] = "Reset", [Enum.KeyCode.T] = "Linked" })[input.KeyCode]
 	if kind then
 		action:FireServer(kind)
 	end
@@ -136,13 +162,15 @@ metalSound.SoundId = "rbxassetid://9116541944" -- Roblox 공식 효과음 라이
 metalSound.Volume = 0.25
 metalSound.Parent = gui
 
-local function projectile()
+local stapleOffsets = { Vector3.new(-0.4, -0.12, 0), Vector3.new(0.4, -0.12, 0), Vector3.new(0, 0.18, 0) }
+local function projectile(payload: any)
 	local staple = Instance.new("Model")
 	staple.Name = "StapleEffect"
-	for index, offset in { Vector3.new(-0.25, -0.12, 0), Vector3.new(0.25, -0.12, 0), Vector3.new(0, 0.1, 0) } do
+	local parts: { BasePart } = {}
+	for index, offset in stapleOffsets do
 		local part = Instance.new("Part")
-		part.Size = if index == 3 then Vector3.new(0.6, 0.12, 0.12) else Vector3.new(0.12, 0.45, 0.12)
-		part.Position = Vector3.new(9, 4, -1) + offset
+		part.Size = if index == 3 then Vector3.new(0.95, 0.14, 0.14) else Vector3.new(0.14, 0.7, 0.14)
+		part.Position = payload.origin + offset
 		part.Color = Color3.fromRGB(190, 200, 210)
 		part.Material = Enum.Material.Metal
 		part.Anchored = true
@@ -151,14 +179,53 @@ local function projectile()
 		part.CanQuery = false
 		part.CastShadow = false
 		part.Parent = staple
-		TweenService:Create(part, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = part.Position + Vector3.new(0, -1.5, -9), Transparency = 1 }):Play()
+		table.insert(parts, part)
 	end
 	staple.Parent = folder
-	Debris:AddItem(staple, 0.6)
+	table.insert(projectiles, { model = staple, parts = parts, origin = payload.origin, target = payload.target, firedAt = payload.firedAt, hitAt = payload.hitAt, linked = payload.linked })
 end
-lab:GetAttributeChangedSignal("ShotId"):Connect(function()
+local lastVisualShot = 0
+shotRemote.OnClientEvent:Connect(function(payload)
+	if typeof(payload) ~= "table" or typeof(payload.id) ~= "number" or payload.id <= lastVisualShot then
+		return
+	end
+	lastVisualShot = payload.id
 	metalSound:Play()
-	projectile()
+	projectile(payload)
+end)
+local function clearProjectiles()
+	for _, entry in projectiles do
+		entry.model:Destroy()
+	end
+	table.clear(projectiles)
+end
+lab:GetAttributeChangedSignal("Cycle"):Connect(clearProjectiles)
+lab:GetAttributeChangedSignal("Linked"):Connect(clearProjectiles)
+
+local random = Random.new()
+lab:GetAttributeChangedSignal("LastHitAt"):Connect(function()
+	if (lab:GetAttribute("LastHitAt") :: number) <= 0 then
+		return
+	end
+	local eraser = actors[1]
+	local origin = Vector3.new(-9, 1.6 + eraser.height * eraser.scale * 0.65, 1)
+	for _ = 1, 6 do
+		local crumb = Instance.new("Part")
+		crumb.Name = "EraserCrumb"
+		local size = random:NextNumber(0.12, 0.25)
+		crumb.Size = Vector3.new(size, size * 0.65, size)
+		crumb.CFrame = CFrame.new(origin) * CFrame.Angles(random:NextNumber(), random:NextNumber(), 0)
+		crumb.Color = Color3.fromRGB(245, 139, 189)
+		crumb.Material = Enum.Material.SmoothPlastic
+		crumb.Anchored = true
+		crumb.CanCollide = false
+		crumb.CanTouch = false
+		crumb.CanQuery = false
+		crumb.CastShadow = false
+		crumb.Parent = folder
+		TweenService:Create(crumb, TweenInfo.new(0.6), { Position = Vector3.new(-9 + random:NextNumber(-1.5, 1.5), 1.65, 1 + random:NextNumber(-1.5, 1.5)), Transparency = 1 }):Play()
+		Debris:AddItem(crumb, 0.7)
+	end
 end)
 
 local camera = workspace.CurrentCamera
@@ -207,20 +274,23 @@ RunService.RenderStepped:Connect(function(dt)
 	local recoil = if shotAge >= 0 and shotAge < 1 then math.sin(math.min(shotAge / 0.17, 1) * math.pi / 2) * math.exp(-shotAge * 5) else 0
 	local close = if shotAge >= 0 and shotAge < 0.3 then -math.sin(shotAge / 0.3 * math.pi) * 0.25 else 0
 	local shake = if hitAge >= 0 and hitAge < 0.5 then math.sin(hitAge * 60) * math.exp(-hitAge * 10) * 0.2 else 0
+	turn += ((if lab:GetAttribute("Linked") == true then 1 else 0) - turn) * math.min(1, dt * 8)
 	for index, entry in actors do
 		local breathe = math.sin(now * 2.5 + index * 0.2) * 0.025
+		local facing = if entry.kind == "Jjondeuk" then -math.pi / 2 else math.pi / 2
+		local base = entry.root * CFrame.Angles(0, facing * turn, 0)
 		if entry.kind == "Jjondeuk" then
 			local targetScale = 0.48 + fraction * 0.52
 			entry.scale += (targetScale - entry.scale) * math.min(1, dt * 10)
 			if math.abs(entry.model:GetScale() - entry.baseScale * entry.scale) > 0.0005 then
 				entry.model:ScaleTo(entry.baseScale * entry.scale)
 			end
-			entry.model:PivotTo(entry.root * CFrame.new(shake, entry.height * entry.scale * 0.5 + math.abs(breathe), 0) * CFrame.Angles(0, 0, breathe))
+			entry.model:PivotTo(base * CFrame.new(shake, entry.height * entry.scale * 0.5 + math.abs(breathe), 0) * CFrame.Angles(0, 0, breathe))
 			for _, piece in entry.pieces do
 				piece.part.Transparency = if health <= 0 then 0.75 else piece.transparency
 			end
 		else
-			local root = entry.root * CFrame.new(0, entry.height * 0.5, recoil * 0.85) * CFrame.Angles(-recoil * 0.22, 0, breathe)
+			local root = base * CFrame.new(0, entry.height * 0.5, recoil * 0.85) * CFrame.Angles(-recoil * 0.22, 0, breathe)
 			for _, piece in entry.pieces do
 				local pose = piece.pose
 				if piece.part.Name == "EyeWhite" then
@@ -235,9 +305,24 @@ RunService.RenderStepped:Connect(function(dt)
 			end
 		end
 	end
+	for index = #projectiles, 1, -1 do
+		local entry = projectiles[index]
+		local alpha = math.clamp((now - entry.firedAt) / (entry.hitAt - entry.firedAt), 0, 1)
+		if alpha >= 1 then
+			entry.model:Destroy()
+			table.remove(projectiles, index)
+		else
+			local position = entry.origin:Lerp(entry.target, alpha) + Vector3.new(0, math.sin(alpha * math.pi) * (if entry.linked then 1.5 else 0.3), 0)
+			local pose = CFrame.lookAt(position, entry.target)
+			for pieceIndex, part in entry.parts do
+				part.CFrame = pose * CFrame.new(stapleOffsets[pieceIndex])
+			end
+		end
+	end
 	status.Text = ("쫀득 체력 %d / %d · 크기 %d%%\n철컥 발사 %d회 · 시험 캐릭터 %d마리"):format(health, maximum, math.round((0.48 + fraction * 0.52) * 100), lab:GetAttribute("ShotCount") :: number, #actors)
 	buttons.Auto.Text = if lab:GetAttribute("Auto") == true then "자동 반복 끄기" else "자동 반복"
 	buttons.Crowd.Text = if lab:GetAttribute("Crowd") == true then "두 마리만" else "여러 마리"
+	linkedButton.Text = if lab:GetAttribute("Linked") == true then "연결 시험 중지" else "연결 시험 [T]"
 	if camera then
 		controlScale.Scale = math.min(1.1, (camera.ViewportSize.X - 24) / 750)
 		if camera.ViewportSize.Y < 500 then

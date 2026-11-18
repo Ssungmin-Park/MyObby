@@ -79,6 +79,11 @@ if not remotes:FindFirstChild("Action") then
 	action.Name = "Action"
 	action.Parent = remotes
 end
+if not remotes:FindFirstChild("Shot") then
+	local shot = Instance.new("RemoteEvent")
+	shot.Name = "Shot"
+	shot.Parent = remotes
+end
 
 local lighting = game:GetService("Lighting")
 lighting.ClockTime = 14
