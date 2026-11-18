@@ -22,7 +22,7 @@
 | Studio 모드 | **Edit 모드**. 2026-11-18 Codex가 자신이 실행한 1인 로컬 테스트 종료. |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-19 Claude Code B-42. `JunkyardConfig` 33034 / 876108229, `Junkyard` 101479 / 618720107, `JunkyardSave` 17403 / 803073679, `JunkyardStore` 4904 / 256970632, `JunkyardHud` 81757 / 5925783 (나머지 6개는 그대로: `JunkyardContest` 6644 / 622978211, `JunkyardBelt` 7083 / 740310580, `JunkyardCCTV` 10127 / 499888406, `JunkyardEvents` 1733 / 471819683, `JunkyardGiantRobot` 9911 / 457266346, `JunkyardRanking` 12574 / 72233971) — Studio와 일치. 시작할 때 11개 모두 Codex 기록과 일치 확인. **사용자 Ctrl+S 저장·게시 필요** |
+| 마지막 게임 수정 | 2026-11-19 Claude Code B-42. `JunkyardConfig` 33034 / 876108229, `Junkyard` 101529 / 445794783, `JunkyardSave` 17403 / 803073679, `JunkyardStore` 4904 / 256970632, `JunkyardHud` 81757 / 5925783 (나머지 6개는 그대로: `JunkyardContest` 6644 / 622978211, `JunkyardBelt` 7083 / 740310580, `JunkyardCCTV` 10127 / 499888406, `JunkyardEvents` 1733 / 471819683, `JunkyardGiantRobot` 9911 / 457266346, `JunkyardRanking` 12574 / 72233971) — Studio와 일치. 시작할 때 11개 모두 Codex 기록과 일치 확인. **사용자 Ctrl+S 저장·게시 필요** |
 | Studio 저장 상태 | B-38~B-40은 Studio Edit에 반영, 수정 스크립트 6개를 원문 대조 후 `src/`로 내보냄. 클라우드 저장 완료는 미확인. 사용자가 Ctrl+S로 저장한다. AI 저장·게시 실행 없음. 기존 ServerStorage 백업·보관 유지. |
 | 휴대폰 미리보기 | 사용자 직접 확인(2026-11-17). Studio 휴대폰 미리보기에서 상점·도감·대회 상자·안내 띠에 문제 없음 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
@@ -195,6 +195,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 - 🍭 사탕 → 롤리팝: 하얀 막대 + 납작한 원판(분홍·흰·노랑·하늘·흰 동심원, 작은 고리일수록 두꺼워 앞뒤로 보임).
 - 🎸 기타: 손 아래 헤드·줄감개 4개, 넥, 둥근 몸통 2개(빨강), 소리 구멍, 줄 받침, **줄 4개(앞뒤 모두, 은색 Neon 0.04)**.
 - 장갑 모양을 등급마다(`GLOVE_LEVELS`): 작업(갈색 천) → 쇠(무늬 철판) → 금 → 네온(남색 + 하늘색 빛나는 손목 띠) → 무지개(색 변화). 꾸미기마다(`GLOVE_SKINS`): 렌치 주황 고무, 사탕 분홍+흰 띠, 기타 검정 가죽+빨간 띠, 번개 노랑+파란 빛 띠. 손목 띠는 `addBatPiece`로 장갑에 붙임. 효과(반짝이·빛·불꽃)는 B-43 그대로.
+- 장갑 두께: 손 크기 +0.04(전 +0.12), 손목 띠 높이 0.14(전 0.24) — 사용자: "손에 박스를 끼운 것 같다". 화면 확인은 Studio 캡처가 하얗게 나와 못 함.
 - 확인: Play에서 각 설정의 부품 위치를 기록해 Edit에 임시로 세워 캡처(`docs/screenshots/bat-gloves-preview.jpg`, 뒤에서 본 모습) 후 지움. 방망이·롤리팝·기타가 주먹에서 위로 섬, 기타 줄 보임, 장갑 색·띠 확인. 시험 전 사용자가 끼던 🎸 기타 꾸미기를 마지막에 그대로 둠. 실제 Play 화면·휴대폰·다른 사람 시점은 미검증.
 
 ### B-43. 장갑 [1] / 방망이 [2] (2026-11-19 Claude Code, 사용자 요청 · 혼자 Play 확인)

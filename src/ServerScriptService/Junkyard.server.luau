@@ -871,7 +871,8 @@ local function buildGloves(state: State, character: Model)
 			local r15 = string.find(hand.Name, "Hand", 1, true) ~= nil
 			local glove = Instance.new("Part")
 			glove.Name = "JunkyardGlove"
-			glove.Size = if r15 then hand.Size + Vector3.new(0.12, 0.12, 0.12) else Vector3.new(hand.Size.X + 0.1, 0.7, hand.Size.Z + 0.1)
+			-- 손에 얇게 씌운다 (두꺼우면 손에 상자를 끼운 것처럼 보인다)
+			glove.Size = if r15 then hand.Size + Vector3.new(0.04, 0.02, 0.04) else Vector3.new(hand.Size.X + 0.04, 0.7, hand.Size.Z + 0.04)
 			glove.Color = look.color
 			glove.Material = look.material
 			glove.CanCollide = false
@@ -915,8 +916,8 @@ local function buildGloves(state: State, character: Model)
 				light.Parent = glove
 			end
 			-- 손목 띠 (손목 쪽 = 손의 +Y)
-			local cuffY = if r15 then glove.Size.Y / 2 - 0.08 else glove.Size.Y / 2 - 0.05
-			addBatPiece(glove, Vector3.new(glove.Size.X + 0.14, 0.24, glove.Size.Z + 0.14), CFrame.new(0, cuffY, 0), look.cuff, look.cuffMaterial)
+			local cuffY = glove.Size.Y / 2 - 0.07
+			addBatPiece(glove, Vector3.new(glove.Size.X + 0.06, 0.14, glove.Size.Z + 0.06), CFrame.new(0, cuffY, 0), look.cuff, look.cuffMaterial)
 			glove.Parent = character
 			-- 무지개 단계: 장갑·손목 띠 색이 계속 바뀐다
 			if rainbow then
