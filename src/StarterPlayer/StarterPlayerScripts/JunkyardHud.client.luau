@@ -1754,6 +1754,95 @@ task.spawn(function()
 		task.wait(1)
 	end
 end)
+
+-- 로봇 움직임 (내 화면에서만): 눈 깜빡임, 선풍기·접시 안테나·후광·궤도 고리 회전 --------------------
+-- 모형은 공용 모듈이 만들고(눈 = "Eye", 도는 부품 = "Spin" + SpinSpeed 속성), 여기서는 보이는 모습만 바꾼다.
+-- 서버 모형의 실제 값은 바꾸지 않아서 다른 사람에게 보내는 데이터가 늘지 않는다
+do
+	type RobotAnim = { body: BasePart, spins: { BasePart }, offsets: { CFrame }, speeds: { number }, eyes: { BasePart }, nextBlink: number, blinkEnd: number }
+	local anims: { [Model]: RobotAnim } = {}
+	local function track(model: Model)
+		local body = model.PrimaryPart
+		if anims[model] or not body then
+			return
+		end
+		local anim: RobotAnim = { body = body, spins = {}, offsets = {}, speeds = {}, eyes = {}, nextBlink = os.clock() + math.random() * 4, blinkEnd = 0 }
+		for _, child in model:GetChildren() do
+			if child:IsA("BasePart") then
+				if child.Name == "Eye" then
+					table.insert(anim.eyes, child)
+				elseif child.Name == "Spin" and child.Anchored then -- 머리 위에 든(붙어 있는) 모형은 돌리지 않는다
+					table.insert(anim.spins, child)
+					table.insert(anim.offsets, body.CFrame:ToObjectSpace(child.CFrame))
+					table.insert(anim.speeds, (child:GetAttribute("SpinSpeed") or 1.2) :: number)
+				end
+			end
+		end
+		anims[model] = anim
+	end
+	local function trackChildren(parent: Instance)
+		for _, child in parent:GetChildren() do
+			if child:IsA("Model") and (child.Name == "BeltRobot" or string.sub(child.Name, 1, 6) == "Robot_") then
+				track(child)
+			end
+		end
+	end
+	-- 1초마다 새 로봇을 찾고 사라진 로봇은 뺀다 (받침대·벨트·머리 위)
+	task.spawn(function()
+		while true do
+			for _, base in basesFolder:GetChildren() do
+				trackChildren(base)
+			end
+			trackChildren(beltFolder)
+			for _, other in Players:GetPlayers() do
+				if other.Character then
+					trackChildren(other.Character)
+				end
+			end
+			for model in anims do
+				if model.Parent == nil then
+					anims[model] = nil
+				end
+			end
+			task.wait(1)
+		end
+	end)
+	local moveParts: { BasePart } = {}
+	local moveFrames: { CFrame } = {}
+	RunService.RenderStepped:Connect(function()
+		local now = os.clock()
+		local camera = workspace.CurrentCamera
+		local eyePosition = if camera then camera.CFrame.Position else Vector3.zero
+		table.clear(moveParts)
+		table.clear(moveFrames)
+		for model, anim in anims do
+			local bodyCFrame = anim.body.CFrame
+			if model.Parent == nil or (bodyCFrame.Position - eyePosition).Magnitude > 120 then
+				continue -- 멀리 있는 로봇은 건너뛴다
+			end
+			-- 눈 깜빡임: 2.5~6.5초마다 0.13초 동안 눈을 숨긴다
+			if anim.blinkEnd > 0 and now >= anim.blinkEnd then
+				anim.blinkEnd = 0
+				for _, part in anim.eyes do
+					part.LocalTransparencyModifier = 0
+				end
+			elseif anim.blinkEnd == 0 and now >= anim.nextBlink and #anim.eyes > 0 then
+				anim.blinkEnd = now + 0.13
+				anim.nextBlink = now + 2.5 + math.random() * 4
+				for _, part in anim.eyes do
+					part.LocalTransparencyModifier = 1
+				end
+			end
+			for index, part in anim.spins do
+				table.insert(moveParts, part)
+				table.insert(moveFrames, bodyCFrame * CFrame.Angles(0, now * anim.speeds[index], 0) * anim.offsets[index])
+			end
+		end
+		if #moveParts > 0 then
+			workspace:BulkMoveTo(moveParts, moveFrames, Enum.BulkMoveMode.FireCFrameChanged)
+		end
+	end)
+end
 render()
 
 -- 칭호 모음: 획득 여부와 선택은 서버 속성으로 표시하고, 선택 요청만 보낸다.

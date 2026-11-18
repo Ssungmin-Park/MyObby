@@ -77,7 +77,7 @@ end
 local function ring(center: CFrame, radius: number, count: number, d: number, color: Color3, material: Enum.Material?)
 	for i = 1, count do
 		local a = (i / count) * math.pi * 2
-		ball(d, (center * CFrame.new(math.cos(a) * radius, 0, math.sin(a) * radius)).Position, color, material)
+		ball(d, (center * CFrame.new(math.cos(a) * radius, 0, math.sin(a) * radius)).Position, color, material, "Spin")
 	end
 end
 
@@ -591,6 +591,13 @@ function RobotModel.build(robotKey: string, anchored: boolean): Model
 	body.Transparency = 1
 	local design = DESIGNS[baseId] or fallback
 	design()
+	-- 화면(JunkyardHud)이 돌릴 부품의 속도(라디안/초). Body의 세로축을 중심으로 돈다
+	local spinSpeed = if baseId == "Fan" then 9 elseif baseId == "Radar" then 1.5 else 1.2
+	for _, object in model:GetChildren() do
+		if object.Name == "Spin" then
+			object:SetAttribute("SpinSpeed", spinSpeed)
+		end
+	end
 	if variant then
 		local sparkles = Instance.new("Sparkles")
 		sparkles.SparkleColor = variant.color
