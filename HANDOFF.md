@@ -11,7 +11,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** — 변종 머리 위 보석(B-47), 로봇 눈 깜빡임·회전(B-46), 로봇 33종 새 디자인 공용 모듈(B-45), 방망이 쥐는 방향·롤리팝·기타 줄·장갑 모양(B-44), 장갑 [1]·방망이 [2] 나눔(B-43), 방망이 성장·꾸미기(B-42). 그 전: B-41 알림 글씨·방망이 설명, Codex B-38~B-40. 게임패스 5개 번호 입력 완료(2026-11-19). |
+| 마지막 작업 AI | **Claude Code** — 휴대폰 화면 정리(B-48), 변종 머리 위 보석(B-47), 로봇 눈 깜빡임·회전(B-46), 로봇 33종 새 디자인 공용 모듈(B-45), 방망이 쥐는 방향·롤리팝·기타 줄·장갑 모양(B-44), 장갑 [1]·방망이 [2] 나눔(B-43), 방망이 성장·꾸미기(B-42). 그 전: B-41 알림 글씨·방망이 설명, Codex B-38~B-40. 게임패스 5개 번호 입력 완료(2026-11-19). |
 | 작업 시점 | 2026-11-19 |
 | 다음 작업 AI | 사용자: **Studio Ctrl+S 저장** 후 필요할 때 직접 게시. 다음 AI: G-3의 2인 확인 목록을 음수 UserId 로컬 서버로 검증한다. 게임패스 판매·가격·공개 준비는 사용자와 별도 확인. |
 | 게임 이름 | **로봇 고물상 타이쿤** (`list_roblox_studios` 현재 이름), 단독 운영. 오비·로봇 작업장은 `ServerStorage/ArchivedModes`에 보관. |
@@ -22,7 +22,7 @@
 | Studio 모드 | **Edit 모드**. 2026-11-18 Codex가 자신이 실행한 1인 로컬 테스트 종료. |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-19 Claude Code B-42. `JunkyardConfig` 33152 / 326552697, **새 모듈** `JunkyardRobotModel` 31723 / 315473285, `Junkyard` 100307 / 42420377, `JunkyardSave` 17403 / 803073679, `JunkyardStore` 4904 / 256970632, `JunkyardHud` 84281 / 418601263 (나머지 6개는 그대로: `JunkyardContest` 6644 / 622978211, `JunkyardBelt` 7083 / 740310580, `JunkyardCCTV` 10127 / 499888406, `JunkyardEvents` 1733 / 471819683, `JunkyardGiantRobot` 9911 / 457266346, `JunkyardRanking` 12574 / 72233971) — Studio와 일치. 시작할 때 11개 모두 Codex 기록과 일치 확인. **사용자 Ctrl+S 저장·게시 필요** |
+| 마지막 게임 수정 | 2026-11-19 Claude Code B-42. `JunkyardConfig` 33152 / 326552697, **새 모듈** `JunkyardRobotModel` 31723 / 315473285, `Junkyard` 100307 / 42420377, `JunkyardSave` 17403 / 803073679, `JunkyardStore` 4904 / 256970632, `JunkyardHud` 86058 / 940999470 (나머지 6개는 그대로: `JunkyardContest` 6644 / 622978211, `JunkyardBelt` 7083 / 740310580, `JunkyardCCTV` 10127 / 499888406, `JunkyardEvents` 1733 / 471819683, `JunkyardGiantRobot` 9911 / 457266346, `JunkyardRanking` 12574 / 72233971) — Studio와 일치. 시작할 때 11개 모두 Codex 기록과 일치 확인. **사용자 Ctrl+S 저장·게시 필요** |
 | Studio 저장 상태 | B-38~B-40은 Studio Edit에 반영, 수정 스크립트 6개를 원문 대조 후 `src/`로 내보냄. 클라우드 저장 완료는 미확인. 사용자가 Ctrl+S로 저장한다. AI 저장·게시 실행 없음. 기존 ServerStorage 백업·보관 유지. |
 | 휴대폰 미리보기 | 사용자 직접 확인(2026-11-17). Studio 휴대폰 미리보기에서 상점·도감·대회 상자·안내 띠에 문제 없음 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
@@ -189,6 +189,15 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 - 수정 경로. `ReplicatedStorage/Modules/JunkyardConfig`, `ServerScriptService/Junkyard`, `ServerScriptService/JunkyardSave`, `ServerScriptService/JunkyardGiantRobot`, `StarterPlayer/StarterPlayerScripts/JunkyardHud`와 같은 `src/` 경로.
 - **1인 실제 검증**. UserId -1, SaveOff=false. 옛 신화 도감에서 신화 수집가·+1% 자동 지급. 진행률 99.99% 뒤 실제 Donate → Active·정비왕·총 +2%. 같은 칭호 재획득해도 +2% 유지. 칭호 창 실제 클릭·스크롤로 정비왕 선택 → 머리 위 표시. 숨겨도 +2% 유지, 미획득 FullCatalog 선택 거절. 종료·재접속 후 두 칭호·선택 Mechanic·+2% 복원. sanitize의 옛 돈/받침대/확장 유지·새 기본값·알 수 없는 칭호와 잘못된 선택 제거, 13종 보너스 합 0.13 확인.
 - **표시 경로 시험**. 타인 기부와 같은 서버 Remote를 한 명에게 보내 중앙 연출 표시·문구 TextFits 확인(측정 크기 약 657×125). **미검증**. 실제 2인 타인 기부 전달, 최고 기부자와 마지막 기부자가 다를 때 지급, 동시 마지막 기부, 실제 2인 대회 우승 칭호 획득/복원, 새 UI의 실제 모바일 화면·터치.
+
+### B-48. 휴대폰 화면 정리 (2026-11-19 Claude Code, 사용자 신고: 휴대폰 미리보기 스크린샷)
+
+- 문제: 점프 버튼과 "방망이 강화"가 겹침, 방망이 버튼이 오른쪽 위 상자(패널·대회)와 겹침, 로봇 이름표가 많아 어지러움.
+- `compactScreen()` = 터치만 되는 기기 또는 화면 세로 < 500. 이때:
+  - 방망이 버튼을 오른쪽 아래, 점프 버튼 왼쪽(작은 화면 오른쪽 끝에서 120, 큰 태블릿 190)에, 강화 버튼은 그 위에. 두 줄 설명 숨김(`layoutBatButtons`, 화면 크기 바뀌면 다시).
+  - HUD 배율 최소 0.85 → 0.72(패널·대회 상자 작게).
+  - 로봇 이름표 보이는 거리: 벨트 70 → 28, 받침대(서버 60) → 25 (내 화면에서만).
+- 확인: Studio Play(창 750×381이라 작은 화면 배치가 적용됨) 방망이 버튼 위치·설명 숨김·오류 0. 844×390·667×375 계산으로 점프 버튼(오른쪽 95~25)·패널 아래끝(약 173)과 겹치지 않음. **실제 휴대폰/기기 미리보기 화면은 사용자 확인 필요.** 큰 PC 화면 배치는 예전 그대로(오른쪽 가운데).
 
 ### B-47. 변종 머리 위 보석 (2026-11-19 Claude Code, 사용자 선택)
 

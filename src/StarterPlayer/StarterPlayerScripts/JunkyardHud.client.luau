@@ -47,6 +47,12 @@ local function hudScale(parent: Instance)
 	table.insert(hudScales, object)
 end
 
+-- 휴대폰처럼 작은 화면인지 (터치만 되는 기기이거나 화면 세로가 500보다 작음)
+local function compactScreen(): boolean
+	local camera = workspace.CurrentCamera
+	return (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled) or (camera ~= nil and camera.ViewportSize.Y < 500)
+end
+
 local function label(parent: Instance, position: UDim2, size: UDim2, textSize: number, color: Color3): TextLabel
 	local object = Instance.new("TextLabel")
 	object.Position = position
@@ -766,7 +772,7 @@ local function makeBeltRobot(id: number, robotId: string): Model
 	local billboard = Instance.new("BillboardGui")
 	billboard.Size = UDim2.fromOffset(150, 40)
 	billboard.StudsOffsetWorldSpace = Vector3.new(0, 4.5 * size, 0)
-	billboard.MaxDistance = 70
+	billboard.MaxDistance = if compactScreen() then 28 else 70 -- 휴대폰은 가까운 로봇 이름표만 (화면이 어지럽지 않게)
 	billboard.Parent = body
 	local text = Instance.new("TextLabel")
 	text.Size = UDim2.fromScale(1, 1)
@@ -1115,7 +1121,7 @@ local function fitWindows()
 	local scale = math.clamp(math.min((size.Y - 70) / 420, (size.X - 20) / 440), 0.55, 1.6)
 	catalogScale.Scale = scale
 	-- 패널·대회·안내·기부 창: 큰 화면에서 글씨가 작지 않게 키운다 (휴대폰은 0.85까지 줄임)
-	local hud = math.clamp(math.min(size.X / 760, size.Y / 540), 0.85, 1.45)
+	local hud = math.clamp(math.min(size.X / 760, size.Y / 540), if compactScreen() then 0.72 else 0.85, 1.45) -- 휴대폰은 0.72까지
 	for _, object in hudScales do
 		object.Scale = hud
 	end
@@ -1533,6 +1539,27 @@ player:GetAttributeChangedSignal("BatLevel"):Connect(syncSnatchPrompts)
 -- 방망이 강화 창: 성장 단계(무료: 되찾기 경험치 또는 게임 돈), 꾸미기·성장 2배(Robux 게임패스)
 local batUpgradeButton = button(batButton, "⬆ 방망이 강화", UDim2.new(0, 0, 1, 40), UDim2.new(1, 0, 0, 30), Color3.fromRGB(110, 80, 150))
 batUpgradeButton.TextSize = 13
+-- 휴대폰: 오른쪽 아래 점프 버튼의 왼쪽에 방망이 버튼, 그 위에 강화 버튼. 설명 글은 숨긴다
+-- (오른쪽 위 상자·점프 버튼과 겹치지 않게. 점프 버튼은 작은 화면 오른쪽 끝에서 95, 큰 태블릿은 170까지 차지한다)
+local function layoutBatButtons()
+	local camera = workspace.CurrentCamera
+	local compact = compactScreen()
+	batHint.Visible = not compact
+	if compact and camera then
+		local small = math.min(camera.ViewportSize.X, camera.ViewportSize.Y) <= 500
+		batButton.AnchorPoint = Vector2.new(1, 1)
+		batButton.Position = UDim2.new(1, if small then -120 else -190, 1, -18)
+		batUpgradeButton.Position = UDim2.new(0, 0, 0, -36)
+	else
+		batButton.AnchorPoint = Vector2.new(1, 0.5)
+		batButton.Position = UDim2.new(1, -12, 0.55, 0)
+		batUpgradeButton.Position = UDim2.new(0, 0, 1, 40)
+	end
+end
+layoutBatButtons()
+if workspace.CurrentCamera then
+	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(layoutBatButtons)
+end
 local batWindow = Instance.new("Frame")
 batWindow.Name = "BatWindow"
 batWindow.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1767,6 +1794,11 @@ do
 			return
 		end
 		local anim: RobotAnim = { body = body, spins = {}, offsets = {}, speeds = {}, eyes = {}, nextBlink = os.clock() + math.random() * 4, blinkEnd = 0 }
+		-- 휴대폰: 받침대 로봇 이름표(서버가 붙임)도 가까운 것만 보이게 (내 화면에서만 바꾼다)
+		local tag = body:FindFirstChildOfClass("BillboardGui")
+		if tag and compactScreen() then
+			tag.MaxDistance = math.min(tag.MaxDistance, 25)
+		end
 		for _, child in model:GetChildren() do
 			if child:IsA("BasePart") then
 				if child.Name == "Eye" then
