@@ -717,7 +717,11 @@ local function buildBat(state: State, character: Model, hand: BasePart)
 	local weld = Instance.new("Weld")
 	weld.Part0 = hand
 	weld.Part1 = handle
-	weld.C0 = CFrame.new(0, -hand.Size.Y / 2, 0) -- 손 끝에서 팔 방향으로 뻗는다
+	-- 쥐는 법: 손잡이가 주먹 가운데를 지나고 방망이 머리는 위로.
+	-- 도구를 든 자세(팔을 앞으로)에서 손의 -Z가 위쪽이라, 손잡이의 -Y(방망이 끝 쪽)를 손의 -Z에 맞춘다 (X축 90도).
+	-- 마지막 0.2는 손잡이를 아래로 조금 내려 몸통이 주먹 바로 위에서 시작하게 한다
+	local gripY = if string.find(hand.Name, "Hand", 1, true) then 0 else -hand.Size.Y / 2 + 0.3 -- R6 팔은 아래 끝을 쥔다
+	weld.C0 = CFrame.new(0, gripY, 0) * CFrame.Angles(math.rad(90), 0, 0) * CFrame.new(0, 0.2, 0)
 	weld.Parent = handle
 	local tip: Part
 	if skin and skinKey == "BatWrench" then
@@ -726,15 +730,46 @@ local function buildBat(state: State, character: Model, hand: BasePart)
 		addBatPiece(handle, Vector3.new(0.25, 0.7, 0.25), CFrame.new(-0.38, -3.5, 0), color, material)
 		tip = addBatPiece(handle, Vector3.new(0.25, 0.7, 0.25), CFrame.new(0.38, -3.5, 0), color, material)
 	elseif skin and skinKey == "BatCandy" then
-		addBatPiece(handle, Vector3.new(0.5, 2.4, 0.5), CFrame.new(0, -1.9, 0), color, material)
-		for i = 0, 2 do
-			addBatPiece(handle, Vector3.new(0.56, 0.2, 0.56), CFrame.new(0, -1.1 - i * 0.8, 0), skin.accent, Enum.Material.SmoothPlastic)
+		-- 롤리팝: 하얀 막대 끝에 납작하고 둥근 사탕. 색 동심원이 앞뒤로 보인다 (작은 고리일수록 조금 두꺼워 튀어나옴)
+		local white = Color3.fromRGB(252, 252, 252)
+		handle.Color = white
+		handle.Material = Enum.Material.SmoothPlastic
+		addBatPiece(handle, Vector3.new(0.22, 2.3, 0.22), CFrame.new(0, -1.9, 0), white, Enum.Material.SmoothPlastic)
+		local face = CFrame.Angles(0, math.rad(90), 0) -- 원기둥 축(X)을 앞뒤(Z)로 돌려 사탕 면이 앞뒤를 본다
+		local rings = {
+			{ size = 2, thick = 0.3, color = skin.accent },
+			{ size = 1.6, thick = 0.34, color = white },
+			{ size = 1.2, thick = 0.38, color = Color3.fromRGB(255, 205, 60) },
+			{ size = 0.8, thick = 0.42, color = Color3.fromRGB(110, 200, 255) },
+			{ size = 0.36, thick = 0.46, color = white },
+		}
+		for index, ring in rings do
+			local piece = addBatPiece(handle, Vector3.new(ring.thick, ring.size, ring.size), CFrame.new(0, -4, 0) * face, ring.color, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+			if index == 1 then
+				tip = piece
+			end
 		end
-		tip = addBatPiece(handle, Vector3.new(1, 1, 1), CFrame.new(0, -3.4, 0), skin.accent, Enum.Material.SmoothPlastic, Enum.PartType.Ball)
 	elseif skin and skinKey == "BatGuitar" then
-		addBatPiece(handle, Vector3.new(0.25, 2, 0.15), CFrame.new(0, -1.7, 0), color, material)
-		tip = addBatPiece(handle, Vector3.new(1.3, 1.4, 0.35), CFrame.new(0, -3.3, 0), skin.accent, Enum.Material.SmoothPlastic)
-		addBatPiece(handle, Vector3.new(0.45, 0.45, 0.4), CFrame.new(0, -3.2, 0), Color3.fromRGB(30, 30, 30), Enum.Material.SmoothPlastic)
+		-- 기타: 쥐는 곳이 넥, 손 아래로 헤드(줄감개), 위로 둥근 몸통 두 덩어리. 줄 4개는 앞뒤 모두 보이게
+		local black = Color3.fromRGB(25, 25, 28)
+		local silver = Color3.fromRGB(230, 230, 236)
+		local face = CFrame.Angles(0, math.rad(90), 0)
+		addBatPiece(handle, Vector3.new(0.5, 0.6, 0.18), CFrame.new(0, 1.05, 0), black, Enum.Material.SmoothPlastic) -- 헤드
+		for _, y in { 0.9, 1.2 } do
+			for _, x in { -0.3, 0.3 } do
+				addBatPiece(handle, Vector3.new(0.14, 0.09, 0.09), CFrame.new(x, y, 0), silver, Enum.Material.Metal) -- 줄감개
+			end
+		end
+		addBatPiece(handle, Vector3.new(0.32, 1.9, 0.3), CFrame.new(0, -1.7, 0), color, material) -- 넥
+		addBatPiece(handle, Vector3.new(0.36, 1.15, 1.15), CFrame.new(0, -2.85, 0) * face, skin.accent, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder) -- 윗 몸통
+		tip = addBatPiece(handle, Vector3.new(0.36, 1.5, 1.5), CFrame.new(0, -3.55, 0) * face, skin.accent, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder) -- 아랫 몸통
+		addBatPiece(handle, Vector3.new(0.38, 0.42, 0.42), CFrame.new(0, -2.9, 0) * face, black, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder) -- 소리 구멍
+		for _, side in { 1, -1 } do
+			addBatPiece(handle, Vector3.new(0.6, 0.12, 0.08), CFrame.new(0, -3.75, 0.2 * side), black, Enum.Material.SmoothPlastic) -- 줄 받침
+			for _, x in { -0.11, -0.037, 0.037, 0.11 } do
+				addBatPiece(handle, Vector3.new(0.04, 3, 0.04), CFrame.new(x, -2.25, 0.22 * side), silver, Enum.Material.Neon) -- 줄
+			end
+		end
 	elseif skin and skinKey == "BatLightning" then
 		addBatPiece(handle, Vector3.new(0.5, 2.3, 0.5), CFrame.new(0, -1.9, 0), color, material)
 		addBatPiece(handle, Vector3.new(0.25, 1, 0.25), CFrame.new(0.35, -1.6, 0) * CFrame.Angles(0, 0, math.rad(35)), skin.accent, Enum.Material.Neon)
@@ -806,6 +841,21 @@ local RAINBOW = ColorSequence.new({
 	ColorSequenceKeypoint.new(0.75, Color3.fromRGB(80, 160, 255)),
 	ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 90, 255)),
 })
+-- 장갑 모양: 단계(나무→쇠→금→네온→무지개)와 꾸미기마다 장갑·손목 띠 색과 재질이 다르다
+type GloveLook = { color: Color3, material: Enum.Material, cuff: Color3, cuffMaterial: Enum.Material }
+local GLOVE_LEVELS: { GloveLook } = {
+	{ color = Color3.fromRGB(205, 170, 105), material = Enum.Material.Fabric, cuff = Color3.fromRGB(120, 85, 50), cuffMaterial = Enum.Material.Fabric }, -- 작업 장갑
+	{ color = Color3.fromRGB(150, 156, 166), material = Enum.Material.DiamondPlate, cuff = Color3.fromRGB(80, 86, 96), cuffMaterial = Enum.Material.Metal }, -- 쇠 장갑
+	{ color = Color3.fromRGB(255, 196, 60), material = Enum.Material.Metal, cuff = Color3.fromRGB(190, 120, 30), cuffMaterial = Enum.Material.Metal }, -- 금 장갑
+	{ color = Color3.fromRGB(35, 45, 65), material = Enum.Material.SmoothPlastic, cuff = Color3.fromRGB(80, 230, 255), cuffMaterial = Enum.Material.Neon }, -- 네온 장갑
+	{ color = Color3.fromRGB(255, 255, 255), material = Enum.Material.Neon, cuff = Color3.fromRGB(255, 120, 200), cuffMaterial = Enum.Material.Neon }, -- 무지개 장갑 (색은 계속 바뀜)
+}
+local GLOVE_SKINS: { [string]: GloveLook } = {
+	BatWrench = { color = Color3.fromRGB(255, 140, 40), material = Enum.Material.SmoothPlastic, cuff = Color3.fromRGB(150, 158, 170), cuffMaterial = Enum.Material.DiamondPlate }, -- 주황 고무장갑
+	BatCandy = { color = Color3.fromRGB(255, 160, 205), material = Enum.Material.SmoothPlastic, cuff = Color3.fromRGB(255, 255, 255), cuffMaterial = Enum.Material.SmoothPlastic }, -- 분홍 사탕 장갑
+	BatGuitar = { color = Color3.fromRGB(28, 28, 32), material = Enum.Material.Fabric, cuff = Color3.fromRGB(220, 40, 50), cuffMaterial = Enum.Material.SmoothPlastic }, -- 검정 가죽 장갑
+	BatLightning = { color = Color3.fromRGB(255, 230, 60), material = Enum.Material.SmoothPlastic, cuff = Color3.fromRGB(140, 220, 255), cuffMaterial = Enum.Material.Neon }, -- 번개 장갑
+}
 local function buildGloves(state: State, character: Model)
 	local level = batLevelOf(state)
 	local skin = if state.batSkin ~= "" and state.passes[state.batSkin] == true then Config.BatSkins[state.batSkin] else nil
@@ -813,6 +863,8 @@ local function buildGloves(state: State, character: Model)
 	local colors = if not skin and level.rainbow then RAINBOW else ColorSequence.new(accent)
 	local sparkle = skin ~= nil or state.batLevel >= 2 -- 쇠 단계부터 반짝이
 	local glow = if skin then skin.glow else level.glow -- 네온 단계부터(꾸미기는 번개만) 빛
+	local look = (if skin then GLOVE_SKINS[state.batSkin] else GLOVE_LEVELS[state.batLevel]) or GLOVE_LEVELS[1]
+	local rainbow = not skin and level.rainbow
 	for _, side in { "Left", "Right" } do
 		local hand = character:FindFirstChild(side .. "Hand") or character:FindFirstChild(side .. " Arm")
 		if hand and hand:IsA("BasePart") then
@@ -820,8 +872,8 @@ local function buildGloves(state: State, character: Model)
 			local glove = Instance.new("Part")
 			glove.Name = "JunkyardGlove"
 			glove.Size = if r15 then hand.Size + Vector3.new(0.12, 0.12, 0.12) else Vector3.new(hand.Size.X + 0.1, 0.7, hand.Size.Z + 0.1)
-			glove.Color = Color3.fromRGB(205, 170, 105) -- 작업 장갑
-			glove.Material = Enum.Material.Fabric
+			glove.Color = look.color
+			glove.Material = look.material
 			glove.CanCollide = false
 			glove.CanQuery = false
 			glove.CanTouch = false
@@ -862,7 +914,25 @@ local function buildGloves(state: State, character: Model)
 				light.Brightness = 1.2
 				light.Parent = glove
 			end
+			-- 손목 띠 (손목 쪽 = 손의 +Y)
+			local cuffY = if r15 then glove.Size.Y / 2 - 0.08 else glove.Size.Y / 2 - 0.05
+			addBatPiece(glove, Vector3.new(glove.Size.X + 0.14, 0.24, glove.Size.Z + 0.14), CFrame.new(0, cuffY, 0), look.cuff, look.cuffMaterial)
 			glove.Parent = character
+			-- 무지개 단계: 장갑·손목 띠 색이 계속 바뀐다
+			if rainbow then
+				task.spawn(function()
+					while glove.Parent do
+						local hue = (os.clock() * 0.25) % 1
+						glove.Color = Color3.fromHSV(hue, 0.55, 1)
+						for _, child in glove:GetChildren() do
+							if child:IsA("BasePart") then
+								child.Color = Color3.fromHSV((hue + 0.5) % 1, 0.8, 1)
+							end
+						end
+						task.wait(0.15)
+					end
+				end)
+			end
 		end
 	end
 end

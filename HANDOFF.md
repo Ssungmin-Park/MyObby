@@ -11,7 +11,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** — 장갑 [1]·방망이 [2] 나눔(B-43), 방망이 성장·꾸미기(B-42). 그 전: B-41 알림 글씨·방망이 설명, Codex B-38~B-40. 게임패스 5개 번호 입력 완료(2026-11-19). |
+| 마지막 작업 AI | **Claude Code** — 방망이 쥐는 방향·롤리팝·기타 줄·장갑 모양(B-44), 장갑 [1]·방망이 [2] 나눔(B-43), 방망이 성장·꾸미기(B-42). 그 전: B-41 알림 글씨·방망이 설명, Codex B-38~B-40. 게임패스 5개 번호 입력 완료(2026-11-19). |
 | 작업 시점 | 2026-11-19 |
 | 다음 작업 AI | 사용자: **Studio Ctrl+S 저장** 후 필요할 때 직접 게시. 다음 AI: G-3의 2인 확인 목록을 음수 UserId 로컬 서버로 검증한다. 게임패스 판매·가격·공개 준비는 사용자와 별도 확인. |
 | 게임 이름 | **로봇 고물상 타이쿤** (`list_roblox_studios` 현재 이름), 단독 운영. 오비·로봇 작업장은 `ServerStorage/ArchivedModes`에 보관. |
@@ -22,7 +22,7 @@
 | Studio 모드 | **Edit 모드**. 2026-11-18 Codex가 자신이 실행한 1인 로컬 테스트 종료. |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-19 Claude Code B-42. `JunkyardConfig` 33034 / 876108229, `Junkyard` 96332 / 489916818, `JunkyardSave` 17403 / 803073679, `JunkyardStore` 4904 / 256970632, `JunkyardHud` 81757 / 5925783 (나머지 6개는 그대로: `JunkyardContest` 6644 / 622978211, `JunkyardBelt` 7083 / 740310580, `JunkyardCCTV` 10127 / 499888406, `JunkyardEvents` 1733 / 471819683, `JunkyardGiantRobot` 9911 / 457266346, `JunkyardRanking` 12574 / 72233971) — Studio와 일치. 시작할 때 11개 모두 Codex 기록과 일치 확인. **사용자 Ctrl+S 저장·게시 필요** |
+| 마지막 게임 수정 | 2026-11-19 Claude Code B-42. `JunkyardConfig` 33034 / 876108229, `Junkyard` 101479 / 618720107, `JunkyardSave` 17403 / 803073679, `JunkyardStore` 4904 / 256970632, `JunkyardHud` 81757 / 5925783 (나머지 6개는 그대로: `JunkyardContest` 6644 / 622978211, `JunkyardBelt` 7083 / 740310580, `JunkyardCCTV` 10127 / 499888406, `JunkyardEvents` 1733 / 471819683, `JunkyardGiantRobot` 9911 / 457266346, `JunkyardRanking` 12574 / 72233971) — Studio와 일치. 시작할 때 11개 모두 Codex 기록과 일치 확인. **사용자 Ctrl+S 저장·게시 필요** |
 | Studio 저장 상태 | B-38~B-40은 Studio Edit에 반영, 수정 스크립트 6개를 원문 대조 후 `src/`로 내보냄. 클라우드 저장 완료는 미확인. 사용자가 Ctrl+S로 저장한다. AI 저장·게시 실행 없음. 기존 ServerStorage 백업·보관 유지. |
 | 휴대폰 미리보기 | 사용자 직접 확인(2026-11-17). Studio 휴대폰 미리보기에서 상점·도감·대회 상자·안내 띠에 문제 없음 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
@@ -188,6 +188,14 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 - 수정 경로. `ReplicatedStorage/Modules/JunkyardConfig`, `ServerScriptService/Junkyard`, `ServerScriptService/JunkyardSave`, `ServerScriptService/JunkyardGiantRobot`, `StarterPlayer/StarterPlayerScripts/JunkyardHud`와 같은 `src/` 경로.
 - **1인 실제 검증**. UserId -1, SaveOff=false. 옛 신화 도감에서 신화 수집가·+1% 자동 지급. 진행률 99.99% 뒤 실제 Donate → Active·정비왕·총 +2%. 같은 칭호 재획득해도 +2% 유지. 칭호 창 실제 클릭·스크롤로 정비왕 선택 → 머리 위 표시. 숨겨도 +2% 유지, 미획득 FullCatalog 선택 거절. 종료·재접속 후 두 칭호·선택 Mechanic·+2% 복원. sanitize의 옛 돈/받침대/확장 유지·새 기본값·알 수 없는 칭호와 잘못된 선택 제거, 13종 보너스 합 0.13 확인.
 - **표시 경로 시험**. 타인 기부와 같은 서버 Remote를 한 명에게 보내 중앙 연출 표시·문구 TextFits 확인(측정 크기 약 657×125). **미검증**. 실제 2인 타인 기부 전달, 최고 기부자와 마지막 기부자가 다를 때 지급, 동시 마지막 기부, 실제 2인 대회 우승 칭호 획득/복원, 새 UI의 실제 모바일 화면·터치.
+
+### B-44. 방망이 쥐는 방향·롤리팝·기타·장갑 모양 (2026-11-19 Claude Code, 사용자 요청)
+
+- 방망이 쥐기: 도구 든 자세에서 R15 손의 -Z가 위쪽인 것을 Play에서 측정. 손잡이를 주먹 가운데에 끼우고 머리가 위로 가게 `weld.C0 = CFrame.new(0, gripY, 0) * CFrame.Angles(rad(90), 0, 0) * CFrame.new(0, 0.2, 0)` (R6 팔은 아래 끝).
+- 🍭 사탕 → 롤리팝: 하얀 막대 + 납작한 원판(분홍·흰·노랑·하늘·흰 동심원, 작은 고리일수록 두꺼워 앞뒤로 보임).
+- 🎸 기타: 손 아래 헤드·줄감개 4개, 넥, 둥근 몸통 2개(빨강), 소리 구멍, 줄 받침, **줄 4개(앞뒤 모두, 은색 Neon 0.04)**.
+- 장갑 모양을 등급마다(`GLOVE_LEVELS`): 작업(갈색 천) → 쇠(무늬 철판) → 금 → 네온(남색 + 하늘색 빛나는 손목 띠) → 무지개(색 변화). 꾸미기마다(`GLOVE_SKINS`): 렌치 주황 고무, 사탕 분홍+흰 띠, 기타 검정 가죽+빨간 띠, 번개 노랑+파란 빛 띠. 손목 띠는 `addBatPiece`로 장갑에 붙임. 효과(반짝이·빛·불꽃)는 B-43 그대로.
+- 확인: Play에서 각 설정의 부품 위치를 기록해 Edit에 임시로 세워 캡처(`docs/screenshots/bat-gloves-preview.jpg`, 뒤에서 본 모습) 후 지움. 방망이·롤리팝·기타가 주먹에서 위로 섬, 기타 줄 보임, 장갑 색·띠 확인. 시험 전 사용자가 끼던 🎸 기타 꾸미기를 마지막에 그대로 둠. 실제 Play 화면·휴대폰·다른 사람 시점은 미검증.
 
 ### B-43. 장갑 [1] / 방망이 [2] (2026-11-19 Claude Code, 사용자 요청 · 혼자 Play 확인)
 
