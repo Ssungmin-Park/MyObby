@@ -12,6 +12,8 @@
 --                   ← rebirth(환생 단계), variantCatalog({ ["Pippi@Gold"] = true })는 4단계에서 추가. 받침대 값은 변종 키도 허용
 --                   ← totalEarned(로봇이 벌어 준 누적 수입, 환생해도 유지)는 순위표에서 추가. 옛 데이터는 그때 가진 돈으로 시작
 --                   ← tutorial(첫 접속 안내 단계 1~5, 0 = 끝남)은 안내 기능에서 추가. 옛 데이터는 0(이미 해 본 사람)
+--                   ← batLevel(방망이 단계 1~5)·batXp(되찾기 경험치)·batSkin(꾸미기 게임패스 키, "" = 단계 모양)은 방망이 성장에서 추가.
+--                     옛 데이터는 1단계·0·""
 --
 -- 안전 원칙
 --   1. 세션 잠금: 데이터를 쓰는 서버가 lock을 남긴다. 다른 서버의 lock이 살아 있으면 기다리고,
@@ -47,6 +49,9 @@ export type Data = {
 	expand: number, -- 기지 확장 단계 (0~3, 환생해도 유지. 옛 데이터는 0)
 	titles: { [string]: boolean }, -- 영구 획득한 칭호 (옛 데이터는 빈 목록)
 	selectedTitle: string, -- 표시할 칭호 id, 빈 문자열이면 아직 선택하지 않음, None이면 숨김
+	batLevel: number, -- 방망이 성장 단계 (1~5, 환생해도 유지)
+	batXp: number, -- 방망이 경험치 (되찾기 성공)
+	batSkin: string, -- 고른 방망이 꾸미기 (게임패스 키, "" = 성장 단계 모양)
 }
 export type LoadStatus = "new" | "ok" | "failed" | "locked"
 export type SaveStatus = "ok" | "failed" | "lostLock"
@@ -87,12 +92,12 @@ local function defaultUpgrades(): { [string]: number }
 end
 
 function JunkyardSave.newData(): Data
-	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 1, expand = 0, titles = {}, selectedTitle = "" }
+	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 1, expand = 0, titles = {}, selectedTitle = "", batLevel = 1, batXp = 0, batSkin = "" }
 end
 
 -- 저장소에서 읽은 값을 허용 범위로 정리해서 항상 올바른 Data를 돌려준다.
 function JunkyardSave.sanitize(raw: any): Data
-	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 0, expand = 0, titles = {}, selectedTitle = "" }
+	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 0, expand = 0, titles = {}, selectedTitle = "", batLevel = 1, batXp = 0, batSkin = "" }
 	if typeof(raw) ~= "table" then
 		return JunkyardSave.newData()
 	end
@@ -172,6 +177,18 @@ function JunkyardSave.sanitize(raw: any): Data
 	if typeof(raw.selectedTitle) == "string" and (raw.selectedTitle == "None" or data.titles[raw.selectedTitle] == true) then
 		data.selectedTitle = raw.selectedTitle
 	end
+	-- 방망이: 없으면(옛 데이터) 1단계·경험치 0·꾸미기 없음. 꾸미기는 게임패스를 가졌는지 서버가 쓸 때 다시 확인한다
+	local batLevel = raw.batLevel
+	if typeof(batLevel) == "number" and batLevel == batLevel then
+		data.batLevel = math.floor(math.clamp(batLevel, 1, #Config.BatLevels))
+	end
+	local batXp = raw.batXp
+	if typeof(batXp) == "number" and batXp == batXp then
+		data.batXp = math.floor(math.clamp(batXp, 0, 1000000))
+	end
+	if typeof(raw.batSkin) == "string" and Config.BatSkins[raw.batSkin] then
+		data.batSkin = raw.batSkin
+	end
 	return data
 end
 
@@ -190,6 +207,9 @@ local function snapshot(data: Data): Data
 		expand = math.floor(data.expand),
 		titles = table.clone(data.titles),
 		selectedTitle = data.selectedTitle,
+		batLevel = math.floor(data.batLevel),
+		batXp = math.floor(data.batXp),
+		batSkin = data.batSkin,
 	}
 end
 

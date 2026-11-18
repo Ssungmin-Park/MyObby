@@ -97,8 +97,8 @@ end
 -- 게임패스 보유 여부 (접속할 때 한 번 확인). 확인 실패하면 없음으로 본다.
 function Store.checkPasses(player: Player): { [string]: boolean }
 	local owned: { [string]: boolean } = {}
-	for _, key in Config.PassOrder do
-		local id = Config.GamePasses[key].id
+	for key, offer in Config.GamePasses do -- 상점 패스 + 방망이 꾸미기·성장 패스
+		local id = offer.id
 		if id ~= 0 then
 			local ok, result = pcall(function()
 				return MarketplaceService:UserOwnsGamePassAsync(player.UserId, id)

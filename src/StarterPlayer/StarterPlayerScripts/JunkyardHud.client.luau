@@ -1388,6 +1388,9 @@ local function styleCarryPrompt(object: ProximityPrompt, carrier: Player?)
 	object.Enabled = carrier ~= player and (ownerId == 0 or ownerId == player.UserId)
 	object.ActionText = if mine then (if player:GetAttribute("BatOut") == true then "🏏 되찾기" else "🏏 되찾기 ([2] 방망이 들기)") else "빼앗기"
 	object.HoldDuration = if mine then 0 elseif gloves then Config.GlovesHold else Config.StealHold -- 되찾기는 한 번 누르기
+	-- 되찾기 버튼 거리: 방망이 단계만큼 조금 더 멀리서 (서버도 같은 값으로 확인)
+	local batLevel = Config.BatLevels[(player:GetAttribute("BatLevel") or 1) :: number] or Config.BatLevels[1]
+	object.MaxActivationDistance = 9 + (if mine then batLevel.range else 0)
 end
 local function syncSnatchPrompts()
 	for _, other in Players:GetPlayers() do
@@ -1533,6 +1536,156 @@ end)
 player:GetAttributeChangedSignal("BatOut"):Connect(function()
 	batButton.Text = if player:GetAttribute("BatOut") == true then "✋ 맨손 [1]" else "🏏 방망이 [2]"
 	syncSnatchPrompts()
+end)
+player:GetAttributeChangedSignal("BatLevel"):Connect(syncSnatchPrompts)
+
+-- 방망이 강화 창: 성장 단계(무료: 되찾기 경험치 또는 게임 돈), 꾸미기·성장 2배(Robux 게임패스)
+local batUpgradeButton = button(batButton, "⬆ 방망이 강화", UDim2.new(0, 0, 1, 40), UDim2.new(1, 0, 0, 30), Color3.fromRGB(110, 80, 150))
+batUpgradeButton.TextSize = 13
+local batWindow = Instance.new("Frame")
+batWindow.Name = "BatWindow"
+batWindow.AnchorPoint = Vector2.new(0.5, 0.5)
+batWindow.Position = UDim2.fromScale(0.5, 0.5)
+batWindow.Size = UDim2.fromOffset(500, 450)
+batWindow.BackgroundColor3 = dark
+batWindow.BackgroundTransparency = 0.03
+batWindow.Visible = false
+batWindow.Parent = gui
+corner(batWindow, 12)
+hudScale(batWindow)
+local batTitle = label(batWindow, UDim2.fromOffset(16, 10), UDim2.new(1, -70, 0, 28), 20, Color3.fromRGB(255, 225, 150))
+batTitle.Text = "🏏 내 방망이"
+local batClose = button(batWindow, "X", UDim2.new(1, -46, 0, 10), UDim2.fromOffset(36, 30), Color3.fromRGB(120, 60, 60))
+local batStatus = label(batWindow, UDim2.fromOffset(16, 42), UDim2.new(1, -32, 0, 44), 14, white)
+batStatus.TextYAlignment = Enum.TextYAlignment.Top
+local batHelp = label(batWindow, UDim2.fromOffset(16, 88), UDim2.new(1, -32, 0, 34), 12, muted)
+batHelp.TextYAlignment = Enum.TextYAlignment.Top
+batHelp.Text = ("도둑맞은 로봇을 방망이로 되찾을 때마다 경험치 +%d. 경험치가 차거나 게임 돈을 내면 다음 단계로 올라가요. 환생해도 그대로예요."):format(Config.BatXpPerReclaim)
+local batLevelButton = button(batWindow, "", UDim2.fromOffset(16, 126), UDim2.new(1, -32, 0, 40), Color3.fromRGB(60, 140, 80))
+batLevelButton.TextSize = 15
+local skinTitle = label(batWindow, UDim2.fromOffset(16, 174), UDim2.new(1, -32, 0, 22), 13, Color3.fromRGB(150, 230, 255))
+skinTitle.Text = "🎨 꾸미기·성장 2배 (Robux) — 꾸미기는 모양·효과만 바뀌고 성능은 같아요"
+local skinList = Instance.new("ScrollingFrame")
+skinList.Position = UDim2.fromOffset(16, 200)
+skinList.Size = UDim2.new(1, -32, 1, -212)
+skinList.BackgroundTransparency = 1
+skinList.BorderSizePixel = 0
+skinList.ScrollBarThickness = 6
+skinList.CanvasSize = UDim2.new()
+skinList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+skinList.Parent = batWindow
+local skinLayout = Instance.new("UIListLayout")
+skinLayout.Padding = UDim.new(0, 6)
+skinLayout.SortOrder = Enum.SortOrder.LayoutOrder
+skinLayout.Parent = skinList
+local batRows: { { key: string, buy: TextButton } } = {}
+local function ownedPasses(): { [string]: boolean }
+	local owned: { [string]: boolean } = {}
+	local ok, list = pcall(function()
+		return HttpService:JSONDecode((player:GetAttribute("Passes") or "[]") :: string)
+	end)
+	if ok and typeof(list) == "table" then
+		for _, key in list do
+			owned[key] = true
+		end
+	end
+	return owned
+end
+local function addBatRow(key: string, name: string, desc: string)
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, -10, 0, 54)
+	row.LayoutOrder = #batRows + 1
+	row.BackgroundColor3 = Color3.fromRGB(36, 44, 54)
+	row.Parent = skinList
+	corner(row, 8)
+	label(row, UDim2.fromOffset(10, 4), UDim2.new(1, -130, 0, 22), 15, white).Text = name
+	label(row, UDim2.fromOffset(10, 26), UDim2.new(1, -130, 0, 24), 11, muted).Text = desc
+	local buy = button(row, "", UDim2.new(1, -114, 0.5, -18), UDim2.fromOffset(106, 36), Color3.fromRGB(60, 140, 80))
+	buy.Activated:Connect(function()
+		local owned = ownedPasses()
+		if key == "" or (key ~= "BatGrowth" and owned[key]) then
+			actionRemote:FireServer("BatSkin", key) -- 착용 (서버가 가졌는지 다시 확인)
+			return
+		end
+		local offer = Config.GamePasses[key]
+		if offer and offer.id ~= 0 and not owned[key] then
+			MarketplaceService:PromptGamePassPurchase(player, offer.id) -- 지급은 서버가 결제 확인 뒤에만
+		end
+	end)
+	table.insert(batRows, { key = key, buy = buy })
+end
+addBatRow("", "🏏 성장 방망이", "지금 단계 모양 (나무 → 쇠 → 금 → 네온 → 무지개)")
+for _, key in Config.BatSkinOrder do
+	local offer = Config.GamePasses[key]
+	addBatRow(key, offer.name, offer.desc)
+end
+addBatRow("BatGrowth", Config.GamePasses.BatGrowth.name, Config.GamePasses.BatGrowth.desc)
+-- 창이 HUD 위에 그려지게
+for _, object in batWindow:GetDescendants() do
+	if object:IsA("GuiObject") then
+		object.ZIndex = 21
+	end
+end
+batWindow.ZIndex = 20
+local function renderBatWindow()
+	local levelIndex = (player:GetAttribute("BatLevel") or 1) :: number
+	local xp = (player:GetAttribute("BatXp") or 0) :: number
+	local skinKey = (player:GetAttribute("BatSkin") or "") :: string
+	local owned = ownedPasses()
+	local level = Config.BatLevels[levelIndex] or Config.BatLevels[1]
+	local nextLevel = Config.BatLevels[levelIndex + 1]
+	local perks = ("되찾기 거리 +%d · 맞은 도둑 %s"):format(level.range, if level.stun > 0 then ("%.1f초 멈춤"):format(level.stun) else "멈춤 없음")
+	batStatus.Text = ("%s (%d/%d단계)\n%s · 경험치 %s"):format(level.name, levelIndex, #Config.BatLevels, perks,
+		if nextLevel then ("%d/%d"):format(xp, nextLevel.xp) else ("%d (최고 단계)"):format(xp))
+	if nextLevel then
+		local cost = math.floor(nextLevel.cost * (if owned.BatGrowth then Config.BatGrowthCostRate else 1))
+		local money = (player:GetAttribute("Money") or 0) :: number
+		batLevelButton.Text = ("⬆ %s(으)로 강화 — %s"):format(nextLevel.name, Config.formatMoney(cost))
+		batLevelButton.BackgroundColor3 = if money >= cost then Color3.fromRGB(60, 140, 80) else Color3.fromRGB(70, 76, 84)
+	else
+		batLevelButton.Text = "✨ 최고 단계 방망이예요!"
+		batLevelButton.BackgroundColor3 = Color3.fromRGB(70, 76, 84)
+	end
+	for _, entry in batRows do
+		local offer = Config.GamePasses[entry.key]
+		local text: string
+		local color = Color3.fromRGB(60, 140, 80)
+		if entry.key == "BatGrowth" then
+			text = if owned.BatGrowth then "✔ 가짐" elseif offer.id == 0 then "준비 중" else ("R$ %d"):format(offer.robux)
+		elseif entry.key == "" or owned[entry.key] then
+			text = if skinKey == entry.key then "✔ 착용 중" else "착용"
+			if entry.key == "" and skinKey ~= "" and not owned[skinKey] then
+				text = "✔ 착용 중" -- 고른 꾸미기의 게임패스가 없으면 단계 모양으로 보인다
+			end
+		else
+			text = if offer.id == 0 then "준비 중" else ("R$ %d"):format(offer.robux)
+		end
+		if text == "✔ 착용 중" or text == "✔ 가짐" or text == "준비 중" then
+			color = Color3.fromRGB(70, 76, 84)
+		end
+		entry.buy.Text = text
+		entry.buy.BackgroundColor3 = color
+	end
+end
+batUpgradeButton.Activated:Connect(function()
+	batWindow.Visible = not batWindow.Visible
+	if batWindow.Visible then
+		renderBatWindow()
+	end
+end)
+batClose.Activated:Connect(function()
+	batWindow.Visible = false
+end)
+batLevelButton.Activated:Connect(function()
+	actionRemote:FireServer("BatLevel")
+end)
+task.spawn(function()
+	while true do
+		task.wait(0.25)
+		if batWindow.Visible then
+			renderBatWindow()
+		end
+	end
 end)
 
 -- 기지 안 로봇 재배치: 내 받침대마다 [F] 버튼. 옮길 로봇을 고르고 → 다른 받침대를 고르면 맞바꾼다 (서버가 다시 확인)

@@ -11,7 +11,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** — 알림 글씨 키움·방망이 설명(B-41). 그 전: Codex B-38~B-40(벨트 방향 교대, 칭호 모음, 대회 설명 5초). 다음 후보: 방망이 업그레이드(현질) 설계 — 사용자 승인 대기(G-4). |
+| 마지막 작업 AI | **Claude Code** — 방망이 성장·꾸미기(B-42, 사용자 승인 "추천안대로"). 그 전: B-41 알림 글씨·방망이 설명, Codex B-38~B-40. **사용자 할 일: 게임패스 5개 만들고 번호 알려 주기(B-42 끝).** |
 | 작업 시점 | 2026-11-19 |
 | 다음 작업 AI | 사용자: **Studio Ctrl+S 저장** 후 필요할 때 직접 게시. 다음 AI: G-3의 2인 확인 목록을 음수 UserId 로컬 서버로 검증한다. 게임패스 판매·가격·공개 준비는 사용자와 별도 확인. |
 | 게임 이름 | **로봇 고물상 타이쿤** (`list_roblox_studios` 현재 이름), 단독 운영. 오비·로봇 작업장은 `ServerStorage/ArchivedModes`에 보관. |
@@ -22,7 +22,7 @@
 | Studio 모드 | **Edit 모드**. 2026-11-18 Codex가 자신이 실행한 1인 로컬 테스트 종료. |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-19 Claude Code B-41. `JunkyardHud` 73418 B / 581000655 (나머지 10개는 Codex B-38~B-40 값 그대로: `JunkyardConfig` 29252 / 869541321, `Junkyard` 82577 / 799994241, `JunkyardContest` 6644 / 622978211, `JunkyardBelt` 7083 / 740310580, `JunkyardCCTV` 10127 / 499888406, `JunkyardEvents` 1733 / 471819683, `JunkyardGiantRobot` 9911 / 457266346, `JunkyardRanking` 12574 / 72233971, `JunkyardSave` 16189 / 703528569, `JunkyardStore` 4862 / 945542680) — Studio와 일치. 시작할 때 11개 모두 Codex 기록과 일치 확인. **사용자 Ctrl+S 저장·게시 필요** |
+| 마지막 게임 수정 | 2026-11-19 Claude Code B-42. `JunkyardConfig` 32989 / 11602452, `Junkyard` 92078 / 365343719, `JunkyardSave` 17403 / 803073679, `JunkyardStore` 4904 / 256970632, `JunkyardHud` 80690 / 148375433 (나머지 6개는 그대로: `JunkyardContest` 6644 / 622978211, `JunkyardBelt` 7083 / 740310580, `JunkyardCCTV` 10127 / 499888406, `JunkyardEvents` 1733 / 471819683, `JunkyardGiantRobot` 9911 / 457266346, `JunkyardRanking` 12574 / 72233971) — Studio와 일치. 시작할 때 11개 모두 Codex 기록과 일치 확인. **사용자 Ctrl+S 저장·게시 필요** |
 | Studio 저장 상태 | B-38~B-40은 Studio Edit에 반영, 수정 스크립트 6개를 원문 대조 후 `src/`로 내보냄. 클라우드 저장 완료는 미확인. 사용자가 Ctrl+S로 저장한다. AI 저장·게시 실행 없음. 기존 ServerStorage 백업·보관 유지. |
 | 휴대폰 미리보기 | 사용자 직접 확인(2026-11-17). Studio 휴대폰 미리보기에서 상점·도감·대회 상자·안내 띠에 문제 없음 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
@@ -188,6 +188,18 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 - 수정 경로. `ReplicatedStorage/Modules/JunkyardConfig`, `ServerScriptService/Junkyard`, `ServerScriptService/JunkyardSave`, `ServerScriptService/JunkyardGiantRobot`, `StarterPlayer/StarterPlayerScripts/JunkyardHud`와 같은 `src/` 경로.
 - **1인 실제 검증**. UserId -1, SaveOff=false. 옛 신화 도감에서 신화 수집가·+1% 자동 지급. 진행률 99.99% 뒤 실제 Donate → Active·정비왕·총 +2%. 같은 칭호 재획득해도 +2% 유지. 칭호 창 실제 클릭·스크롤로 정비왕 선택 → 머리 위 표시. 숨겨도 +2% 유지, 미획득 FullCatalog 선택 거절. 종료·재접속 후 두 칭호·선택 Mechanic·+2% 복원. sanitize의 옛 돈/받침대/확장 유지·새 기본값·알 수 없는 칭호와 잘못된 선택 제거, 13종 보너스 합 0.13 확인.
 - **표시 경로 시험**. 타인 기부와 같은 서버 Remote를 한 명에게 보내 중앙 연출 표시·문구 TextFits 확인(측정 크기 약 657×125). **미검증**. 실제 2인 타인 기부 전달, 최고 기부자와 마지막 기부자가 다를 때 지급, 동시 마지막 기부, 실제 2인 대회 우승 칭호 획득/복원, 새 UI의 실제 모바일 화면·터치.
+
+### B-42. 방망이 성장·꾸미기 (2026-11-19 Claude Code, 사용자 승인 "추천안대로" · 혼자 Play 일부 확인)
+
+- 방향: **돈 내면 더 잘 훔치는 것은 팔지 않는다.** 성능은 무료 성장으로만 조금 오르고, Robux는 모양·효과와 성장 속도만.
+- **성장 방망이(무료)** `Config.BatLevels` 5단계: 나무 → 쇠(경험치 3 또는 30K) → 금(10 / 500K, 꼬리 빛) → 네온(25 / 10M, 빛, 도둑 1초 멈춤) → 무지개(50 / 200M, 색 변화, 1.5초 멈춤). `range` = 되찾기 버튼 거리 +0~3(서버 `SnatchRange + range`, 화면 `MaxActivationDistance 9 + range`).
+  - 경험치: 되찾기 성공마다 +1(`onBatReclaim`), 같은 도둑에게서는 20초에 한 번(`BatXpCooldown`, 친구끼리 주고받기 방지). 돈으로 사면 경험치도 그 단계 값으로 맞춘다(`buyBatLevel`). 환생해도 유지.
+- **Robux 게임패스 5개 (id 0 = 아직 없음 → 창에 "준비 중")**: `BatGrowth` 성장 2배(경험치 ×2, 단계 돈 절반, 99), `BatWrench` 렌치(49), `BatCandy` 사탕(79), `BatGuitar` 기타(99), `BatLightning` 번개(149). 상점 Robux 칸이 아니라 **방망이 창**에서만 판다(`PassOrder`에 넣지 않음). `JunkyardStore.checkPasses`가 이제 `GamePasses` 전체를 확인한다. 꾸미기를 사면 바로 착용.
+- 방망이 모형: 손잡이 `JunkyardBat`(손에 Weld) + 조각 `BatPiece` + 휘두를 때 불꽃(`Burst` Emit 30) + 꼬리 빛(Trail) + 빛(PointLight). 성장 단계/꾸미기 모양은 `buildBat`.
+- **새 저장 필드** `batLevel`(1~5, 옛 데이터 1)·`batXp`(0)·`batSkin`("" 또는 꾸미기 키). sanitize 기본값으로 옛 데이터 호환. 꾸미기는 쓸 때마다 게임패스 보유를 다시 확인한다.
+- 화면: 🏏 버튼 아래 "⬆ 방망이 강화" → 창(단계·경험치·성능·강화 버튼·꾸미기 목록). Remote `BatLevel`, `BatSkin`(문자열, 서버 검증).
+- 확인(사용자 실제 저장, SaveOff=false로 Play): 방망이 들기·모형 조각, 창 글자 TextFits(703×633), `DebugGivePass`로 꾸미기 4종 모양·효과 생성 후 `BatSkin ""`로 되돌림, 출력 오류 0. **미검증**: 돈으로 단계 올리기(사용자 저장 돈을 쓰지 않으려고 안 함), 되찾기 경험치·도둑 멈춤·거리 증가(2인 필요), 실제 게임패스 결제, 모양의 실제 보기 좋음. 이 테스트에서 시험용 돈 1,000,000이 사용자 저장에 더해졌다(26억 중).
+- **사용자 할 일**: Creator Hub → 이 게임 → 수익 창출 → 게임패스에서 위 5개를 만들고 번호를 알려 주면 `Config.GamePasses`의 `id`에 넣는다.
 
 ### B-41. 알림 글씨 키움·방망이 설명 (2026-11-19 Claude Code, 사용자 신고 · 혼자 Play 확인)
 

@@ -155,6 +155,32 @@ Config.FenceSlow = 3 -- 초
 Config.FenceSpeed = 8
 Config.AlarmCooldown = 10 -- 같은 침입자 알림 간격(초)
 
+-- 방망이 성장 (무료) ------------------------------------------------------------
+-- 도둑맞은 로봇을 방망이로 되찾으면 경험치 +BatXpPerReclaim (같은 사람은 BatXpCooldown초에 한 번만, 친구끼리 주고받기 방지).
+-- 경험치가 다음 단계 xp에 닿거나, 게임 돈 cost를 내면 다음 단계로 오른다. 환생해도 그대로다 (저장 필드 batLevel·batXp·batSkin).
+-- 성능 차이는 일부러 작게 둔다: range = 되찾기 버튼 거리에 더하는 값(스터드), stun = 되찾을 때 도둑이 멈추는 시간(초)
+export type BatLevel = { name: string, xp: number, cost: number, color: Color3, material: Enum.Material, glow: boolean, rainbow: boolean, trail: boolean, range: number, stun: number }
+Config.BatXpPerReclaim = 1
+Config.BatXpCooldown = 20
+Config.BatLevels = {
+	{ name = "나무 방망이", xp = 0, cost = 0, color = Color3.fromRGB(150, 100, 55), material = Enum.Material.Wood, glow = false, rainbow = false, trail = false, range = 0, stun = 0 },
+	{ name = "쇠 방망이", xp = 3, cost = 30000, color = Color3.fromRGB(170, 176, 186), material = Enum.Material.Metal, glow = false, rainbow = false, trail = false, range = 1, stun = 0 },
+	{ name = "금 방망이", xp = 10, cost = 500000, color = Color3.fromRGB(255, 196, 60), material = Enum.Material.Metal, glow = false, rainbow = false, trail = true, range = 2, stun = 0 },
+	{ name = "네온 방망이", xp = 25, cost = 10000000, color = Color3.fromRGB(80, 230, 255), material = Enum.Material.Neon, glow = true, rainbow = false, trail = true, range = 2, stun = 1 },
+	{ name = "무지개 방망이", xp = 50, cost = 200000000, color = Color3.fromRGB(255, 120, 200), material = Enum.Material.Neon, glow = true, rainbow = true, trail = true, range = 3, stun = 1.5 },
+} :: { BatLevel }
+Config.BatGrowthXpMultiplier = 2 -- 성장 2배 게임패스: 경험치 배수
+Config.BatGrowthCostRate = 0.5 -- 성장 2배 게임패스: 단계 올리는 돈에 곱하는 값
+-- 방망이 꾸미기 (Robux 게임패스, 모양·효과만 바뀌고 성능은 같다). 키가 곧 Config.GamePasses의 키다
+export type BatSkin = { color: Color3, accent: Color3, material: Enum.Material, glow: boolean }
+Config.BatSkinOrder = { "BatWrench", "BatCandy", "BatGuitar", "BatLightning" }
+Config.BatSkins = {
+	BatWrench = { color = Color3.fromRGB(150, 158, 170), accent = Color3.fromRGB(255, 170, 60), material = Enum.Material.DiamondPlate, glow = false },
+	BatCandy = { color = Color3.fromRGB(255, 250, 250), accent = Color3.fromRGB(240, 60, 110), material = Enum.Material.SmoothPlastic, glow = false },
+	BatGuitar = { color = Color3.fromRGB(120, 70, 40), accent = Color3.fromRGB(220, 40, 50), material = Enum.Material.Wood, glow = false },
+	BatLightning = { color = Color3.fromRGB(255, 230, 60), accent = Color3.fromRGB(140, 220, 255), material = Enum.Material.Neon, glow = true },
+} :: { [string]: BatSkin }
+
 -- 희귀 로봇 열차: TrainEvery초마다 TrainDuration초 동안 희귀 이상만, TrainInterval초 간격으로 나온다
 Config.TrainEvery = 600
 Config.TrainDuration = 30
@@ -191,6 +217,12 @@ Config.GamePasses = {
 	DoubleIncome = { name = "💰 수입 2배", desc = "모든 로봇 수입이 영구로 2배", id = 2093876772, robux = 399 },
 	VipBase = { name = "👑 VIP 기지", desc = "방어막 +30초, 방어막 충전 시간 절반, 머리 위 VIP 표시", id = 2092598831, robux = 249 },
 	OfflineBoost = { name = "🌙 오프라인 수입 강화", desc = "떠나 있는 동안 수입 50% → 100%, 최대 3시간 → 8시간", id = 2093948767, robux = 149 },
+	-- 방망이 창에서만 파는 게임패스 (상점 Robux 칸에는 PassOrder만 보인다)
+	BatGrowth = { name = "🏏 방망이 성장 2배", desc = "되찾기 경험치 2배 + 방망이 단계 올리는 돈 절반", id = 0, robux = 99 },
+	BatWrench = { name = "🔧 렌치 방망이", desc = "정비공 렌치 모양 + 주황 불꽃 (성능은 같아요)", id = 0, robux = 49 },
+	BatCandy = { name = "🍭 사탕 방망이", desc = "줄무늬 사탕 지팡이 + 분홍 불꽃 (성능은 같아요)", id = 0, robux = 79 },
+	BatGuitar = { name = "🎸 기타 방망이", desc = "빨간 기타 모양 + 빨간 불꽃 (성능은 같아요)", id = 0, robux = 99 },
+	BatLightning = { name = "⚡ 번개 방망이", desc = "빛나는 번개 방망이 + 파란 번개 불꽃 (성능은 같아요)", id = 0, robux = 149 },
 } :: { [string]: RobuxOffer }
 Config.ProductOrder = { "EmpPack", "InstantShield", "RareRain" }
 Config.Products = {

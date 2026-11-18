@@ -82,6 +82,10 @@ type State = {
 	expand: number, -- 기지 확장 단계 (저장됨, 환생해도 유지)
 	titles: { [string]: boolean }, -- 영구 획득한 칭호
 	selectedTitle: string, -- 표시할 칭호
+	batLevel: number, -- 방망이 성장 단계 (저장됨)
+	batXp: number, -- 방망이 경험치 (저장됨)
+	batSkin: string, -- 고른 방망이 꾸미기 (저장됨, "" = 단계 모양)
+	batXpAt: { [Player]: number }, -- 도둑별 마지막 경험치 시각 (주고받기 방지)
 }
 
 local bases: { Base } = {}
@@ -654,7 +658,145 @@ local function playCharacterAnim(character: Model, animName: string, fallback: s
 end
 
 -- 방망이: [2](또는 화면 버튼)로 들고 [1]로 내린다. 든 동안에만 도둑맞은 로봇을 되찾을 수 있다 (플레이어 속성 BatOut)
+-- 모양: 꾸미기(Robux 게임패스)를 골랐으면 그 모양, 아니면 성장 단계 모양(나무→쇠→금→네온→무지개)
 local batTracks: { [Player]: AnimationTrack } = {}
+
+local function batLevelOf(state: State): Config.BatLevel
+	return Config.BatLevels[state.batLevel] or Config.BatLevels[1]
+end
+
+-- 화면 표시용 속성 (방망이 창)
+local function syncBat(state: State)
+	state.player:SetAttribute("BatLevel", state.batLevel)
+	state.player:SetAttribute("BatXp", state.batXp)
+	state.player:SetAttribute("BatSkin", state.batSkin)
+end
+
+-- 방망이 조각 하나를 손잡이에 붙인다 (offset = 손잡이 가운데 기준, 아래쪽(-Y)이 방망이 끝)
+local function addBatPiece(handle: BasePart, size: Vector3, offset: CFrame, color: Color3, material: Enum.Material, shape: Enum.PartType?): Part
+	local piece = Instance.new("Part")
+	piece.Name = "BatPiece"
+	piece.Size = size
+	if shape then
+		piece.Shape = shape
+	end
+	piece.Color = color
+	piece.Material = material
+	piece.CanCollide = false
+	piece.CanQuery = false
+	piece.CanTouch = false
+	piece.Massless = true
+	piece.CastShadow = false
+	local weld = Instance.new("Weld")
+	weld.Part0 = handle
+	weld.Part1 = piece
+	weld.C0 = offset
+	weld.Parent = piece
+	piece.Parent = handle
+	return piece
+end
+
+-- 방망이 모형을 만들어 손에 붙인다 (손잡이 이름 JunkyardBat, 조각·효과는 그 안에)
+local function buildBat(state: State, character: Model, hand: BasePart)
+	local level = batLevelOf(state)
+	local skinKey = state.batSkin
+	local skin = if skinKey ~= "" and state.passes[skinKey] == true then Config.BatSkins[skinKey] else nil
+	local color = if skin then skin.color else level.color
+	local accent = if skin then skin.accent else level.color
+	local material = if skin then skin.material else level.material
+	local handle = Instance.new("Part")
+	handle.Name = "JunkyardBat"
+	handle.Size = Vector3.new(0.3, 1.6, 0.3)
+	handle.Color = color
+	handle.Material = material
+	handle.CanCollide = false
+	handle.CanQuery = false
+	handle.CanTouch = false
+	handle.Massless = true
+	handle.CastShadow = false
+	local weld = Instance.new("Weld")
+	weld.Part0 = hand
+	weld.Part1 = handle
+	weld.C0 = CFrame.new(0, -hand.Size.Y / 2, 0) -- 손 끝에서 팔 방향으로 뻗는다
+	weld.Parent = handle
+	local tip: Part
+	if skin and skinKey == "BatWrench" then
+		addBatPiece(handle, Vector3.new(0.3, 2.4, 0.2), CFrame.new(0, -1.9, 0), color, material)
+		addBatPiece(handle, Vector3.new(1, 0.3, 0.25), CFrame.new(0, -3.1, 0), color, material)
+		addBatPiece(handle, Vector3.new(0.25, 0.7, 0.25), CFrame.new(-0.38, -3.5, 0), color, material)
+		tip = addBatPiece(handle, Vector3.new(0.25, 0.7, 0.25), CFrame.new(0.38, -3.5, 0), color, material)
+	elseif skin and skinKey == "BatCandy" then
+		addBatPiece(handle, Vector3.new(0.5, 2.4, 0.5), CFrame.new(0, -1.9, 0), color, material)
+		for i = 0, 2 do
+			addBatPiece(handle, Vector3.new(0.56, 0.2, 0.56), CFrame.new(0, -1.1 - i * 0.8, 0), skin.accent, Enum.Material.SmoothPlastic)
+		end
+		tip = addBatPiece(handle, Vector3.new(1, 1, 1), CFrame.new(0, -3.4, 0), skin.accent, Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+	elseif skin and skinKey == "BatGuitar" then
+		addBatPiece(handle, Vector3.new(0.25, 2, 0.15), CFrame.new(0, -1.7, 0), color, material)
+		tip = addBatPiece(handle, Vector3.new(1.3, 1.4, 0.35), CFrame.new(0, -3.3, 0), skin.accent, Enum.Material.SmoothPlastic)
+		addBatPiece(handle, Vector3.new(0.45, 0.45, 0.4), CFrame.new(0, -3.2, 0), Color3.fromRGB(30, 30, 30), Enum.Material.SmoothPlastic)
+	elseif skin and skinKey == "BatLightning" then
+		addBatPiece(handle, Vector3.new(0.5, 2.3, 0.5), CFrame.new(0, -1.9, 0), color, material)
+		addBatPiece(handle, Vector3.new(0.25, 1, 0.25), CFrame.new(0.35, -1.6, 0) * CFrame.Angles(0, 0, math.rad(35)), skin.accent, Enum.Material.Neon)
+		tip = addBatPiece(handle, Vector3.new(0.25, 1, 0.25), CFrame.new(-0.35, -2.6, 0) * CFrame.Angles(0, 0, math.rad(-35)), skin.accent, Enum.Material.Neon)
+	else
+		-- 기본 방망이: 가는 손잡이 + 굵은 몸통 + 둥근 끝
+		addBatPiece(handle, Vector3.new(0.55, 2.2, 0.55), CFrame.new(0, -1.8, 0), color, material)
+		tip = addBatPiece(handle, Vector3.new(0.6, 0.6, 0.6), CFrame.new(0, -2.9, 0), color, material, Enum.PartType.Ball)
+	end
+	-- 휘두를 때 끝에서 터지는 불꽃 (swingBat이 Emit)
+	local burst = Instance.new("ParticleEmitter")
+	burst.Name = "Burst"
+	burst.Rate = 0
+	burst.Color = ColorSequence.new(accent)
+	burst.LightEmission = 1
+	burst.Size = NumberSequence.new(0.5, 0)
+	burst.Lifetime = NumberRange.new(0.3, 0.6)
+	burst.Speed = NumberRange.new(6, 12)
+	burst.SpreadAngle = Vector2.new(180, 180)
+	burst.Parent = tip
+	-- 꼬리 빛: 금 방망이부터, 꾸미기는 모두
+	if skin or level.trail then
+		local top = Instance.new("Attachment")
+		top.Position = Vector3.new(0, -1, 0)
+		top.Parent = handle
+		local bottom = Instance.new("Attachment")
+		bottom.Position = Vector3.new(0, -3, 0)
+		bottom.Parent = handle
+		local trail = Instance.new("Trail")
+		trail.Attachment0 = top
+		trail.Attachment1 = bottom
+		trail.Lifetime = 0.25
+		trail.Color = ColorSequence.new(accent)
+		trail.Transparency = NumberSequence.new(0.4, 1)
+		trail.LightEmission = 0.6
+		trail.Parent = handle
+	end
+	if (skin and skin.glow) or (not skin and level.glow) then
+		local light = Instance.new("PointLight")
+		light.Color = accent
+		light.Range = 8
+		light.Brightness = 1.5
+		light.Parent = tip
+	end
+	handle.Parent = character
+	-- 무지개 방망이: 색이 계속 바뀐다 (방망이를 내리면 멈춤)
+	if not skin and level.rainbow then
+		task.spawn(function()
+			while handle.Parent do
+				local hue = Color3.fromHSV((os.clock() * 0.25) % 1, 0.75, 1)
+				handle.Color = hue
+				for _, child in handle:GetChildren() do
+					if child:IsA("BasePart") then
+						child.Color = hue
+					end
+				end
+				task.wait(0.15)
+			end
+		end)
+	end
+end
+
 local function setBat(player: Player, on: boolean)
 	local track = batTracks[player]
 	if track then
@@ -666,26 +808,13 @@ local function setBat(player: Player, on: boolean)
 	if old then
 		old:Destroy()
 	end
+	local state = states[player]
 	local hand = character and (character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm"))
-	if not on or not character or not hand or not hand:IsA("BasePart") then
+	if not on or not state or not character or not hand or not hand:IsA("BasePart") then
 		player:SetAttribute("BatOut", false)
 		return
 	end
-	local bat = Instance.new("Part")
-	bat.Name = "JunkyardBat"
-	bat.Size = Vector3.new(0.45, 3.4, 0.45)
-	bat.Color = Color3.fromRGB(150, 100, 55)
-	bat.Material = Enum.Material.Wood
-	bat.CanCollide = false
-	bat.CanQuery = false
-	bat.CanTouch = false
-	bat.Massless = true
-	local weld = Instance.new("Weld")
-	weld.Part0 = hand
-	weld.Part1 = bat
-	weld.C0 = CFrame.new(0, -hand.Size.Y / 2 - 1.5, 0) -- 손에서 팔 방향으로 뻗는다
-	weld.Parent = bat
-	bat.Parent = character
+	buildBat(state, character, hand)
 	-- 도구를 든 자세 (toolnone)
 	local hold = playCharacterAnim(character, "toolnone", "rbxassetid://507768375", true)
 	if hold then
@@ -694,12 +823,86 @@ local function setBat(player: Player, on: boolean)
 	player:SetAttribute("BatOut", true)
 end
 
--- 되찾을 때: 방망이를 휘두르는 동작 (toolslash)
+-- 단계·꾸미기가 바뀌면 들고 있는 방망이 모양을 다시 만든다
+local function refreshBat(state: State)
+	if state.player:GetAttribute("BatOut") == true then
+		setBat(state.player, true)
+	end
+end
+
+-- 되찾을 때: 방망이를 휘두르는 동작 (toolslash) + 끝에서 불꽃
 local function swingBat(player: Player)
 	local character = player.Character
 	if character then
 		playCharacterAnim(character, "toolslash", "rbxassetid://522635514", false)
+		local bat = character:FindFirstChild("JunkyardBat")
+		local burst = bat and bat:FindFirstChild("Burst", true)
+		if burst and burst:IsA("ParticleEmitter") then
+			task.delay(0.2, function()
+				if burst.Parent then
+					burst:Emit(30)
+				end
+			end)
+		end
 	end
+end
+
+-- 되찾기에 성공했을 때: 단계에 따라 도둑이 잠깐 멈추고, 방망이 경험치를 얻는다 (단계가 오르면 알림)
+local function onBatReclaim(state: State, thief: State)
+	local level = batLevelOf(state)
+	if level.stun > 0 then
+		thief.stunnedUntil = math.max(thief.stunnedUntil, now() + level.stun)
+		syncUpgradeAttributes(thief)
+		applySpeed(thief)
+	end
+	if state.loading or os.clock() - (state.batXpAt[thief.player] or -math.huge) < Config.BatXpCooldown then
+		return -- 같은 도둑에게서는 잠시 경험치 없음 (친구끼리 주고받기 방지)
+	end
+	state.batXpAt[thief.player] = os.clock()
+	local gain = Config.BatXpPerReclaim * (if state.passes.BatGrowth then Config.BatGrowthXpMultiplier else 1)
+	state.batXp = math.min(state.batXp + gain, 1000000)
+	local before = state.batLevel
+	while Config.BatLevels[state.batLevel + 1] and state.batXp >= Config.BatLevels[state.batLevel + 1].xp do
+		state.batLevel += 1
+	end
+	syncBat(state)
+	if state.batLevel > before then
+		notify(state.player, "Info", ("🏏 방망이가 %s(으)로 자랐어요!"):format(batLevelOf(state).name))
+		refreshBat(state)
+		JunkyardSave.saveNow(state.player)
+	end
+end
+
+-- 게임 돈으로 방망이 다음 단계 (성장 2배 게임패스면 반값)
+local function buyBatLevel(state: State)
+	local nextLevel = Config.BatLevels[state.batLevel + 1]
+	if not nextLevel then
+		notify(state.player, "Alert", "이미 최고 단계 방망이예요.")
+		return
+	end
+	local cost = math.floor(nextLevel.cost * (if state.passes.BatGrowth then Config.BatGrowthCostRate else 1))
+	if state.money < cost then
+		notify(state.player, "Alert", ("돈이 부족해요. (%s 필요)"):format(Config.formatMoney(cost)))
+		return
+	end
+	setMoney(state, state.money - cost)
+	state.batLevel += 1
+	state.batXp = math.max(state.batXp, nextLevel.xp) -- 경험치 막대도 그 단계부터
+	syncBat(state)
+	notify(state.player, "Info", ("🏏 %s(으)로 강화했어요!"):format(nextLevel.name))
+	refreshBat(state)
+	JunkyardSave.saveNow(state.player)
+end
+
+-- 꾸미기 고르기 ("" = 성장 단계 모양). 가진 게임패스만
+local function setBatSkin(state: State, key: string)
+	if key ~= "" and (Config.BatSkins[key] == nil or state.passes[key] ~= true) then
+		return
+	end
+	state.batSkin = key
+	syncBat(state)
+	refreshBat(state)
+	JunkyardSave.saveNow(state.player)
 end
 
 -- 들고 가는 로봇 버튼: 주인·빼앗긴 사람은 한 번 눌러 "되찾기"(방망이), 다른 사람은 길게 눌러 "빼앗기"
@@ -713,7 +916,10 @@ snatchHandler = function(player: Player, target: State, prompt: ProximityPrompt)
 	local carry = target.carry
 	local root = rootOf(player)
 	local targetRoot = rootOf(target.player)
-	if not carry or not root or not targetRoot or (root.Position - targetRoot.Position).Magnitude > Config.SnatchRange then
+	-- 되찾기(주인·빼앗긴 사람)는 방망이 단계만큼 조금 더 멀리서도 된다
+	local reclaiming = carry ~= nil and ((carry.fromBase ~= nil and carry.fromBase.owner == player) or carry.snatchedFrom == player)
+	local reach = Config.SnatchRange + (if reclaiming then batLevelOf(state).range else 0)
+	if not carry or not root or not targetRoot or (root.Position - targetRoot.Position).Magnitude > reach then
 		return
 	end
 	-- 내 받침대에서 훔쳐 가는 로봇: 주인이 한 번 눌러 방망이로 되찾는다 (받침대로 돌아간다)
@@ -725,6 +931,7 @@ snatchHandler = function(player: Player, target: State, prompt: ProximityPrompt)
 			end
 			swingBat(player)
 			returnStolen(target, "방망이로 되찾음")
+			onBatReclaim(state, target)
 		else
 			notify(player, "Alert", "받침대에서 훔친 로봇은 주인만 되찾을 수 있어요.")
 		end
@@ -740,7 +947,9 @@ snatchHandler = function(player: Player, target: State, prompt: ProximityPrompt)
 			notify(player, "Alert", "🏏 방망이를 들어야 되찾을 수 있어요! ([2] 키 또는 🏏 버튼)")
 		else
 			swingBat(player)
-			returnSnatched(target, "방망이로 되찾음")
+			if returnSnatched(target, "방망이로 되찾음") then
+				onBatReclaim(state, target)
+			end
 		end
 		return
 	end
@@ -882,7 +1091,7 @@ local function snapshot(state: State): JunkyardSave.Data
 			money += Config.robotValue(carry.robotId)
 		end
 	end
-	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades), empCharges = state.empCharges, rebirth = state.rebirth, variantCatalog = table.clone(state.variantCatalog), totalEarned = math.floor(state.totalEarned), tutorial = state.tutorial, expand = state.expand, titles = table.clone(state.titles), selectedTitle = state.selectedTitle }
+	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades), empCharges = state.empCharges, rebirth = state.rebirth, variantCatalog = table.clone(state.variantCatalog), totalEarned = math.floor(state.totalEarned), tutorial = state.tutorial, expand = state.expand, titles = table.clone(state.titles), selectedTitle = state.selectedTitle, batLevel = state.batLevel, batXp = state.batXp, batSkin = state.batSkin }
 end
 
 -- 첫 접속 안내 (튜토리얼) ------------------------------------------------------------
@@ -1450,6 +1659,10 @@ actionRemote.OnServerEvent:Connect(function(player: Player, action: unknown, arg
 		buyExpand(state)
 	elseif action == "Bat" and typeof(arg) == "boolean" then
 		setBat(player, arg)
+	elseif action == "BatLevel" and not state.loading then
+		buyBatLevel(state)
+	elseif action == "BatSkin" and typeof(arg) == "string" and not state.loading then
+		setBatSkin(state, arg)
 	elseif action == "Swap" and typeof(arg) == "table" then
 		local request = arg :: any
 		swapPads(state, request.from, request.to)
@@ -1698,6 +1911,9 @@ local function onPassOwned(player: Player, key: string)
 	syncPasses(state)
 	refreshIncome(state)
 	applyTitle(state)
+	if Config.BatSkins[key] and not state.loading then
+		setBatSkin(state, key) -- 새로 산 방망이 꾸미기는 바로 착용
+	end
 	notify(player, "Info", ("%s 구매 고마워요! 바로 적용됐어요."):format(Config.GamePasses[key].name))
 end
 
@@ -1729,6 +1945,10 @@ local function loadPlayer(state: State)
 	if data then
 		state.titles = data.titles
 		state.selectedTitle = data.selectedTitle
+		state.batLevel = data.batLevel
+		state.batXp = data.batXp
+		state.batSkin = data.batSkin
+		syncBat(state)
 		setMoney(state, data.money)
 		state.totalEarned = data.totalEarned
 		player:SetAttribute("Newbie", isNewbie(state))
@@ -1825,6 +2045,10 @@ local function onPlayerAdded(player: Player)
 		expand = 0,
 		titles = {},
 		selectedTitle = "",
+		batLevel = 1,
+		batXp = 0,
+		batSkin = "",
+		batXpAt = {},
 	}
 	player:SetAttribute("Expand", 0)
 	for _, id in Config.UpgradeOrder do
