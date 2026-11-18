@@ -87,6 +87,7 @@ AI의 Studio 화면 캡처가 흰 화면만 돌려줘서, **사진은 사용자�
 | 7 | 개발자 상품 3개 설명 갱신 (특히 희귀 로봇 비: "60초 동안 모두의 벨트에 희귀 이상 5배 + 나에게는 희귀 이상 로봇 1개 확정 선물") | ☐ (이전에 안내함) | 사용자 |
 | 8 | 게임 패스 3개 등록·번호 입력 (2093876772 / 2092598831 / 2093948767) | ✅ 번호 입력 · ✅ 판매 켬 (2026-11-17, 관리형 가격은 끔) | 사용자 |
 | 8-1 | 패스 3개·개발자 상품 3개 이미지 — AI가 `docs/icons/*.png`(512×512) 6장을 만듦. Creator Hub에서 각 패스·상품에 올리기 | ✅ 올림 (2026-11-17) | 사용자 |
+| 8-2 | 방망이 게임패스 5개 등록 (이름·가격·이미지·설명은 아래 §5) → 번호를 AI에게 알려 `JunkyardConfig.GamePasses`에 넣기 | ☐ | 사용자 |
 | 9 | Studio 전용 시험 장치 | ✅ 실제 서버에서는 작동 안 함 (IsStudio 확인, 나머지는 서버만 바꿀 수 있는 값) | — |
 | 10 | 오류·경고 0 (혼자 Play) | ✅ 2026-11-17 | — |
 | 11 | 2인 테스트: 훔치기·붙잡기·방어막·경보·거대 로봇 함께 기부 | 일부 완료 (경보 ✅) | 사용자 또는 Codex |
@@ -106,3 +107,51 @@ AI의 Studio 화면 캡처가 흰 화면만 돌려줘서, **사진은 사용자�
 1. 첫 1~2일은 Creator Hub **애널리틱스**에서 평균 플레이 시간, 재방문율, 첫 5분 안에 나가는 비율을 본다.
 2. 첫 5분 이탈이 많으면 첫 접속 안내와 첫 로봇 가격(밸런스)을 조정한다. 숫자는 `JunkyardConfig` 한 곳에 있다.
 3. 나중에 할 수 있는 것: 도둑왕 대회, 주간 순위표, 게임 패스 등록, 새 로봇·새 변종, 이벤트 맵.
+
+---
+
+## 5. 방망이 게임패스 5개 (Creator Hub에 붙여 넣기용)
+
+Creator Hub → 이 게임 → **수익 창출 → 게임 패스 → 패스 만들기**. 이미지는 `docs/icons/`에 있다(512×512, AI가 `tools/store-icons.html`로 만듦).
+만든 뒤 **판매 켜기**와 **가격**을 정하고, 패스 번호 5개를 AI에게 알려 준다. 번호를 넣기 전까지 게임 안 방망이 창에는 "준비 중"으로 보인다.
+꾸미기 4종은 **성능이 같다**(모양·효과만). 설명에도 그렇게 적어 "돈 주고 이기는 게임"이라는 오해를 막는다.
+
+### 🏏 방망이 성장 2배 — 99 R$
+- 이미지: `docs/icons/pass-bat-growth.png`
+- 이름: `🏏 방망이 성장 2배`
+- 설명 (한국어):
+  > 도둑맞은 로봇을 방망이로 되찾을 때 받는 경험치가 2배! 방망이 단계를 게임 돈으로 올릴 때도 반값이에요. 나무 → 쇠 → 금 → 네온 → 무지개 방망이까지 남보다 빨리 키워 보세요. (방망이는 누구나 무료로 키울 수 있고, 이 패스는 더 빨리 키우게 해 줘요. 환생해도 방망이 단계는 그대로예요.)
+- Description (English):
+  > Earn 2x bat XP every time you win back a stolen robot, and pay half price to level up your bat with in-game cash. Grow from Wood to Iron, Gold, Neon and Rainbow faster than anyone! (Every player can level their bat for free — this pass just makes it faster. Bat levels stay after rebirth.)
+
+### 🔧 렌치 방망이 — 49 R$
+- 이미지: `docs/icons/pass-bat-wrench.png`
+- 이름: `🔧 렌치 방망이`
+- 설명 (한국어):
+  > 고물상 정비공의 커다란 렌치로 도둑을 쫓아내요! 휘두르면 주황색 불꽃이 튀고 꼬리 빛이 따라와요. 사면 바로 손에 들리고, 방망이 창에서 언제든 바꿔 낄 수 있어요. 모양과 효과만 바뀌고 성능은 같아요.
+- Description (English):
+  > Chase thieves away with a giant mechanic's wrench! Orange sparks burst when you swing, with a glowing trail. Equipped right after purchase; switch any time in the Bat menu. Cosmetic only — same power as other bats.
+
+### 🍭 사탕 방망이 — 79 R$
+- 이미지: `docs/icons/pass-bat-candy.png`
+- 이름: `🍭 사탕 방망이`
+- 설명 (한국어):
+  > 빨간 줄무늬 사탕 지팡이 끝에 커다란 막대 사탕! 휘두르면 분홍색 불꽃이 퍼져요. 사면 바로 손에 들리고, 방망이 창에서 언제든 바꿔 낄 수 있어요. 모양과 효과만 바뀌고 성능은 같아요.
+- Description (English):
+  > A striped candy cane topped with a huge lollipop! Pink sparks burst when you swing, with a glowing trail. Equipped right after purchase; switch any time in the Bat menu. Cosmetic only — same power as other bats.
+
+### 🎸 기타 방망이 — 99 R$
+- 이미지: `docs/icons/pass-bat-guitar.png`
+- 이름: `🎸 기타 방망이`
+- 설명 (한국어):
+  > 빨간 기타를 들고 무대처럼 도둑을 혼내 줘요! 휘두르면 빨간 불꽃과 꼬리 빛이 따라와요. 사면 바로 손에 들리고, 방망이 창에서 언제든 바꿔 낄 수 있어요. 모양과 효과만 바뀌고 성능은 같아요.
+- Description (English):
+  > Rock out on thieves with a red guitar! Red sparks and a glowing trail follow every swing. Equipped right after purchase; switch any time in the Bat menu. Cosmetic only — same power as other bats.
+
+### ⚡ 번개 방망이 — 149 R$
+- 이미지: `docs/icons/pass-bat-lightning.png`
+- 이름: `⚡ 번개 방망이`
+- 설명 (한국어):
+  > 스스로 빛나는 노란 번개 방망이! 양옆에 번개 무늬가 있고, 주변을 밝히며, 휘두르면 파란 번개 불꽃이 터져요. 사면 바로 손에 들리고, 방망이 창에서 언제든 바꿔 낄 수 있어요. 모양과 효과만 바뀌고 성능은 같아요.
+- Description (English):
+  > A glowing yellow lightning bat with bolt fins that lights up the area around you! Blue lightning sparks burst on every swing. Equipped right after purchase; switch any time in the Bat menu. Cosmetic only — same power as other bats.

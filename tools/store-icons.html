@@ -17,6 +17,12 @@ const ICONS = [
   { file: "product-emp-pack", emoji: "⚡", badge: "x5", label: "EMP 5개", c1: "#5fe3ff", c2: "#1569a8", badgeColor: "#ffffff" },
   { file: "product-instant-shield", emoji: "🛡️", badge: "", label: "즉시 방어막", c1: "#5ff0c8", c2: "#127066", badgeColor: "#ffffff" },
   { file: "product-rare-rain", emoji: "🤖", badge: "", label: "희귀 로봇 비", c1: "#ff7ad9", c2: "#5a1f8c", badgeColor: "#ffffff", sparkles: true },
+  // 방망이 창 게임패스 (B-42). corner = 왼쪽 위 작은 방망이 표시
+  { file: "pass-bat-growth", emoji: "🏏", badge: "x2", label: "방망이 성장 2배", c1: "#ffb35a", c2: "#7a3a12", badgeColor: "#fff3b0", sparkles: true },
+  { file: "pass-bat-wrench", emoji: "🔧", badge: "", label: "렌치 방망이", c1: "#ffc27a", c2: "#4a5260", badgeColor: "#ffffff", corner: "🏏" },
+  { file: "pass-bat-candy", emoji: "🍭", badge: "", label: "사탕 방망이", c1: "#ffb0d8", c2: "#a3245c", badgeColor: "#ffffff", corner: "🏏" },
+  { file: "pass-bat-guitar", emoji: "🎸", badge: "", label: "기타 방망이", c1: "#ff8a6a", c2: "#5a1418", badgeColor: "#ffffff", corner: "🏏" },
+  { file: "pass-bat-lightning", emoji: "⚡", badge: "", label: "번개 방망이", c1: "#8fe6ff", c2: "#1a2a6a", badgeColor: "#ffffff", corner: "🏏", sparkles: true },
 ];
 
 function roundRect(ctx, x, y, w, h, r) {
@@ -77,6 +83,17 @@ function draw(icon) {
   if (icon.sparkles) {
     ctx.font = "78px 'Segoe UI Emoji'";
     [[110, 110], [400, 95], [95, 300], [420, 290], [255, 60]].forEach(([x, y]) => ctx.fillText("✨", x, y));
+  }
+
+  // 왼쪽 위 작은 표시 (방망이 꾸미기)
+  if (icon.corner) {
+    ctx.save();
+    ctx.translate(S * 0.2, S * 0.18);
+    ctx.rotate(-0.5);
+    ctx.font = "110px 'Segoe UI Emoji'";
+    ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 5;
+    ctx.fillText(icon.corner, 0, 0);
+    ctx.restore();
   }
 
   // 오른쪽 위 배지 (x2, VIP 등)
