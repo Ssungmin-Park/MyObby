@@ -6,11 +6,14 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
+local StarterGui = game:GetService("StarterGui")
 
 if not RunService:IsStudio() or workspace:GetAttribute("PrototypeProject") ~= "StationeryCharacterLab" then
 	return
 end
 local player = Players.LocalPlayer
+-- 시험 버튼을 가리는 기본 참가자 목록은 이 시험 화면에서만 숨긴다.
+StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
 local lab = workspace:WaitForChild("CharacterLab")
 local assets = ReplicatedStorage:WaitForChild("CharacterLabAssets")
 local action = ReplicatedStorage:WaitForChild("CharacterLabRemotes"):WaitForChild("Action") :: RemoteEvent
@@ -39,6 +42,7 @@ local actors: { Actor } = {}
 type Projectile = { model: Model, parts: { BasePart }, origin: Vector3, target: Vector3, firedAt: number, hitAt: number, linked: boolean }
 local projectiles: { Projectile } = {}
 local turn = 0
+local attackerX = 9
 
 local function actor(kind: string, ground: Vector3)
 	local template = assets:WaitForChild(kind) :: Model
@@ -87,7 +91,7 @@ local function rounded(parent: Instance)
 end
 local status = Instance.new("TextLabel")
 status.Name = "Status"
-status.Position = UDim2.fromOffset(16, 16)
+status.Position = UDim2.fromOffset(16, 64)
 status.Size = UDim2.fromOffset(390, 88)
 status.BackgroundColor3 = Color3.fromRGB(34, 45, 61)
 status.BackgroundTransparency = 0.08
@@ -146,11 +150,20 @@ rounded(linkedButton)
 linkedButton.Activated:Connect(function()
 	action:FireServer("Linked")
 end)
+local approachButton = linkedButton:Clone()
+approachButton.Name = "Approach"
+approachButton.Position = UDim2.new(1, -16, 0, 68)
+approachButton.BackgroundColor3 = Color3.fromRGB(62, 116, 110)
+approachButton.Text = "접근 시험 [Y]"
+approachButton.Parent = gui
+approachButton.Activated:Connect(function()
+	action:FireServer("Approach")
+end)
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
 		return
 	end
-	local kind = ({ [Enum.KeyCode.Q] = "Hit", [Enum.KeyCode.E] = "Fire", [Enum.KeyCode.R] = "Reset", [Enum.KeyCode.T] = "Linked" })[input.KeyCode]
+	local kind = ({ [Enum.KeyCode.Q] = "Hit", [Enum.KeyCode.E] = "Fire", [Enum.KeyCode.R] = "Reset", [Enum.KeyCode.T] = "Linked", [Enum.KeyCode.Y] = "Approach" })[input.KeyCode]
 	if kind then
 		action:FireServer(kind)
 	end
@@ -200,6 +213,9 @@ local function clearProjectiles()
 	table.clear(projectiles)
 end
 lab:GetAttributeChangedSignal("Cycle"):Connect(clearProjectiles)
+lab:GetAttributeChangedSignal("Cycle"):Connect(function()
+	attackerX = (lab:GetAttribute("AttackerX") or 9) :: number
+end)
 lab:GetAttributeChangedSignal("Linked"):Connect(clearProjectiles)
 
 local random = Random.new()
@@ -275,10 +291,15 @@ RunService.RenderStepped:Connect(function(dt)
 	local close = if shotAge >= 0 and shotAge < 0.3 then -math.sin(shotAge / 0.3 * math.pi) * 0.25 else 0
 	local shake = if hitAge >= 0 and hitAge < 0.5 then math.sin(hitAge * 60) * math.exp(-hitAge * 10) * 0.2 else 0
 	turn += ((if lab:GetAttribute("Linked") == true then 1 else 0) - turn) * math.min(1, dt * 8)
+	local approaching = lab:GetAttribute("Approach") == true
+	local range = (lab:GetAttribute("AttackRange") or 12) :: number
+	attackerX += (((lab:GetAttribute("AttackerX") or 9) :: number) - attackerX) * math.min(1, dt * 14)
+	local walking = approaching and health > 0 and attackerX + 9 > range + 0.03
 	for index, entry in actors do
 		local breathe = math.sin(now * 2.5 + index * 0.2) * 0.025
 		local facing = if entry.kind == "Jjondeuk" then -math.pi / 2 else math.pi / 2
-		local base = entry.root * CFrame.Angles(0, facing * turn, 0)
+		local ground = if index == 2 then CFrame.new(attackerX, 1.6, 1) else entry.root
+		local base = ground * CFrame.Angles(0, facing * turn, 0)
 		if entry.kind == "Jjondeuk" then
 			local targetScale = 0.48 + fraction * 0.52
 			entry.scale += (targetScale - entry.scale) * math.min(1, dt * 10)
@@ -290,7 +311,8 @@ RunService.RenderStepped:Connect(function(dt)
 				piece.part.Transparency = if health <= 0 then 0.75 else piece.transparency
 			end
 		else
-			local root = base * CFrame.new(0, entry.height * 0.5, recoil * 0.85) * CFrame.Angles(-recoil * 0.22, 0, breathe)
+			local step = if index == 2 and walking then math.sin(now * 13) else 0
+			local root = base * CFrame.new(0, entry.height * 0.5 + math.abs(step) * 0.09, recoil * 0.85) * CFrame.Angles(-recoil * 0.22, 0, breathe + step * 0.035)
 			for _, piece in entry.pieces do
 				local pose = piece.pose
 				if piece.part.Name == "EyeWhite" then
@@ -320,9 +342,14 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 	end
 	status.Text = ("쫀득 체력 %d / %d · 크기 %d%%\n철컥 발사 %d회 · 시험 캐릭터 %d마리"):format(health, maximum, math.round((0.48 + fraction * 0.52) * 100), lab:GetAttribute("ShotCount") :: number, #actors)
+	if approaching then
+		local phase = if health <= 0 then "복원 대기" elseif walking then "접근 중" else "사거리 도착 · 사격"
+		status.Text = ("쫀득 체력 %d / %d · 철컥 발사 %d회\n%s · 거리 %.1f / 사거리 %.0f"):format(health, maximum, lab:GetAttribute("ShotCount") :: number, phase, attackerX + 9, range)
+	end
 	buttons.Auto.Text = if lab:GetAttribute("Auto") == true then "자동 반복 끄기" else "자동 반복"
 	buttons.Crowd.Text = if lab:GetAttribute("Crowd") == true then "두 마리만" else "여러 마리"
 	linkedButton.Text = if lab:GetAttribute("Linked") == true then "연결 시험 중지" else "연결 시험 [T]"
+	approachButton.Text = if approaching then "접근 시험 중지" else "접근 시험 [Y]"
 	if camera then
 		controlScale.Scale = math.min(1.1, (camera.ViewportSize.X - 24) / 750)
 		if camera.ViewportSize.Y < 500 then
@@ -332,7 +359,7 @@ RunService.RenderStepped:Connect(function(dt)
 			status.TextSize = 14
 		else
 			status.AnchorPoint = Vector2.zero
-			status.Position = UDim2.fromOffset(16, 16)
+			status.Position = UDim2.fromOffset(16, 64)
 			status.Size = UDim2.fromOffset(390, 88)
 			status.TextSize = 18
 		end
