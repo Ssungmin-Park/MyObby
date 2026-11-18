@@ -82,9 +82,9 @@ AI의 Studio 화면 캡처가 흰 화면만 돌려줘서, **사진은 사용자�
 | 2 | Studio 저장 (Ctrl+S), 마지막 변경까지 | 사용자 확인 | 사용자 |
 | 3 | 공개 이름 변경 ("마이오비" → 위 이름) | ✅ 사용자 완료 (2026-11-17) | 사용자 |
 | 4 | 설명(한국어·영어), 장르, 기기 설정 | ✅ 사용자 완료 (2026-11-17) | 사용자 |
-| 5 | 아이콘 1개, 썸네일 3개 이상 | 아이콘 ✅ · 썸네일 4장 준비 ✅(`docs/thumbnails/thumb-1~4.png`, 1920×1080) · ☐ 올리기 | 사용자 |
+| 5 | 아이콘 1개, 썸네일 3개 이상 | 아이콘 ✅ · 썸네일 4장 준비 ✅(`docs/thumbnails/thumb-1~4.png`, 1920×1080, **1~3번은 2026-11-19 새 로봇으로 다시 만듦**) · ☐ 올리기 | 사용자 |
 | 6 | **성숙도·준수 설문(Maturity & Compliance Questionnaire)** — 공개하려면 필수. 이 게임은 폭력·공포·실제 도박 요소가 없다(훔치기는 만화풍 게임 규칙). 질문에 사실대로 답한다 | ✅ 사용자 완료 (2026-11-17, 미디어 피드·미디어 공유·AI 상호작용·교차 경험 콘텐츠 모두 "아니요") | 사용자 |
-| 7 | 개발자 상품 3개 설명 갱신 (특히 희귀 로봇 비: "60초 동안 모두의 벨트에 희귀 이상 5배 + 나에게는 희귀 이상 로봇 1개 확정 선물") | ☐ (이전에 안내함) | 사용자 |
+| 7 | 개발자 상품 3개 설명 갱신 — 붙여 넣을 글은 아래 §6 (EMP는 "방어막 절반"으로 바뀜) | ☐ | 사용자 |
 | 8 | 게임 패스 3개 등록·번호 입력 (2093876772 / 2092598831 / 2093948767) | ✅ 번호 입력 · ✅ 판매 켬 (2026-11-17, 관리형 가격은 끔) | 사용자 |
 | 8-1 | 패스 3개·개발자 상품 3개 이미지 — AI가 `docs/icons/*.png`(512×512) 6장을 만듦. Creator Hub에서 각 패스·상품에 올리기 | ✅ 올림 (2026-11-17) | 사용자 |
 | 8-2 | 방망이 게임패스 5개 등록 (이름·가격·이미지·설명은 아래 §5) → 번호를 AI에게 알려 `JunkyardConfig.GamePasses`에 넣기 | ✅ 등록·번호 입력 (2026-11-19: 2092905047 / 2094339061 / 2093559042 / 2092353045 / 2094255003) | 사용자 |
@@ -155,3 +155,27 @@ Creator Hub → 이 게임 → **수익 창출 → 게임 패스 → 패스 만�
   > 스스로 빛나는 노란 번개 방망이! 양옆에 번개 무늬가 있고, 주변을 밝히며, 휘두르면 파란 번개 불꽃이 터져요. 사면 바로 손에 들리고, 방망이 창에서 언제든 바꿔 낄 수 있어요. 모양과 효과만 바뀌고 성능은 같아요.
 - Description (English):
   > A glowing yellow lightning bat with bolt fins that lights up the area around you! Blue lightning sparks burst on every swing. Equipped right after purchase; switch any time in the Bat menu. Cosmetic only — same power as other bats.
+
+---
+
+## 6. 개발자 상품 3개 설명 (Creator Hub에 붙여 넣기용, 2026-11-19 게임 효과 기준)
+
+Creator Hub → 이 게임 → **수익 창출 → 개발자 상품** → 각 상품 → 설명 바꾸기. 이름·가격은 그대로 둬도 된다.
+
+### ⚡ EMP 5개 — 49 R$ (3732684191)
+- 한국어:
+  > 게임 돈 없이 쓰는 EMP 5번! 방어막이 켜진 남의 기지 가까이에서 쓰면 그 방어막의 남은 시간이 절반으로 줄어요. 충전 시간은 보통 EMP와 같고, 남은 횟수는 저장돼요. (막 시작한 새싹 플레이어에게는 쓸 수 없어요.)
+- English:
+  > 5 free EMP uses — no in-game cash needed! Use it near another player's shielded base to cut their remaining shield time in half. Same cooldown as a normal EMP; unused charges are saved. (Can't be used on brand-new "sprout" players.)
+
+### 🛡 즉시 방어막 — 25 R$ (3732684298)
+- 한국어:
+  > 방어막이 충전 중이어도 지금 바로 내 기지 방어막을 켜요! 켜져 있는 동안에는 아무도 내 기지에 들어와 로봇을 훔칠 수 없어요.
+- English:
+  > Turn on your base shield right now, even while it's recharging! While it's on, nobody can enter your base to steal robots.
+
+### ✨ 희귀 로봇 비 (서버 전체) — 99 R$ (3732684420)
+- 한국어:
+  > 60초 동안 서버 모든 사람의 컨베이어 벨트에 희귀 이상 로봇이 5배 더 자주 나와요! 산 사람에게는 희귀 이상 로봇 1개를 확정으로 선물해요. 등급별 확률은 게임 안 상점의 Robux 칸에 공개되어 있어요.
+- English:
+  > For 60 seconds, Rare-or-better robots appear 5x more often on everyone's conveyor belt in the server! The buyer also gets one guaranteed Rare-or-better robot as a gift. Exact odds are shown in the in-game shop's Robux tab.
