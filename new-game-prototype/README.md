@@ -28,6 +28,7 @@
 - 현재 Studio는 **Edit·기본 미리보기**다. **이번 변경은 사용자가 문방구 전쟁에서 Ctrl+S로 저장해야 한다.** AI는 save_place/Publish하지 않았다.
 - 생성 원본은 `ServerStorage/CharacterLabSources`, 시험 모델은 `ReplicatedStorage/CharacterLabAssets`에 유지했다. 에셋 번호: 쫀득 `124308299115203`, 철컥 `139594764218049`.
 - 수정 전 시험 스크립트는 `ServerStorage/CharacterLabScriptBackups/BeforeFirstMatch_1794988510`에 보관했다.
+- 첫 경기 구현 파일은 공동 저장소 커밋 `b4082c8`에 포함됐고, 캡처 전송 누락은 이후 Codex가 복구했다. 준비·전투·모바일·결과 이미지 4개 모두 파일을 직접 열어 확인했다. 재개 점검에서도 아래 스크립트 7개가 Studio와 일치했다.
 
 ## 소스와 생성 도구
 
