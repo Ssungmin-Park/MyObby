@@ -11,7 +11,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** — 방망이 쥐는 방향·롤리팝·기타 줄·장갑 모양(B-44), 장갑 [1]·방망이 [2] 나눔(B-43), 방망이 성장·꾸미기(B-42). 그 전: B-41 알림 글씨·방망이 설명, Codex B-38~B-40. 게임패스 5개 번호 입력 완료(2026-11-19). |
+| 마지막 작업 AI | **Claude Code** — 로봇 33종 새 디자인 공용 모듈(B-45), 방망이 쥐는 방향·롤리팝·기타 줄·장갑 모양(B-44), 장갑 [1]·방망이 [2] 나눔(B-43), 방망이 성장·꾸미기(B-42). 그 전: B-41 알림 글씨·방망이 설명, Codex B-38~B-40. 게임패스 5개 번호 입력 완료(2026-11-19). |
 | 작업 시점 | 2026-11-19 |
 | 다음 작업 AI | 사용자: **Studio Ctrl+S 저장** 후 필요할 때 직접 게시. 다음 AI: G-3의 2인 확인 목록을 음수 UserId 로컬 서버로 검증한다. 게임패스 판매·가격·공개 준비는 사용자와 별도 확인. |
 | 게임 이름 | **로봇 고물상 타이쿤** (`list_roblox_studios` 현재 이름), 단독 운영. 오비·로봇 작업장은 `ServerStorage/ArchivedModes`에 보관. |
@@ -22,7 +22,7 @@
 | Studio 모드 | **Edit 모드**. 2026-11-18 Codex가 자신이 실행한 1인 로컬 테스트 종료. |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-19 Claude Code B-42. `JunkyardConfig` 33034 / 876108229, `Junkyard` 101529 / 445794783, `JunkyardSave` 17403 / 803073679, `JunkyardStore` 4904 / 256970632, `JunkyardHud` 81757 / 5925783 (나머지 6개는 그대로: `JunkyardContest` 6644 / 622978211, `JunkyardBelt` 7083 / 740310580, `JunkyardCCTV` 10127 / 499888406, `JunkyardEvents` 1733 / 471819683, `JunkyardGiantRobot` 9911 / 457266346, `JunkyardRanking` 12574 / 72233971) — Studio와 일치. 시작할 때 11개 모두 Codex 기록과 일치 확인. **사용자 Ctrl+S 저장·게시 필요** |
+| 마지막 게임 수정 | 2026-11-19 Claude Code B-42. `JunkyardConfig` 33152 / 326552697, **새 모듈** `JunkyardRobotModel` 30922 / 533117402, `Junkyard` 100307 / 42420377, `JunkyardSave` 17403 / 803073679, `JunkyardStore` 4904 / 256970632, `JunkyardHud` 80875 / 118728842 (나머지 6개는 그대로: `JunkyardContest` 6644 / 622978211, `JunkyardBelt` 7083 / 740310580, `JunkyardCCTV` 10127 / 499888406, `JunkyardEvents` 1733 / 471819683, `JunkyardGiantRobot` 9911 / 457266346, `JunkyardRanking` 12574 / 72233971) — Studio와 일치. 시작할 때 11개 모두 Codex 기록과 일치 확인. **사용자 Ctrl+S 저장·게시 필요** |
 | Studio 저장 상태 | B-38~B-40은 Studio Edit에 반영, 수정 스크립트 6개를 원문 대조 후 `src/`로 내보냄. 클라우드 저장 완료는 미확인. 사용자가 Ctrl+S로 저장한다. AI 저장·게시 실행 없음. 기존 ServerStorage 백업·보관 유지. |
 | 휴대폰 미리보기 | 사용자 직접 확인(2026-11-17). Studio 휴대폰 미리보기에서 상점·도감·대회 상자·안내 띠에 문제 없음 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
@@ -188,6 +188,16 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 - 수정 경로. `ReplicatedStorage/Modules/JunkyardConfig`, `ServerScriptService/Junkyard`, `ServerScriptService/JunkyardSave`, `ServerScriptService/JunkyardGiantRobot`, `StarterPlayer/StarterPlayerScripts/JunkyardHud`와 같은 `src/` 경로.
 - **1인 실제 검증**. UserId -1, SaveOff=false. 옛 신화 도감에서 신화 수집가·+1% 자동 지급. 진행률 99.99% 뒤 실제 Donate → Active·정비왕·총 +2%. 같은 칭호 재획득해도 +2% 유지. 칭호 창 실제 클릭·스크롤로 정비왕 선택 → 머리 위 표시. 숨겨도 +2% 유지, 미획득 FullCatalog 선택 거절. 종료·재접속 후 두 칭호·선택 Mechanic·+2% 복원. sanitize의 옛 돈/받침대/확장 유지·새 기본값·알 수 없는 칭호와 잘못된 선택 제거, 13종 보너스 합 0.13 확인.
 - **표시 경로 시험**. 타인 기부와 같은 서버 Remote를 한 명에게 보내 중앙 연출 표시·문구 TextFits 확인(측정 크기 약 657×125). **미검증**. 실제 2인 타인 기부 전달, 최고 기부자와 마지막 기부자가 다를 때 지급, 동시 마지막 기부, 실제 2인 대회 우승 칭호 획득/복원, 새 UI의 실제 모바일 화면·터치.
+
+### B-45. 로봇 33종 새 디자인 (2026-11-19 Claude Code, 사용자 피드백 "로봇이 밤티 같다" · 승인 "이 방향으로")
+
+- 새 공용 모듈 `ReplicatedStorage/Modules/JunkyardRobotModel` (`src/ReplicatedStorage/Modules/JunkyardRobotModel.luau`). `RobotModel.build(robotKey, anchored)`가 모형을 만든다. 서버 `makeRobotModel`(받침대·들고 가기·CCTV)과 화면 `makeBeltRobot`(벨트)이 모두 이것을 쓴다(이름표·버튼만 각자 붙임).
+- 규칙: 발 y=0, 얼굴 -Z. PrimaryPart는 보이지 않는 `Body`(2.2×2×1.7, 가운데 y=1) — 예전 모형과 같아 PivotTo 위치 계산·버튼 위치가 그대로. 모든 크기·위치에 등급 size를 곱한다. anchored=false면 WeldConstraint로 Body에 붙임(들고 가기).
+- 로봇마다 이름에 맞는 생김새(`DESIGNS[id]`)·고유 주색(`MAIN`, 변종이면 변종 색)·표정(`face`: round/happy/angry/one/sleepy/dizzy/visor/odd, 어두운 유리 화면 + 빛나는 눈). 등급은 빛나는 띠(`Trim`, 일반은 없음). 부품 이름: 눈 `Eye`, 도는 부품 `Spin`(나중 애니메이션용).
+- 예: 깡통이 통조림, 버킷 양동이 머리, 너트 너트 머리, 클립 머리 클립, 팬돌이 선풍기, 드릴 드릴 팔·안전모, 호퍼 개구리 눈, 루미 전구 머리, 레이더 접시, 터보 바퀴, 소나 잠수함, 기어킹 톱니 왕관, 홀로 반투명, 프레스 유압판, 포지 용광로, 아틀라스 지구, 타이탄 기사, 오리온 우주 헬멧, 오메가·제니스 후광, 퀘이사 궤도 고리.
+- 이름표 높이: 서버 4.3→4.6×size, 벨트 3.3→4.5×size. `Config.RobotStyles`는 이제 안 씀(지우지 않음).
+- 로봇 하나당 부품 약 28개(예전 5개). 받침대 전체가 차면 부품 수가 많아지니 느려지면 줄인다.
+- 확인: Edit에 33종을 등급별로 세워 캡처(`docs/screenshots/robots-new-1.jpg`·`-2.jpg`) 후 지움. Play(사용자 저장으로): 받침대 모형 21개 Body 정상, 벨트 9개, 들고 가기용 Omega@Gold 부품 31·용접 30·고정 0, CCTV 화면 모형, 오류 0. **미검증**: 실제 Play 화면 모습, 휴대폰 성능, 다른 사람 시점. 다음 후보: 눈 깜빡임·날개 회전 같은 움직임(아직 없음).
 
 ### B-44. 방망이 쥐는 방향·롤리팝·기타·장갑 모양 (2026-11-19 Claude Code, 사용자 요청)
 

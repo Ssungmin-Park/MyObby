@@ -13,6 +13,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("JunkyardConfig"))
+local RobotModel = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("JunkyardRobotModel"))
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local beltRemote = remotes:WaitForChild("JunkyardBelt") :: RemoteEvent
 local actionRemote = remotes:WaitForChild("JunkyardAction") :: RemoteEvent
@@ -741,35 +742,10 @@ local function makeBeltRobot(id: number, robotId: string): Model
 	local rarity = Config.rarityOf(robotId)
 	local size = if rarity then rarity.size else 1
 	local color = if rarity then rarity.color else white
-	local model = Instance.new("Model")
+	-- 로봇마다 다른 생김새·표정 (서버 받침대 모형과 같은 공용 모듈)
+	local model = RobotModel.build(robotId, true)
 	model.Name = "BeltRobot"
-	local function piece(name: string, partSize: Vector3, offset: Vector3, pieceColor: Color3): Part
-		local object = Instance.new("Part")
-		object.Name = name
-		object.Size = partSize * size
-		object.CFrame = CFrame.new(offset * size)
-		object.Color = pieceColor
-		object.Anchored = true
-		object.CanCollide = false
-		object.CanTouch = false
-		object.Parent = model
-		return object
-	end
-	local body = piece("Body", Vector3.new(2.2, 2, 1.7), Vector3.zero, color)
-	local head = piece("Head", Vector3.new(2.4, 1.5, 1.9), Vector3.new(0, 1.75, 0), color)
-	head.Orientation = Vector3.new(0, 0, 15) -- 고장 나서 기운 머리
-	for _, dx in { -0.5, 0.5 } do
-		piece("Eye", Vector3.new(0.3, 0.3, 0.1), Vector3.new(dx, 1.85, -0.98), dark)
-	end
-	-- 로봇마다 다른 머리 장식 (기운 머리를 따라 기운다)
-	local style = if robot and robot.style then Config.RobotStyles[robot.style] else nil
-	if style then
-		for _, spec in style do
-			local part = piece(spec.name, spec.size, Vector3.zero, color:Lerp(Color3.new(0, 0, 0), 0.35))
-			part.CFrame = head.CFrame * CFrame.new(spec.offset * size)
-		end
-	end
-	model.PrimaryPart = body
+	local body = model.PrimaryPart :: BasePart
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ObjectText = if robot and rarity then ("%s [%s] · 초당 %s"):format(robot.name, rarity.name, Config.formatMoney(Config.robotIncome(robotId))) else robotId
@@ -789,7 +765,7 @@ local function makeBeltRobot(id: number, robotId: string): Model
 
 	local billboard = Instance.new("BillboardGui")
 	billboard.Size = UDim2.fromOffset(150, 40)
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, 3.3 * size, 0)
+	billboard.StudsOffsetWorldSpace = Vector3.new(0, 4.5 * size, 0)
 	billboard.MaxDistance = 70
 	billboard.Parent = body
 	local text = Instance.new("TextLabel")

@@ -14,6 +14,7 @@ local HttpService = game:GetService("HttpService")
 local Debris = game:GetService("Debris")
 
 local Config = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("JunkyardConfig"))
+local RobotModel = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("JunkyardRobotModel"))
 local Belt = require(script.Parent:WaitForChild("JunkyardBelt"))
 local JunkyardSave = require(script.Parent:WaitForChild("JunkyardSave"))
 local JunkyardStore = require(script.Parent:WaitForChild("JunkyardStore"))
@@ -127,62 +128,19 @@ local function insideBase(base: Base, position: Vector3): boolean
 	return math.abs(offset.X) <= 22 and forward <= 17 and forward >= -17 - depth and offset.Y > -3 and offset.Y < 20
 end
 
--- 로봇 모형 (회색 상자 몸통 + 머리, 등급 색과 크기) --------------------------------
+-- 로봇 모형 (모양은 공용 모듈 JunkyardRobotModel, 여기서는 이름표만 붙인다) ----------------
 local function makeRobotModel(robotId: string, anchored: boolean): Model
 	local robot = Config.getRobot(robotId)
 	local rarity = Config.rarityOf(robotId)
 	local size = if rarity then rarity.size else 1
 	local variant = Config.variantOf(robotId) -- 변종이면 변종 색과 반짝이
 	local color = if variant then variant.color elseif rarity then rarity.color else Color3.new(1, 1, 1)
-	local model = Instance.new("Model")
-	model.Name = "Robot_" .. robotId
-	local function piece(name: string, partSize: Vector3, offset: Vector3, pieceColor: Color3): Part
-		local object = Instance.new("Part")
-		object.Name = name
-		object.Size = partSize * size
-		object.CFrame = CFrame.new(offset * size)
-		object.Color = pieceColor
-		object.Anchored = anchored
-		object.CanCollide = false
-		object.CanQuery = false
-		object.CanTouch = false
-		object.Massless = true
-		object.TopSurface = Enum.SurfaceType.Smooth
-		object.BottomSurface = Enum.SurfaceType.Smooth
-		object.Parent = model
-		return object
-	end
-	local body = piece("Body", Vector3.new(2.2, 2, 1.7), Vector3.new(0, 1, 0), color)
-	piece("Head", Vector3.new(2.4, 1.5, 1.9), Vector3.new(0, 2.75, 0), color)
-	for _, dx in { -0.5, 0.5 } do
-		piece("Eye", Vector3.new(0.3, 0.3, 0.1), Vector3.new(dx, 2.85, -0.98), Color3.fromRGB(30, 34, 40))
-	end
-	-- 로봇마다 다른 머리 장식 (Config.RobotStyles)
-	local style = if robot and robot.style then Config.RobotStyles[robot.style] else nil
-	if style then
-		for _, spec in style do
-			piece(spec.name, spec.size, Vector3.new(0, 2.75, 0) + spec.offset, color:Lerp(Color3.new(0, 0, 0), 0.35))
-		end
-	end
-	model.PrimaryPart = body
-	if variant then
-		local sparkles = Instance.new("Sparkles")
-		sparkles.SparkleColor = variant.color
-		sparkles.Parent = body
-	end
-	if not anchored then
-		for _, object in model:GetChildren() do
-			if object ~= body and object:IsA("BasePart") then
-				local weld = Instance.new("WeldConstraint")
-				weld.Part0 = body
-				weld.Part1 = object
-				weld.Parent = object
-			end
-		end
-	end
+	-- 로봇마다 다른 생김새·표정 (등급 크기, 변종 색) — 받침대·들고 가기·CCTV 모두 같은 모양
+	local model = RobotModel.build(robotId, anchored)
+	local body = model.PrimaryPart :: BasePart
 	local billboard = Instance.new("BillboardGui")
 	billboard.Size = UDim2.fromOffset(170, 40)
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, 4.3 * size, 0)
+	billboard.StudsOffsetWorldSpace = Vector3.new(0, 4.6 * size, 0) -- 새 모형은 더 높아서 이름표를 조금 올림
 	billboard.MaxDistance = 60
 	billboard.Parent = body
 	local label = Instance.new("TextLabel")

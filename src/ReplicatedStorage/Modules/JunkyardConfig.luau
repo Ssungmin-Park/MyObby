@@ -66,6 +66,7 @@ Config.Robots = {
 	{ id = "Quasar", name = "퀘이사", rarity = "Mythic", income = 1400, weight = 10, style = 2 },
 } :: { Robot }
 
+-- (예전 로봇 모양용, 지금은 쓰지 않음 — 로봇 생김새는 Modules/JunkyardRobotModel이 정한다)
 -- 머리 장식 모양 (머리 중심 기준 크기·위치, 로봇 크기 배수를 곱해 쓴다). 0 = 장식 없음
 export type RobotPart = { name: string, size: Vector3, offset: Vector3 }
 Config.RobotStyles = {

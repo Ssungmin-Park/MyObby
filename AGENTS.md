@@ -57,6 +57,7 @@ src/           Studio 스크립트의 거울 (Studio 경로 그대로)
     JunkyardStore.luau        Robux 결제 (ProcessReceipt, 영수증 Receipts_v1)
     JunkyardRanking.luau      전체 서버 순위표 (OrderedDataStore)
   ReplicatedStorage/Modules/JunkyardConfig.luau   밸런스·로봇·상품 데이터 (서버·클라 공용)
+  ReplicatedStorage/Modules/JunkyardRobotModel.luau   로봇 모형(33종 생김새) 만들기 (서버·클라 공용)
   StarterPlayer/StarterPlayerScripts/JunkyardHud.client.luau   화면 표시 (패널·상점·도감·벨트 표시)
   ServerStorage/ArchivedModes/  보관된 오비(Obby)·로봇 작업장(RobotLab) 스크립트 — 실행 안 됨
 tools/         맵 생성 스크립트 (build-junkyard.luau 등)
