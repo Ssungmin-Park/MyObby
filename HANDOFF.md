@@ -11,7 +11,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** — 방망이 성장·꾸미기(B-42, 사용자 승인 "추천안대로"). 그 전: B-41 알림 글씨·방망이 설명, Codex B-38~B-40. **사용자 할 일: 게임패스 5개 만들고 번호 알려 주기(B-42 끝).** |
+| 마지막 작업 AI | **Claude Code** — 방망이 성장·꾸미기(B-42, 사용자 승인 "추천안대로"). 그 전: B-41 알림 글씨·방망이 설명, Codex B-38~B-40. 게임패스 5개 번호 입력 완료(2026-11-19). |
 | 작업 시점 | 2026-11-19 |
 | 다음 작업 AI | 사용자: **Studio Ctrl+S 저장** 후 필요할 때 직접 게시. 다음 AI: G-3의 2인 확인 목록을 음수 UserId 로컬 서버로 검증한다. 게임패스 판매·가격·공개 준비는 사용자와 별도 확인. |
 | 게임 이름 | **로봇 고물상 타이쿤** (`list_roblox_studios` 현재 이름), 단독 운영. 오비·로봇 작업장은 `ServerStorage/ArchivedModes`에 보관. |
@@ -22,7 +22,7 @@
 | Studio 모드 | **Edit 모드**. 2026-11-18 Codex가 자신이 실행한 1인 로컬 테스트 종료. |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-19 Claude Code B-42. `JunkyardConfig` 32989 / 11602452, `Junkyard` 92078 / 365343719, `JunkyardSave` 17403 / 803073679, `JunkyardStore` 4904 / 256970632, `JunkyardHud` 80690 / 148375433 (나머지 6개는 그대로: `JunkyardContest` 6644 / 622978211, `JunkyardBelt` 7083 / 740310580, `JunkyardCCTV` 10127 / 499888406, `JunkyardEvents` 1733 / 471819683, `JunkyardGiantRobot` 9911 / 457266346, `JunkyardRanking` 12574 / 72233971) — Studio와 일치. 시작할 때 11개 모두 Codex 기록과 일치 확인. **사용자 Ctrl+S 저장·게시 필요** |
+| 마지막 게임 수정 | 2026-11-19 Claude Code B-42. `JunkyardConfig` 33034 / 876108229, `Junkyard` 92078 / 365343719, `JunkyardSave` 17403 / 803073679, `JunkyardStore` 4904 / 256970632, `JunkyardHud` 80690 / 148375433 (나머지 6개는 그대로: `JunkyardContest` 6644 / 622978211, `JunkyardBelt` 7083 / 740310580, `JunkyardCCTV` 10127 / 499888406, `JunkyardEvents` 1733 / 471819683, `JunkyardGiantRobot` 9911 / 457266346, `JunkyardRanking` 12574 / 72233971) — Studio와 일치. 시작할 때 11개 모두 Codex 기록과 일치 확인. **사용자 Ctrl+S 저장·게시 필요** |
 | Studio 저장 상태 | B-38~B-40은 Studio Edit에 반영, 수정 스크립트 6개를 원문 대조 후 `src/`로 내보냄. 클라우드 저장 완료는 미확인. 사용자가 Ctrl+S로 저장한다. AI 저장·게시 실행 없음. 기존 ServerStorage 백업·보관 유지. |
 | 휴대폰 미리보기 | 사용자 직접 확인(2026-11-17). Studio 휴대폰 미리보기에서 상점·도감·대회 상자·안내 띠에 문제 없음 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
@@ -199,7 +199,7 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 - **새 저장 필드** `batLevel`(1~5, 옛 데이터 1)·`batXp`(0)·`batSkin`("" 또는 꾸미기 키). sanitize 기본값으로 옛 데이터 호환. 꾸미기는 쓸 때마다 게임패스 보유를 다시 확인한다.
 - 화면: 🏏 버튼 아래 "⬆ 방망이 강화" → 창(단계·경험치·성능·강화 버튼·꾸미기 목록). Remote `BatLevel`, `BatSkin`(문자열, 서버 검증).
 - 확인(사용자 실제 저장, SaveOff=false로 Play): 방망이 들기·모형 조각, 창 글자 TextFits(703×633), `DebugGivePass`로 꾸미기 4종 모양·효과 생성 후 `BatSkin ""`로 되돌림, 출력 오류 0. **미검증**: 돈으로 단계 올리기(사용자 저장 돈을 쓰지 않으려고 안 함), 되찾기 경험치·도둑 멈춤·거리 증가(2인 필요), 실제 게임패스 결제, 모양의 실제 보기 좋음. 이 테스트에서 시험용 돈 1,000,000이 사용자 저장에 더해졌다(26억 중).
-- **사용자 할 일**: Creator Hub → 이 게임 → 수익 창출 → 게임패스에서 위 5개를 만들고 번호를 알려 주면 `Config.GamePasses`의 `id`에 넣는다.
+- **게임패스 번호(2026-11-19 사용자 생성, 입력 완료)**: BatGrowth 2092905047, BatWrench 2094339061, BatCandy 2093559042, BatGuitar 2092353045, BatLightning 2094255003. Play에서 `checkPasses`가 5개 모두 보유로 읽음(만든 사람 계정), 방망이 창에 착용/✔ 가짐 표시, 성장 2배로 강화 값 반값(15.0K) 확인. 다른 계정의 실제 결제는 미검증.
 
 ### B-41. 알림 글씨 키움·방망이 설명 (2026-11-19 Claude Code, 사용자 신고 · 혼자 Play 확인)
 

@@ -218,11 +218,11 @@ Config.GamePasses = {
 	VipBase = { name = "👑 VIP 기지", desc = "방어막 +30초, 방어막 충전 시간 절반, 머리 위 VIP 표시", id = 2092598831, robux = 249 },
 	OfflineBoost = { name = "🌙 오프라인 수입 강화", desc = "떠나 있는 동안 수입 50% → 100%, 최대 3시간 → 8시간", id = 2093948767, robux = 149 },
 	-- 방망이 창에서만 파는 게임패스 (상점 Robux 칸에는 PassOrder만 보인다)
-	BatGrowth = { name = "🏏 방망이 성장 2배", desc = "되찾기 경험치 2배 + 방망이 단계 올리는 돈 절반", id = 0, robux = 99 },
-	BatWrench = { name = "🔧 렌치 방망이", desc = "정비공 렌치 모양 + 주황 불꽃 (성능은 같아요)", id = 0, robux = 49 },
-	BatCandy = { name = "🍭 사탕 방망이", desc = "줄무늬 사탕 지팡이 + 분홍 불꽃 (성능은 같아요)", id = 0, robux = 79 },
-	BatGuitar = { name = "🎸 기타 방망이", desc = "빨간 기타 모양 + 빨간 불꽃 (성능은 같아요)", id = 0, robux = 99 },
-	BatLightning = { name = "⚡ 번개 방망이", desc = "빛나는 번개 방망이 + 파란 번개 불꽃 (성능은 같아요)", id = 0, robux = 149 },
+	BatGrowth = { name = "🏏 방망이 성장 2배", desc = "되찾기 경험치 2배 + 방망이 단계 올리는 돈 절반", id = 2092905047, robux = 99 },
+	BatWrench = { name = "🔧 렌치 방망이", desc = "정비공 렌치 모양 + 주황 불꽃 (성능은 같아요)", id = 2094339061, robux = 49 },
+	BatCandy = { name = "🍭 사탕 방망이", desc = "줄무늬 사탕 지팡이 + 분홍 불꽃 (성능은 같아요)", id = 2093559042, robux = 79 },
+	BatGuitar = { name = "🎸 기타 방망이", desc = "빨간 기타 모양 + 빨간 불꽃 (성능은 같아요)", id = 2092353045, robux = 99 },
+	BatLightning = { name = "⚡ 번개 방망이", desc = "빛나는 번개 방망이 + 파란 번개 불꽃 (성능은 같아요)", id = 2094255003, robux = 149 },
 } :: { [string]: RobuxOffer }
 Config.ProductOrder = { "EmpPack", "InstantShield", "RareRain" }
 Config.Products = {
