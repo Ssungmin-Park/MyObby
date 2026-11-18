@@ -602,6 +602,15 @@ function RobotModel.build(robotKey: string, anchored: boolean): Model
 		local sparkles = Instance.new("Sparkles")
 		sparkles.SparkleColor = variant.color
 		sparkles.Parent = body
+		-- 변종 표시: 머리 위에 빛나는 보석 (화면에서 제자리로 천천히 돈다)
+		local top = 0
+		for _, object in model:GetChildren() do
+			if object:IsA("BasePart") and object ~= body then
+				top = math.max(top, object.Position.Y + object.Size.Y / 2)
+			end
+		end
+		local gem = box(Vector3.new(0.8, 0.8, 0.8), at(0, top / s + 0.95, 0) * CFrame.Angles(math.rad(45), 0, math.rad(45)), variant.color, NEON, "Spin")
+		gem:SetAttribute("SpinSpeed", 2)
 	end
 	model.PrimaryPart = body
 	for _, object in model:GetChildren() do
