@@ -774,6 +774,12 @@ local function makeBeltRobot(id: number, robotId: string): Model
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ObjectText = if robot and rarity then ("%s [%s] · 초당 %s"):format(robot.name, rarity.name, Config.formatMoney(Config.robotIncome(robotId))) else robotId
 	prompt.ActionText = if rarity then ("구매 %s"):format(Config.formatMoney(Config.robotValue(robotId))) else "구매"
+	-- 방망이를 들고 있으면 "장갑을 끼면 구매"로 바꿔 보여 준다 (syncPadPrompts)
+	prompt:SetAttribute("BuyText", prompt.ActionText)
+	game:GetService("CollectionService"):AddTag(prompt, "JunkyardBuyPrompt")
+	if player:GetAttribute("BatOut") == true then
+		prompt.ActionText = "🧤 장갑을 끼면 구매"
+	end
 	prompt.MaxActivationDistance = 10
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = body
@@ -858,13 +864,20 @@ local function syncPadPrompts()
 							then ("팔기 +%s"):format(Config.formatMoney(Config.robotValue(key) * Config.SellRate))
 							else "팔기"
 					else
-						prompt.ActionText = "훔치기"
+						prompt.ActionText = if player:GetAttribute("BatOut") == true then "🧤 장갑을 끼면 훔치기" else "훔치기"
 					end
 					-- 도둑 장갑을 끼면 남의 받침대를 짧게 눌러도 된다 (서버도 같은 시간으로 확인)
 					local gloves = workspace:GetServerTimeNow() < ((player:GetAttribute("GlovesUntil") or 0) :: number)
 					prompt.HoldDuration = if not mine and gloves then Config.GlovesHold else Config.StealHold
 				end
 			end
+		end
+	end
+	-- 벨트 구매 버튼: 방망이를 들고 있으면 장갑을 끼라고 알려 준다 (서버도 장갑일 때만 판다)
+	local batOut = player:GetAttribute("BatOut") == true
+	for _, object in game:GetService("CollectionService"):GetTagged("JunkyardBuyPrompt") do
+		if object:IsA("ProximityPrompt") then
+			object.ActionText = if batOut then "🧤 장갑을 끼면 구매" else ((object:GetAttribute("BuyText") or "구매") :: string)
 		end
 	end
 end
@@ -1386,7 +1399,7 @@ local function styleCarryPrompt(object: ProximityPrompt, carrier: Player?)
 	local mine = ownerId == player.UserId or victimId == player.UserId
 	local gloves = workspace:GetServerTimeNow() < ((player:GetAttribute("GlovesUntil") or 0) :: number)
 	object.Enabled = carrier ~= player and (ownerId == 0 or ownerId == player.UserId)
-	object.ActionText = if mine then (if player:GetAttribute("BatOut") == true then "🏏 되찾기" else "🏏 되찾기 ([2] 방망이 들기)") else "빼앗기"
+	object.ActionText = if mine then (if player:GetAttribute("BatOut") == true then "🏏 되찾기" else "🏏 되찾기 ([2] 방망이 들기)") elseif player:GetAttribute("BatOut") == true then "🧤 장갑을 끼면 빼앗기" else "빼앗기"
 	object.HoldDuration = if mine then 0 elseif gloves then Config.GlovesHold else Config.StealHold -- 되찾기는 한 번 누르기
 	-- 되찾기 버튼 거리: 방망이 단계만큼 조금 더 멀리서 (서버도 같은 값으로 확인)
 	local batLevel = Config.BatLevels[(player:GetAttribute("BatLevel") or 1) :: number] or Config.BatLevels[1]
@@ -1509,7 +1522,8 @@ if player.Character then
 	watchOwnCharacter(player.Character)
 end
 player.CharacterAdded:Connect(watchOwnCharacter)
--- 방망이: [2] 들기 / [1] 맨손, 휴대폰은 화면 버튼. 든 동안에만 도둑맞은 로봇을 되찾을 수 있다 (서버가 확인)
+-- 방망이 [2] / 장갑 [1](기본), 휴대폰은 화면 버튼 하나로 바꾼다.
+-- 방망이를 든 동안에만 도둑맞은 로봇을 되찾고, 장갑을 낀 동안에만 로봇을 가져간다(구매·훔치기·빼앗기). 서버가 확인
 local batButton = button(gui, "🏏 방망이 [2]", UDim2.new(1, -12, 0.55, 0), UDim2.fromOffset(130, 44), Color3.fromRGB(150, 100, 55))
 batButton.AnchorPoint = Vector2.new(1, 0.5)
 batButton.TextSize = 15
@@ -1519,7 +1533,7 @@ local batHint = label(batButton, UDim2.new(0, -40, 1, 4), UDim2.new(1, 40, 0, 32
 batHint.TextXAlignment = Enum.TextXAlignment.Right
 batHint.TextWrapped = true
 batHint.TextStrokeTransparency = 0.3
-batHint.Text = "도둑맞으면 방망이를 들고\n도둑이 든 로봇을 누르세요"
+batHint.Text = "가져갈 땐 🧤 장갑 [1]\n도둑맞으면 🏏 방망이 [2]"
 batButton.Activated:Connect(function()
 	actionRemote:FireServer("Bat", player:GetAttribute("BatOut") ~= true)
 end)
@@ -1534,8 +1548,9 @@ UserInputService.InputBegan:Connect(function(input: InputObject, processed: bool
 	end
 end)
 player:GetAttributeChangedSignal("BatOut"):Connect(function()
-	batButton.Text = if player:GetAttribute("BatOut") == true then "✋ 맨손 [1]" else "🏏 방망이 [2]"
+	batButton.Text = if player:GetAttribute("BatOut") == true then "🧤 장갑 [1]" else "🏏 방망이 [2]"
 	syncSnatchPrompts()
+	syncPadPrompts()
 end)
 player:GetAttributeChangedSignal("BatLevel"):Connect(syncSnatchPrompts)
 

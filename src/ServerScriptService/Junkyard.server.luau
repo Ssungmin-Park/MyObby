@@ -797,6 +797,100 @@ local function buildBat(state: State, character: Model, hand: BasePart)
 	end
 end
 
+-- 장갑(기본, [1]): 로봇 가져가기(벨트 구매·훔치기·빼앗기)는 장갑을 낀 동안에만 된다.
+-- 장갑 모양은 늘 같고, 효과(반짝이·빛·가져갈 때 불꽃)만 방망이 단계·꾸미기를 따라 바뀐다
+local RAINBOW = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 80, 80)),
+	ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 220, 70)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(90, 240, 120)),
+	ColorSequenceKeypoint.new(0.75, Color3.fromRGB(80, 160, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 90, 255)),
+})
+local function buildGloves(state: State, character: Model)
+	local level = batLevelOf(state)
+	local skin = if state.batSkin ~= "" and state.passes[state.batSkin] == true then Config.BatSkins[state.batSkin] else nil
+	local accent = if skin then skin.accent else level.color
+	local colors = if not skin and level.rainbow then RAINBOW else ColorSequence.new(accent)
+	local sparkle = skin ~= nil or state.batLevel >= 2 -- 쇠 단계부터 반짝이
+	local glow = if skin then skin.glow else level.glow -- 네온 단계부터(꾸미기는 번개만) 빛
+	for _, side in { "Left", "Right" } do
+		local hand = character:FindFirstChild(side .. "Hand") or character:FindFirstChild(side .. " Arm")
+		if hand and hand:IsA("BasePart") then
+			local r15 = string.find(hand.Name, "Hand", 1, true) ~= nil
+			local glove = Instance.new("Part")
+			glove.Name = "JunkyardGlove"
+			glove.Size = if r15 then hand.Size + Vector3.new(0.12, 0.12, 0.12) else Vector3.new(hand.Size.X + 0.1, 0.7, hand.Size.Z + 0.1)
+			glove.Color = Color3.fromRGB(205, 170, 105) -- 작업 장갑
+			glove.Material = Enum.Material.Fabric
+			glove.CanCollide = false
+			glove.CanQuery = false
+			glove.CanTouch = false
+			glove.Massless = true
+			glove.CastShadow = false
+			local weld = Instance.new("Weld")
+			weld.Part0 = hand
+			weld.Part1 = glove
+			weld.C0 = if r15 then CFrame.new() else CFrame.new(0, -hand.Size.Y / 2 + 0.3, 0)
+			weld.Parent = glove
+			-- 로봇을 가져갈 때 터지는 불꽃 (gloveBurst가 Emit)
+			local burst = Instance.new("ParticleEmitter")
+			burst.Name = "Burst"
+			burst.Rate = 0
+			burst.Color = colors
+			burst.LightEmission = 1
+			burst.Size = NumberSequence.new(0.35, 0)
+			burst.Lifetime = NumberRange.new(0.3, 0.5)
+			burst.Speed = NumberRange.new(4, 8)
+			burst.SpreadAngle = Vector2.new(180, 180)
+			burst.Parent = glove
+			if sparkle then
+				local aura = Instance.new("ParticleEmitter")
+				aura.Name = "Aura"
+				aura.Rate = if skin or state.batLevel >= 4 then 6 else 3
+				aura.Color = colors
+				aura.LightEmission = 1
+				aura.Size = NumberSequence.new(0.22, 0)
+				aura.Lifetime = NumberRange.new(0.5, 0.9)
+				aura.Speed = NumberRange.new(0.5, 1.5)
+				aura.SpreadAngle = Vector2.new(180, 180)
+				aura.Parent = glove
+			end
+			if glow then
+				local light = Instance.new("PointLight")
+				light.Color = accent
+				light.Range = 6
+				light.Brightness = 1.2
+				light.Parent = glove
+			end
+			glove.Parent = character
+		end
+	end
+end
+
+-- 로봇을 가져간 순간 장갑에서 불꽃
+local function gloveBurst(player: Player)
+	local character = player.Character
+	if not character then
+		return
+	end
+	for _, child in character:GetChildren() do
+		local burst = child.Name == "JunkyardGlove" and child:FindFirstChild("Burst")
+		if burst and burst:IsA("ParticleEmitter") then
+			burst:Emit(15)
+		end
+	end
+end
+
+-- 방망이를 들고 있으면 로봇을 가져갈 수 없다 (true = 막힘, 알림을 보냄)
+local function needGloves(state: State): boolean
+	if state.player:GetAttribute("BatOut") == true then
+		notify(state.player, "Alert", "🧤 장갑을 껴야 로봇을 가져갈 수 있어요! ([1] 키 또는 🧤 버튼)")
+		return true
+	end
+	return false
+end
+
+-- on = true면 방망이, false면 장갑. 둘 중 하나만 손에 있다
 local function setBat(player: Player, on: boolean)
 	local track = batTracks[player]
 	if track then
@@ -804,13 +898,21 @@ local function setBat(player: Player, on: boolean)
 		batTracks[player] = nil
 	end
 	local character = player.Character
-	local old = character and character:FindFirstChild("JunkyardBat")
-	if old then
-		old:Destroy()
+	if character then
+		for _, child in character:GetChildren() do
+			if child.Name == "JunkyardBat" or child.Name == "JunkyardGlove" then
+				child:Destroy()
+			end
+		end
 	end
 	local state = states[player]
-	local hand = character and (character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm"))
-	if not on or not state or not character or not hand or not hand:IsA("BasePart") then
+	if not state or not character then
+		player:SetAttribute("BatOut", false)
+		return
+	end
+	local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+	if not on or not hand or not hand:IsA("BasePart") then
+		buildGloves(state, character)
 		player:SetAttribute("BatOut", false)
 		return
 	end
@@ -823,11 +925,9 @@ local function setBat(player: Player, on: boolean)
 	player:SetAttribute("BatOut", true)
 end
 
--- 단계·꾸미기가 바뀌면 들고 있는 방망이 모양을 다시 만든다
+-- 단계·꾸미기가 바뀌면 손에 든 방망이 또는 장갑을 다시 만든다
 local function refreshBat(state: State)
-	if state.player:GetAttribute("BatOut") == true then
-		setBat(state.player, true)
-	end
+	setBat(state.player, state.player:GetAttribute("BatOut") == true)
 end
 
 -- 되찾을 때: 방망이를 휘두르는 동작 (toolslash) + 끝에서 불꽃
@@ -958,6 +1058,9 @@ snatchHandler = function(player: Player, target: State, prompt: ProximityPrompt)
 	if not began or os.clock() - began < required - 0.25 then
 		return
 	end
+	if needGloves(state) then
+		return
+	end
 	if not state.base or state.loading or player:GetAttribute("Mode") ~= "Junkyard" or now() < state.stunnedUntil then
 		notify(player, "Alert", "지금은 빼앗을 수 없어요.")
 		return
@@ -990,6 +1093,7 @@ snatchHandler = function(player: Player, target: State, prompt: ProximityPrompt)
 	local robotId = carry.robotId
 	endCarry(target)
 	startCarry(state, robotId, nil, nil)
+	gloveBurst(player)
 	local taken = state.carry
 	if taken then
 		taken.snatchedFrom = target.player
@@ -1134,6 +1238,9 @@ local function buy(state: State, itemId: number)
 		notify(state.player, "Alert", "이미 로봇을 들고 있어요. 먼저 기지에 두세요.")
 		return
 	end
+	if needGloves(state) then
+		return
+	end
 	if not state.base then
 		notify(state.player, "Alert", "기지가 없어서 살 수 없어요. (서버의 기지가 모두 찼어요)")
 		return
@@ -1168,6 +1275,7 @@ local function buy(state: State, itemId: number)
 	local variantId = Config.rollVariant(state.rebirth)
 	local robotKey = if variantId then item.robotId .. "@" .. variantId else item.robotId
 	startCarry(state, robotKey, nil, nil)
+	gloveBurst(state.player)
 	if variantId then
 		notify(state.player, "Info", ("%s 변종이 나왔어요! %s"):format(Config.Variants[variantId].mark, robotLabel(robotKey)))
 	end
@@ -1244,6 +1352,9 @@ local function steal(state: State, base: Base, padIndex: number)
 		notify(state.player, "Alert", "이미 로봇을 들고 있어요.")
 		return
 	end
+	if needGloves(state) then
+		return
+	end
 	-- 초보 보호: 환생 단계가 ProtectionGap 이상 낮은 사람의 로봇은 훔칠 수 없다
 	local victim = states[base.owner]
 	if victim and state.rebirth - victim.rebirth >= Config.ProtectionGap then
@@ -1266,6 +1377,7 @@ local function steal(state: State, base: Base, padIndex: number)
 	setPadRobot(base, padIndex, nil)
 	base.reserved[padIndex] = true
 	startCarry(state, robotId, base, padIndex)
+	gloveBurst(state.player)
 	if states[base.owner] then
 		refreshIncome(states[base.owner])
 	end
@@ -1964,6 +2076,7 @@ local function loadPlayer(state: State)
 		applyExpansion(base, state.expand) -- 받침대를 채우기 전에 구역을 펼친다
 		state.passes = JunkyardStore.checkPasses(player)
 		syncPasses(state)
+		refreshBat(state) -- 단계·꾸미기(게임패스)에 맞는 장갑 효과
 		applyTitle(state)
 		setPadLocks(base)
 		applySpeed(state)
@@ -2003,7 +2116,7 @@ local function onCharacterAdded(state: State, character: Model)
 	if not root then
 		return
 	end
-	setBat(state.player, false) -- 다시 태어나면 맨손
+	setBat(state.player, false) -- 다시 태어나면 장갑
 	task.wait() -- 기본 스폰 배치가 끝난 뒤에 옮긴다
 	if state.player:GetAttribute("Mode") == "Junkyard" and state.base then
 		character:PivotTo(spawnCFrame(state.base))

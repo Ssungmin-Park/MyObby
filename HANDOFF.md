@@ -11,7 +11,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 마지막 작업 AI | **Claude Code** — 방망이 성장·꾸미기(B-42, 사용자 승인 "추천안대로"). 그 전: B-41 알림 글씨·방망이 설명, Codex B-38~B-40. 게임패스 5개 번호 입력 완료(2026-11-19). |
+| 마지막 작업 AI | **Claude Code** — 장갑 [1]·방망이 [2] 나눔(B-43), 방망이 성장·꾸미기(B-42). 그 전: B-41 알림 글씨·방망이 설명, Codex B-38~B-40. 게임패스 5개 번호 입력 완료(2026-11-19). |
 | 작업 시점 | 2026-11-19 |
 | 다음 작업 AI | 사용자: **Studio Ctrl+S 저장** 후 필요할 때 직접 게시. 다음 AI: G-3의 2인 확인 목록을 음수 UserId 로컬 서버로 검증한다. 게임패스 판매·가격·공개 준비는 사용자와 별도 확인. |
 | 게임 이름 | **로봇 고물상 타이쿤** (`list_roblox_studios` 현재 이름), 단독 운영. 오비·로봇 작업장은 `ServerStorage/ArchivedModes`에 보관. |
@@ -22,7 +22,7 @@
 | Studio 모드 | **Edit 모드**. 2026-11-18 Codex가 자신이 실행한 1인 로컬 테스트 종료. |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-19 Claude Code B-42. `JunkyardConfig` 33034 / 876108229, `Junkyard` 92078 / 365343719, `JunkyardSave` 17403 / 803073679, `JunkyardStore` 4904 / 256970632, `JunkyardHud` 80690 / 148375433 (나머지 6개는 그대로: `JunkyardContest` 6644 / 622978211, `JunkyardBelt` 7083 / 740310580, `JunkyardCCTV` 10127 / 499888406, `JunkyardEvents` 1733 / 471819683, `JunkyardGiantRobot` 9911 / 457266346, `JunkyardRanking` 12574 / 72233971) — Studio와 일치. 시작할 때 11개 모두 Codex 기록과 일치 확인. **사용자 Ctrl+S 저장·게시 필요** |
+| 마지막 게임 수정 | 2026-11-19 Claude Code B-42. `JunkyardConfig` 33034 / 876108229, `Junkyard` 96332 / 489916818, `JunkyardSave` 17403 / 803073679, `JunkyardStore` 4904 / 256970632, `JunkyardHud` 81757 / 5925783 (나머지 6개는 그대로: `JunkyardContest` 6644 / 622978211, `JunkyardBelt` 7083 / 740310580, `JunkyardCCTV` 10127 / 499888406, `JunkyardEvents` 1733 / 471819683, `JunkyardGiantRobot` 9911 / 457266346, `JunkyardRanking` 12574 / 72233971) — Studio와 일치. 시작할 때 11개 모두 Codex 기록과 일치 확인. **사용자 Ctrl+S 저장·게시 필요** |
 | Studio 저장 상태 | B-38~B-40은 Studio Edit에 반영, 수정 스크립트 6개를 원문 대조 후 `src/`로 내보냄. 클라우드 저장 완료는 미확인. 사용자가 Ctrl+S로 저장한다. AI 저장·게시 실행 없음. 기존 ServerStorage 백업·보관 유지. |
 | 휴대폰 미리보기 | 사용자 직접 확인(2026-11-17). Studio 휴대폰 미리보기에서 상점·도감·대회 상자·안내 띠에 문제 없음 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
@@ -188,6 +188,16 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 - 수정 경로. `ReplicatedStorage/Modules/JunkyardConfig`, `ServerScriptService/Junkyard`, `ServerScriptService/JunkyardSave`, `ServerScriptService/JunkyardGiantRobot`, `StarterPlayer/StarterPlayerScripts/JunkyardHud`와 같은 `src/` 경로.
 - **1인 실제 검증**. UserId -1, SaveOff=false. 옛 신화 도감에서 신화 수집가·+1% 자동 지급. 진행률 99.99% 뒤 실제 Donate → Active·정비왕·총 +2%. 같은 칭호 재획득해도 +2% 유지. 칭호 창 실제 클릭·스크롤로 정비왕 선택 → 머리 위 표시. 숨겨도 +2% 유지, 미획득 FullCatalog 선택 거절. 종료·재접속 후 두 칭호·선택 Mechanic·+2% 복원. sanitize의 옛 돈/받침대/확장 유지·새 기본값·알 수 없는 칭호와 잘못된 선택 제거, 13종 보너스 합 0.13 확인.
 - **표시 경로 시험**. 타인 기부와 같은 서버 Remote를 한 명에게 보내 중앙 연출 표시·문구 TextFits 확인(측정 크기 약 657×125). **미검증**. 실제 2인 타인 기부 전달, 최고 기부자와 마지막 기부자가 다를 때 지급, 동시 마지막 기부, 실제 2인 대회 우승 칭호 획득/복원, 새 UI의 실제 모바일 화면·터치.
+
+### B-43. 장갑 [1] / 방망이 [2] (2026-11-19 Claude Code, 사용자 요청 · 혼자 Play 확인)
+
+- 사용자: 방망이를 든 동안에는 로봇을 못 가져가게, 가져가기는 장갑으로만. 맨손 대신 장갑, 장갑은 방망이 단계·패스에 따라 효과만 업그레이드.
+- 손에는 늘 둘 중 하나: **장갑(기본, [1], `BatOut=false`)** 또는 **방망이([2], `BatOut=true`)**. `setBat`가 `JunkyardGlove`(양손)와 `JunkyardBat`를 서로 바꾼다. 다시 태어나면 장갑.
+- 서버 `needGloves`: 방망이를 들고 있으면 **벨트 구매(`buy`)·받침대 훔치기(`steal`)·빼앗기(`snatchHandler`)** 거절 + 알림. 팔기·옮기기·되찾기(방망이 필요)는 그대로.
+- 장갑 모양은 늘 같은 작업 장갑, 효과만: 쇠 단계부터 반짝이(`Aura`, 네온부터·꾸미기는 더 많이), 네온부터(꾸미기는 번개만) 빛, 무지개는 무지개색, 꾸미기는 그 색. 로봇을 가져갈 때 장갑 불꽃(`gloveBurst`). 불러온 뒤(`checkPasses` 다음) `refreshBat`로 다시 만든다.
+- 화면: 버튼 "🧤 장갑 [1]" / "🏏 방망이 [2]", 설명 "가져갈 땐 🧤 장갑 [1] / 도둑맞으면 🏏 방망이 [2]". 방망이를 들면 구매·훔치기·빼앗기 버튼 글자가 "🧤 장갑을 끼면 …"로 바뀐다(벨트 버튼은 태그 `JunkyardBuyPrompt` + `BuyText` 속성).
+- "도둑 장갑" 아이템(5분 빠른 훔치기)은 그대로다. 이름이 비슷하니 헷갈린다는 말이 나오면 이름을 바꾼다.
+- 확인(사용자 실제 저장으로 Play): 시작 시 장갑 2개, [2]로 방망이·장갑 0, 방망이 상태 구매 요청 → 장갑 알림으로 거절, 벨트 버튼 글자 바뀜·돌아옴, 번개 꾸미기 장갑 효과(반짝이·빛), 설명 TextFits, 오류 0. 사용자가 끼고 있던 ⚡ 번개 방망이를 시험 중 풀었다가 다시 착용시켜 둠. **미검증**: 2인 훔치기·빼앗기 거절, 실제 모습·휴대폰.
 
 ### B-42. 방망이 성장·꾸미기 (2026-11-19 Claude Code, 사용자 승인 "추천안대로" · 혼자 Play 일부 확인)
 
