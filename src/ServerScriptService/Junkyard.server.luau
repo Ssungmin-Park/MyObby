@@ -22,6 +22,7 @@ local JunkyardRanking = require(script.Parent:WaitForChild("JunkyardRanking"))
 local JunkyardCCTV = require(script.Parent:WaitForChild("JunkyardCCTV"))
 local JunkyardContest = require(script.Parent:WaitForChild("JunkyardContest"))
 local JunkyardGiantRobot = require(script.Parent:WaitForChild("JunkyardGiantRobot"))
+local JunkyardReferral = require(script.Parent:WaitForChild("JunkyardReferral"))
 
 local junkyard = workspace:WaitForChild("Junkyard")
 local basesFolder = junkyard:WaitForChild("Bases")
@@ -87,6 +88,11 @@ type State = {
 	batXp: number, -- 방망이 경험치 (저장됨)
 	batSkin: string, -- 고른 방망이 꾸미기 (저장됨, "" = 단계 모양)
 	batXpAt: { [Player]: number }, -- 도둑별 마지막 경험치 시각 (주고받기 방지)
+	referredBy: number, -- 나를 초대한 사람 UserId (저장됨, 0 = 없음)
+	referralPaid: boolean, -- 초대한 사람에게 보상을 보냈는지 (저장됨)
+	playTime: number, -- 초대받은 사람이 논 시간(초, 저장됨)
+	invites: number, -- 인정된 친구 초대 수 (저장됨)
+	referralBusy: boolean, -- 초대 보상을 가져오는 중 (겹쳐서 가져가지 않게)
 }
 
 local bases: { Base } = {}
@@ -1224,7 +1230,7 @@ local function snapshot(state: State): JunkyardSave.Data
 			money += Config.robotValue(carry.robotId)
 		end
 	end
-	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades), empCharges = state.empCharges, rebirth = state.rebirth, variantCatalog = table.clone(state.variantCatalog), totalEarned = math.floor(state.totalEarned), tutorial = state.tutorial, expand = state.expand, titles = table.clone(state.titles), selectedTitle = state.selectedTitle, batLevel = state.batLevel, batXp = state.batXp, batSkin = state.batSkin }
+	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades), empCharges = state.empCharges, rebirth = state.rebirth, variantCatalog = table.clone(state.variantCatalog), totalEarned = math.floor(state.totalEarned), tutorial = state.tutorial, expand = state.expand, titles = table.clone(state.titles), selectedTitle = state.selectedTitle, batLevel = state.batLevel, batXp = state.batXp, batSkin = state.batSkin, referredBy = state.referredBy, referralPaid = state.referralPaid, playTime = state.playTime, invites = state.invites }
 end
 
 -- 첫 접속 안내 (튜토리얼) ------------------------------------------------------------
@@ -2060,6 +2066,96 @@ end
 
 JunkyardStore.start({ grantProduct = grantProduct, onPassOwned = onPassOwned })
 
+-- 친구 초대 보상 (B-50) ------------------------------------------------------------
+-- 초대받아 처음 들어온 사람: 환영 선물(고급 로봇). 그 사람이 Config.Referral.PlaySeconds초 놀면 초대한 사람에게 희귀 로봇.
+-- 부계정 악용 방지: 처음 하는 계정만, 초대한 사람 1명당 하루 DailyLimit명까지. 기록은 JunkyardReferral(Referrals_v1)
+
+-- 선물 로봇을 빈 받침대에 둔다. 받침대가 꽉 차면 그 로봇 가격만큼 돈으로 준다
+local function giveGiftRobot(state: State, robotId: string, reason: string)
+	local base = state.base
+	local padIndex = if base then freePad(base) else nil
+	if base and padIndex then
+		setPadRobot(base, padIndex, robotId)
+		addToCatalog(state, robotId)
+		refreshIncome(state)
+		notify(state.player, "Info", ("🎁 %s: %s이(가) 기지에 도착했어요!"):format(reason, robotLabel(robotId)))
+	else
+		local value = Config.robotValue(robotId)
+		setMoney(state, state.money + value)
+		notify(state.player, "Info", ("🎁 %s: 받침대가 꽉 차서 %s 대신 %s 돈을 드렸어요."):format(reason, robotLabel(robotId), Config.formatMoney(value)))
+	end
+end
+
+-- 나를 초대한 사람 (Roblox 초대로 들어왔을 때만 있다)
+local function referrerOf(player: Player): number?
+	local ok, joinData = pcall(function()
+		return player:GetJoinData()
+	end)
+	local id = if ok and typeof(joinData) == "table" then joinData.ReferredByPlayerId else nil
+	if typeof(id) == "number" and id > 0 and id == math.floor(id) and id ~= player.UserId then
+		return id
+	end
+	return nil
+end
+
+-- 초대한 사람: 쌓인 보상을 받는다 (접속할 때, 2분마다, 같은 서버의 친구가 조건을 채웠을 때)
+local function claimReferrals(state: State)
+	local player = state.player
+	if state.referralBusy or state.loading or player:GetAttribute("SaveOff") ~= false then
+		return
+	end
+	state.referralBusy = true
+	local count, total = JunkyardReferral.claim(player.UserId)
+	state.referralBusy = false
+	if states[player] ~= state then
+		if count > 0 then
+			warn(("[Junkyard] %d님이 초대 보상 %d개를 받기 전에 나갔어요"):format(player.UserId, count))
+		end
+		return
+	end
+	local invites = math.max(state.invites + count, total or 0)
+	if count <= 0 and invites == state.invites then
+		return
+	end
+	state.invites = invites
+	player:SetAttribute("Invites", invites)
+	if count > 0 then
+		notify(player, "Info", ("👥 초대한 친구가 %d분 넘게 놀았어요! 고마워요 (지금까지 %d명)"):format(Config.Referral.PlaySeconds // 60, invites))
+		for _ = 1, count do
+			giveGiftRobot(state, Config.pickRobot(Config.Referral.RewardRarity), "친구 초대 선물")
+		end
+	end
+	if invites >= Config.Referral.TitleInvites then
+		grantTitle(state, "Inviter")
+	end
+	JunkyardSave.saveNow(player)
+end
+
+-- 초대받은 사람이 조건 시간을 채웠다: 초대한 사람에게 보상을 쌓는다 (한 번만)
+local function payReferral(state: State)
+	state.referralPaid = true -- 결과가 나올 때까지 다시 부르지 않게
+	task.spawn(function()
+		local outcome = JunkyardReferral.credit(state.referredBy, JunkyardReferral.today())
+		if states[state.player] ~= state then
+			return
+		end
+		if outcome == "failed" then
+			state.referralPaid = false
+			state.playTime = math.max(0, Config.Referral.PlaySeconds - 60) -- 1분 뒤 다시 시도
+			return
+		end
+		JunkyardSave.saveNow(state.player)
+		if outcome == "ok" then
+			notify(state.player, "Info", "🎉 초대해 준 친구에게 고마움의 선물이 갔어요!")
+			local inviter = Players:GetPlayerByUserId(state.referredBy)
+			local inviterState = inviter and states[inviter]
+			if inviterState then
+				claimReferrals(inviterState)
+			end
+		end
+	end)
+end
+
 -- 저장된 기지 불러오기 ------------------------------------------------------------
 local function setCatalog(state: State, catalog: { [string]: boolean }, variantCatalog: { [string]: boolean })
 	state.catalog = catalog
@@ -2089,6 +2185,11 @@ local function loadPlayer(state: State)
 		state.batLevel = data.batLevel
 		state.batXp = data.batXp
 		state.batSkin = data.batSkin
+		state.referredBy = data.referredBy
+		state.referralPaid = data.referralPaid
+		state.playTime = data.playTime
+		state.invites = data.invites
+		player:SetAttribute("Invites", state.invites)
 		syncBat(state)
 		setMoney(state, data.money)
 		state.totalEarned = data.totalEarned
@@ -2125,6 +2226,15 @@ local function loadPlayer(state: State)
 			base.model:SetAttribute("Vault", math.floor(base.vault))
 			notify(player, "Money", ("떠나 있는 동안 금고에 +%s"):format(Config.formatMoney(gained)))
 		end
+		-- 친구 초대로 처음 온 사람: 초대한 사람을 기억하고 환영 선물을 준다
+		if status == "new" then
+			local referrer = referrerOf(player)
+			if referrer then
+				state.referredBy = referrer
+				giveGiftRobot(state, Config.pickRobot(Config.Referral.WelcomeRarity), "친구 초대 환영 선물")
+				notify(player, "Info", ("👥 %d분 넘게 놀면 초대해 준 친구도 선물을 받아요!"):format(Config.Referral.PlaySeconds // 60))
+			end
+		end
 		JunkyardSave.track(player, function()
 			return snapshot(state)
 		end)
@@ -2137,6 +2247,9 @@ local function loadPlayer(state: State)
 	end
 	state.loading = false
 	player:SetAttribute("Loading", false)
+	if data then
+		task.spawn(claimReferrals, state) -- 꺼져 있는 동안 쌓인 친구 초대 보상
+	end
 end
 
 -- 플레이어 ----------------------------------------------------------------------
@@ -2191,6 +2304,11 @@ local function onPlayerAdded(player: Player)
 		batXp = 0,
 		batSkin = "",
 		batXpAt = {},
+		referredBy = 0,
+		referralPaid = false,
+		playTime = 0,
+		invites = 0,
+		referralBusy = false,
 	}
 	player:SetAttribute("Expand", 0)
 	for _, id in Config.UpgradeOrder do
@@ -2299,6 +2417,21 @@ Players.PlayerRemoving:Connect(function(player)
 	states[player] = nil
 end)
 
+-- 친구 초대 보상 확인: 2분마다 (초대한 사람이 다른 서버에 있었거나 꺼져 있었을 때 쌓인 것)
+task.spawn(function()
+	while true do
+		task.wait(120)
+		local list = {}
+		for _, state in states do
+			table.insert(list, state)
+		end
+		for _, state in list do
+			task.spawn(claimReferrals, state)
+			task.wait(1)
+		end
+	end
+end)
+
 -- Studio 서버에서만 테스트 자금을 지급한다. 클라이언트 속성 변경은 서버에 복제되지 않는다.
 if game:GetService("RunService"):IsStudio() then
 	workspace:GetAttributeChangedSignal("DebugGiveMoney"):Connect(function()
@@ -2370,6 +2503,23 @@ if game:GetService("RunService"):IsStudio() then
 			syncRebirth(state)
 			recomputeMultiplier(state)
 			refreshIncome(state)
+		end
+	end)
+	-- 친구 초대 시험: 대상(음수 계정)을 "음수 계정 DebugReferral이 초대해서 처음 온 사람"으로 만들고 남은 시간을 5초로 (환영 선물도 준다)
+	workspace:GetAttributeChangedSignal("DebugReferral"):Connect(function()
+		local inviterId = workspace:GetAttribute("DebugReferral")
+		local userId = workspace:GetAttribute("DebugMoneyUserId")
+		workspace:SetAttribute("DebugReferral", nil)
+		if typeof(userId) ~= "number" or userId >= 0 or typeof(inviterId) ~= "number" or inviterId >= 0 or inviterId == userId then
+			return
+		end
+		local player = Players:GetPlayerByUserId(userId)
+		local state = player and states[player]
+		if state and not state.loading then
+			state.referredBy = inviterId
+			state.referralPaid = false
+			state.playTime = Config.Referral.PlaySeconds - 5
+			giveGiftRobot(state, Config.pickRobot(Config.Referral.WelcomeRarity), "친구 초대 환영 선물")
 		end
 	end)
 	-- 첫 접속 안내 시험: 안내 단계를 정한다 (0~5). Studio에서만, DebugMoneyUserId 대상
@@ -2489,6 +2639,15 @@ task.spawn(function()
 		incomeTimer += dt
 		if incomeTimer >= 1 then
 			incomeTimer -= 1
+			-- 친구 초대: 초대받은 사람이 논 시간 (Config.Referral.PlaySeconds가 되면 초대한 사람에게 보상, 한 번만)
+			for player, state in states do
+				if state.referredBy ~= 0 and not state.referralPaid and not state.loading and player:GetAttribute("SaveOff") == false then
+					state.playTime += 1
+					if state.playTime >= Config.Referral.PlaySeconds then
+						payReferral(state)
+					end
+				end
+			end
 			for _, base in bases do
 				local owner = base.owner
 				if owner and states[owner] then

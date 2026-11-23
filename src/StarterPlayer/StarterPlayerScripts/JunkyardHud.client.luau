@@ -11,6 +11,7 @@ local TweenService = game:GetService("TweenService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
+local SocialService = game:GetService("SocialService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("JunkyardConfig"))
 local RobotModel = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("JunkyardRobotModel"))
@@ -1884,8 +1885,27 @@ render()
 
 -- 칭호 모음: 획득 여부와 선택은 서버 속성으로 표시하고, 선택 요청만 보낸다.
 do
-	local open = button(panel, "🏅 칭호 모음", UDim2.fromOffset(12, 152), UDim2.fromOffset(226, 28), Color3.fromRGB(80, 66, 110))
+	local open = button(panel, "🏅 칭호 모음", UDim2.fromOffset(12, 152), UDim2.fromOffset(146, 28), Color3.fromRGB(80, 66, 110))
 	open.Name = "TitlesButton"
+	open.TextSize = 12
+	-- 친구 초대 (B-50): Roblox 초대 창을 연다. 보상은 서버가 초대 기록(ReferredByPlayerId)으로 판정한다
+	local invite = button(panel, "👥 친구 초대", UDim2.fromOffset(162, 152), UDim2.fromOffset(76, 28), Color3.fromRGB(45, 125, 95))
+	invite.Name = "InviteButton"
+	invite.TextSize = 12
+	invite.Activated:Connect(function()
+		local ok, canInvite = pcall(function()
+			return SocialService:CanSendGameInviteAsync(player)
+		end)
+		if ok and canInvite then
+			pcall(function()
+				SocialService:PromptGameInvite(player)
+			end)
+			toast("Info", ("👥 처음 오는 친구가 %d분 넘게 놀면 희귀 로봇 선물! (친구는 고급 로봇) · 지금까지 %d명"):format(
+				Config.Referral.PlaySeconds // 60, (player:GetAttribute("Invites") or 0) :: number))
+		else
+			toast("Alert", "지금은 친구 초대 창을 열 수 없어요.")
+		end
+	end)
 	local window = Instance.new("Frame")
 	window.Name = "TitlesWindow"
 	window.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1929,7 +1949,7 @@ do
 		local selected = player:GetAttribute("SelectedTitle")
 		local bonus = math.round(((player:GetAttribute("TitleBonus") or 0) :: number) * 100)
 		open.Text = ("🏅 칭호 모음 · 영구 수입 +%d%%"):format(bonus)
-		info.Text = ("획득한 칭호마다 영구 수입 +1%% · 현재 +%d%% / 최대 +13%%\n표시할 칭호 하나를 고르세요. 숨겨도 혜택은 유지돼요."):format(bonus)
+		info.Text = ("획득한 칭호마다 영구 수입 +1%% · 현재 +%d%% / 최대 +%d%%\n표시할 칭호 하나를 고르세요. 숨겨도 혜택은 유지돼요."):format(bonus, #Config.TitleOrder)
 		for _, child in list:GetChildren() do
 			if child:IsA("TextButton") then
 				child:Destroy()

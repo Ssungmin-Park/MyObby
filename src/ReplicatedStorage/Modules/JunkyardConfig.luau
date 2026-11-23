@@ -593,6 +593,19 @@ end
 table.insert(Config.TitleOrder, "Mechanic")
 Config.TitleNames.Mechanic = Config.GiantRobot.TopTitle
 
+-- 친구 초대 보상 (B-50). 초대받아 "처음" 들어온 사람은 환영 선물, 그 사람이 PlaySeconds초 놀면 초대한 사람에게 로봇 선물.
+-- 부계정 악용 방지: 처음 하는 계정만 인정하고, 초대한 사람 1명당 하루 DailyLimit명까지만 보상한다.
+Config.Referral = {
+	WelcomeRarity = "Uncommon", -- 초대받은 새 플레이어의 환영 선물 등급 (고급)
+	RewardRarity = "Rare", -- 초대한 사람이 받는 로봇 등급 (희귀). 받침대가 꽉 차면 그 로봇 가격만큼 돈
+	PlaySeconds = 600, -- 초대받은 사람이 이만큼(초) 놀아야 초대한 사람이 보상을 받는다
+	DailyLimit = 10, -- 초대한 사람 1명이 하루(UTC)에 받을 수 있는 보상 수
+	TitleInvites = 5, -- 이만큼 초대가 인정되면 칭호
+	TitleName = "👥 친구 부자",
+}
+table.insert(Config.TitleOrder, "Inviter")
+Config.TitleNames.Inviter = Config.Referral.TitleName
+
 function Config.titleBonus(titles: { [string]: boolean }): number
 	local count = 0
 	for _, id in Config.TitleOrder do

@@ -14,6 +14,8 @@
 --                   ← tutorial(첫 접속 안내 단계 1~5, 0 = 끝남)은 안내 기능에서 추가. 옛 데이터는 0(이미 해 본 사람)
 --                   ← batLevel(방망이 단계 1~5)·batXp(되찾기 경험치)·batSkin(꾸미기 게임패스 키, "" = 단계 모양)은 방망이 성장에서 추가.
 --                     옛 데이터는 1단계·0·""
+--                   ← referredBy(나를 초대한 사람 UserId, 0 = 없음)·referralPaid(초대한 사람 보상을 보냈는지)·playTime(초대받은 사람이 논 초)·
+--                     invites(인정된 친구 초대 수)는 친구 초대 보상(B-50)에서 추가. 옛 데이터는 0·false·0·0
 --
 -- 안전 원칙
 --   1. 세션 잠금: 데이터를 쓰는 서버가 lock을 남긴다. 다른 서버의 lock이 살아 있으면 기다리고,
@@ -52,6 +54,10 @@ export type Data = {
 	batLevel: number, -- 방망이 성장 단계 (1~5, 환생해도 유지)
 	batXp: number, -- 방망이 경험치 (되찾기 성공)
 	batSkin: string, -- 고른 방망이 꾸미기 (게임패스 키, "" = 성장 단계 모양)
+	referredBy: number, -- 나를 초대한 사람 UserId (0 = 초대받지 않음. 처음 접속할 때만 정해진다)
+	referralPaid: boolean, -- 초대한 사람에게 보상을 보냈는지 (한 번만)
+	playTime: number, -- 초대받은 사람이 논 시간(초). 보상을 보낼 때까지만 센다
+	invites: number, -- 인정된 친구 초대 수
 }
 export type LoadStatus = "new" | "ok" | "failed" | "locked"
 export type SaveStatus = "ok" | "failed" | "lostLock"
@@ -92,12 +98,12 @@ local function defaultUpgrades(): { [string]: number }
 end
 
 function JunkyardSave.newData(): Data
-	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 1, expand = 0, titles = {}, selectedTitle = "", batLevel = 1, batXp = 0, batSkin = "" }
+	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 1, expand = 0, titles = {}, selectedTitle = "", batLevel = 1, batXp = 0, batSkin = "", referredBy = 0, referralPaid = false, playTime = 0, invites = 0 }
 end
 
 -- 저장소에서 읽은 값을 허용 범위로 정리해서 항상 올바른 Data를 돌려준다.
 function JunkyardSave.sanitize(raw: any): Data
-	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 0, expand = 0, titles = {}, selectedTitle = "", batLevel = 1, batXp = 0, batSkin = "" }
+	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 0, expand = 0, titles = {}, selectedTitle = "", batLevel = 1, batXp = 0, batSkin = "", referredBy = 0, referralPaid = false, playTime = 0, invites = 0 }
 	if typeof(raw) ~= "table" then
 		return JunkyardSave.newData()
 	end
@@ -189,6 +195,20 @@ function JunkyardSave.sanitize(raw: any): Data
 	if typeof(raw.batSkin) == "string" and Config.BatSkins[raw.batSkin] then
 		data.batSkin = raw.batSkin
 	end
+	-- 친구 초대: 없으면(옛 데이터) 초대받지 않음·보상 없음
+	local referredBy = raw.referredBy
+	if typeof(referredBy) == "number" and referredBy == referredBy then
+		data.referredBy = math.floor(math.clamp(referredBy, -1e12, 1e12))
+	end
+	data.referralPaid = raw.referralPaid == true
+	local playTime = raw.playTime
+	if typeof(playTime) == "number" and playTime == playTime then
+		data.playTime = math.floor(math.clamp(playTime, 0, 1e9))
+	end
+	local invites = raw.invites
+	if typeof(invites) == "number" and invites == invites then
+		data.invites = math.floor(math.clamp(invites, 0, 1e9))
+	end
 	return data
 end
 
@@ -210,6 +230,10 @@ local function snapshot(data: Data): Data
 		batLevel = math.floor(data.batLevel),
 		batXp = math.floor(data.batXp),
 		batSkin = data.batSkin,
+		referredBy = math.floor(data.referredBy),
+		referralPaid = data.referralPaid == true,
+		playTime = math.floor(data.playTime),
+		invites = math.floor(data.invites),
 	}
 end
 
