@@ -2199,7 +2199,15 @@ local function claimDaily(state: State)
 		syncPasses(state)
 		notify(player, "Info", ("📅 %d일째 보상: 무료 EMP %d개! (남은 %d개)"):format(step, reward.count or 1, state.empCharges))
 	else
-		giveGiftRobot(state, Config.pickRobot(reward.rarity or "Rare"), ("📅 %d일째 보상"):format(step))
+		local robotId = Config.pickRobot(reward.rarity or "Rare")
+		if freePad(base) then
+			giveGiftRobot(state, robotId, ("📅 %d일째 보상"):format(step))
+		else
+			-- 받침대가 꽉 찬 사람(주로 오래 한 사람)은 로봇 값이 작게 느껴지므로 수입 기준 돈과 비교해 큰 쪽을 준다
+			local amount = math.max(Config.robotValue(robotId), math.floor(baseIncome(base, state) * 60 * (reward.minutes or 0)))
+			setMoney(state, state.money + amount)
+			notify(player, "Money", ("📅 %d일째 보상: 받침대가 꽉 차서 %s 대신 +%s"):format(step, robotLabel(robotId), Config.formatMoney(amount)))
+		end
 	end
 	JunkyardSave.saveNow(player)
 end

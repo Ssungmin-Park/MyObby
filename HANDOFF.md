@@ -22,7 +22,7 @@
 | Studio 모드 | **Edit 모드**. 2026-11-18 Codex가 자신이 실행한 1인 로컬 테스트 종료. |
 | 로컬 폴더 | `C:\RobloxProjects\MyObby` |
 | Git | `main` 브랜치, `origin/main`(https://github.com/Ssungmin-Park/MyObby, 공개)과 동기화. 시작할 때 `git status`, `git log --oneline -5`로 다시 확인 |
-| 마지막 게임 수정 | 2026-11-24 Claude Code B-51. `JunkyardConfig` 35250 / 5442968, `Junkyard` 110653 / 768861092, `JunkyardSave` 19930 / 636800539, `JunkyardHud` 93999 / 3478017, `JunkyardReferral` 3804 / 784056529 (나머지 그대로: `JunkyardRobotModel` 31723 / 315473285, `JunkyardStore` 4904 / 256970632, `JunkyardContest` 6644 / 622978211, `JunkyardBelt` 7083 / 740310580, `JunkyardCCTV` 10127 / 499888406, `JunkyardEvents` 1733 / 471819683, `JunkyardGiantRobot` 9911 / 457266346, `JunkyardRanking` 12574 / 72233971) — Studio와 일치. **사용자 Ctrl+S 저장·Alt+P 게시 필요** |
+| 마지막 게임 수정 | 2026-11-24 Claude Code B-51. `JunkyardConfig` 35330 / 102308302, `Junkyard` 111182 / 650924528, `JunkyardSave` 19930 / 636800539, `JunkyardHud` 93999 / 3478017, `JunkyardReferral` 3804 / 784056529 (나머지 그대로: `JunkyardRobotModel` 31723 / 315473285, `JunkyardStore` 4904 / 256970632, `JunkyardContest` 6644 / 622978211, `JunkyardBelt` 7083 / 740310580, `JunkyardCCTV` 10127 / 499888406, `JunkyardEvents` 1733 / 471819683, `JunkyardGiantRobot` 9911 / 457266346, `JunkyardRanking` 12574 / 72233971) — Studio와 일치. **사용자 Ctrl+S 저장·Alt+P 게시 필요** |
 | Studio 저장 상태 | B-38~B-40은 Studio Edit에 반영, 수정 스크립트 6개를 원문 대조 후 `src/`로 내보냄. 클라우드 저장 완료는 미확인. 사용자가 Ctrl+S로 저장한다. AI 저장·게시 실행 없음. 기존 ServerStorage 백업·보관 유지. |
 | 휴대폰 미리보기 | 사용자 직접 확인(2026-11-17). Studio 휴대폰 미리보기에서 상점·도감·대회 상자·안내 띠에 문제 없음 |
 | Studio API 접근 | **켜짐** (2026-11-17 사용자가 파일 → 체험 설정 → 보안에서 켬. 새 Studio에서는 "게임 설정"이 "체험 설정"으로 바뀜). Studio Play는 실제 게임과 같은 DataStore를 쓴다 |
@@ -192,12 +192,13 @@ Hazards → Spinner·Mover·TimedDoor 계속 구동
 
 ### B-51. 매일 접속 보상 (2026-11-24 Claude Code, 사용자 승인 설계)
 
-- **규칙:** 하루(한국 시간 자정, `Config.Daily.UtcOffset` = 9시간)에 한 번. 어제 받았으면 다음 날짜, 아니면 1일부터. 7일 다음은 다시 1일. 보상은 `Config.Daily.Rewards`: 1일 5분치 수입(최소 200) · 2일 10분치(400) · 3일 무료 EMP 1 · 4일 15분치(800) · 5일 희귀 로봇 · 6일 20분치(1,200) · 7일 에픽 로봇. 돈은 `baseIncome`(지금 초당 수입) × 분, 로봇은 받침대가 꽉 차면 그 로봇 값의 돈(`giveGiftRobot`).
+- **규칙:** 하루(한국 시간 자정, `Config.Daily.UtcOffset` = 9시간)에 한 번. 어제 받았으면 다음 날짜, 아니면 1일부터. 7일 다음은 다시 1일. 보상은 `Config.Daily.Rewards`: 1일 5분치 수입(최소 200) · 2일 10분치(400) · 3일 무료 EMP 1 · 4일 15분치(800) · 5일 희귀 로봇 · 6일 20분치(1,200) · 7일 에픽 로봇. 돈은 `baseIncome`(지금 초당 수입) × 분.
 - **서버:** `claimDaily` — 별도 `actionRemote.OnServerEvent`에서 `"Daily"`만 처리(1초 간격 제한). `SaveOff`면 거절. 플레이어 속성 `DailyStep`·`DailyLast`. 저장 필드 `dailyStep`(0~7)·`dailyLast`(날 번호), 옛 데이터 0.
 - **HUD:** 패널 📅 버튼(`DailyButton`, 받을 수 있으면 빨간 점) — 칭호 버튼은 폭 104·글자 "🏅 칭호 +n%"로 줄임. 7일 달력 창 `DailyWindow`(받은 날 ✓, 오늘 금색, 받기 버튼 `ClaimButton`, 받았으면 자정까지 남은 시간). 불러오기 후 받을 수 있고 첫 접속 안내가 끝난 사람에게 한 번 자동으로 연다. 30초마다 다시 그림.
 - **Studio 시험 장치:** `DebugMoneyUserId = -2` 후 `DebugDailyBack = n` → 마지막으로 받은 날을 n일 앞당김(1 = 이어서, 2 이상 = 빠뜨림). 음수 계정만.
 - **테스트(자동, 2인 로컬 -1·-2, 2026-11-24):** 접속 시 창 자동 열림·빨간 점·"1일째 보상 받기", 받기 → +돈, 같은 날 두 번째 거절, 1→2→…→7→1 순서·3일 EMP(+1)·5일·7일 로봇(받침대 꽉 참 → 돈), 하루 빠뜨림(2일째 → 1일), 저장에 `dailyStep=1 dailyLast=20781`, 서버·두 클라이언트 오류·경고 0. 칭호 버튼 글자 맞음.
-- **미검증·참고:** 창의 실제 모습(Play 중 화면 캡처 불가)·휴대폰 화면은 사용자 확인 필요. 받침대가 꽉 찬 후반 플레이어는 5·7일 로봇 보상이 돈(희귀 900, 에픽 5,760 정도)으로 바뀌어 돈 보상 날보다 작다 — 필요하면 꽉 찼을 때 수입 기준 돈으로 바꾸는 조정 후보.
+- **꽉 찬 받침대 조정(사용자 요청):** 5일(희귀)·7일(에픽) 로봇 보상은 받침대가 꽉 차면 "로봇 값"과 "초당 수입 × minutes분"(5일 20분, 7일 30분) 중 큰 돈. 2인 테스트: 초당 10,777 계정에서 5일 +12.9M, 7일 +19.4M(이전엔 900·5,760), 오류 0.
+- **미검증:** 창의 실제 모습(Play 중 화면 캡처 불가)·휴대폰 화면은 사용자 확인 필요.
 
 ### B-50. 친구 초대 보상 (2026-11-24 Claude Code, 사용자 승인 설계 + "5명 초대 칭호" 추가)
 

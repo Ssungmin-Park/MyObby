@@ -607,7 +607,8 @@ table.insert(Config.TitleOrder, "Inviter")
 Config.TitleNames.Inviter = Config.Referral.TitleName
 
 -- 매일 접속 보상 (B-51). 7일 달력, 하루(한국 시간 자정 기준)에 한 번. 하루라도 빠지면 1일부터 다시.
--- kind: "Money" = 지금 초당 수입 × minutes분 (최소 min), "Emp" = 무료 EMP count개, "Robot" = 그 등급 로봇 1개(받침대가 꽉 차면 그 값의 돈)
+-- kind: "Money" = 지금 초당 수입 × minutes분 (최소 min), "Emp" = 무료 EMP count개,
+--       "Robot" = 그 등급 로봇 1개. 받침대가 꽉 차면 "로봇 값"과 "초당 수입 × minutes분" 중 큰 돈
 export type DailyReward = { kind: string, minutes: number?, min: number?, count: number?, rarity: string?, icon: string, short: string }
 Config.Daily = {
 	UtcOffset = 9 * 3600, -- 한국 시간(UTC+9) 자정에 날이 바뀐다
@@ -616,9 +617,9 @@ Config.Daily = {
 		{ kind = "Money", minutes = 10, min = 400, icon = "💰", short = "10분치 수입" },
 		{ kind = "Emp", count = 1, icon = "⚡", short = "무료 EMP 1개" },
 		{ kind = "Money", minutes = 15, min = 800, icon = "💰", short = "15분치 수입" },
-		{ kind = "Robot", rarity = "Rare", icon = "🤖", short = "희귀 로봇" },
+		{ kind = "Robot", rarity = "Rare", minutes = 20, icon = "🤖", short = "희귀 로봇" },
 		{ kind = "Money", minutes = 20, min = 1200, icon = "💰", short = "20분치 수입" },
-		{ kind = "Robot", rarity = "Epic", icon = "🌟", short = "에픽 로봇" },
+		{ kind = "Robot", rarity = "Epic", minutes = 30, icon = "🌟", short = "에픽 로봇" },
 	} :: { DailyReward },
 }
 
