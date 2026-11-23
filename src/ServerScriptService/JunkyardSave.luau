@@ -16,6 +16,7 @@
 --                     옛 데이터는 1단계·0·""
 --                   ← referredBy(나를 초대한 사람 UserId, 0 = 없음)·referralPaid(초대한 사람 보상을 보냈는지)·playTime(초대받은 사람이 논 초)·
 --                     invites(인정된 친구 초대 수)는 친구 초대 보상(B-50)에서 추가. 옛 데이터는 0·false·0·0
+--                   ← dailyStep(마지막으로 받은 매일 보상 날짜 1~7, 0 = 없음)·dailyLast(받은 날 번호, 한국 시간 기준)는 매일 접속 보상(B-51)에서 추가. 옛 데이터는 0·0
 --
 -- 안전 원칙
 --   1. 세션 잠금: 데이터를 쓰는 서버가 lock을 남긴다. 다른 서버의 lock이 살아 있으면 기다리고,
@@ -58,6 +59,8 @@ export type Data = {
 	referralPaid: boolean, -- 초대한 사람에게 보상을 보냈는지 (한 번만)
 	playTime: number, -- 초대받은 사람이 논 시간(초). 보상을 보낼 때까지만 센다
 	invites: number, -- 인정된 친구 초대 수
+	dailyStep: number, -- 마지막으로 받은 매일 보상 날짜 (1~7, 0 = 아직 없음)
+	dailyLast: number, -- 마지막으로 받은 날 번호 ((os.time() + 9시간) // 86400)
 }
 export type LoadStatus = "new" | "ok" | "failed" | "locked"
 export type SaveStatus = "ok" | "failed" | "lostLock"
@@ -98,12 +101,12 @@ local function defaultUpgrades(): { [string]: number }
 end
 
 function JunkyardSave.newData(): Data
-	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 1, expand = 0, titles = {}, selectedTitle = "", batLevel = 1, batXp = 0, batSkin = "", referredBy = 0, referralPaid = false, playTime = 0, invites = 0 }
+	return { money = Config.StartMoney, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 1, expand = 0, titles = {}, selectedTitle = "", batLevel = 1, batXp = 0, batSkin = "", referredBy = 0, referralPaid = false, playTime = 0, invites = 0, dailyStep = 0, dailyLast = 0 }
 end
 
 -- 저장소에서 읽은 값을 허용 범위로 정리해서 항상 올바른 Data를 돌려준다.
 function JunkyardSave.sanitize(raw: any): Data
-	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 0, expand = 0, titles = {}, selectedTitle = "", batLevel = 1, batXp = 0, batSkin = "", referredBy = 0, referralPaid = false, playTime = 0, invites = 0 }
+	local data: Data = { money = 0, catalog = {}, pads = {}, upgrades = defaultUpgrades(), empCharges = 0, rebirth = 0, variantCatalog = {}, totalEarned = 0, tutorial = 0, expand = 0, titles = {}, selectedTitle = "", batLevel = 1, batXp = 0, batSkin = "", referredBy = 0, referralPaid = false, playTime = 0, invites = 0, dailyStep = 0, dailyLast = 0 }
 	if typeof(raw) ~= "table" then
 		return JunkyardSave.newData()
 	end
@@ -209,6 +212,15 @@ function JunkyardSave.sanitize(raw: any): Data
 	if typeof(invites) == "number" and invites == invites then
 		data.invites = math.floor(math.clamp(invites, 0, 1e9))
 	end
+	-- 매일 접속 보상: 없으면(옛 데이터) 처음부터
+	local dailyStep = raw.dailyStep
+	if typeof(dailyStep) == "number" and dailyStep == dailyStep then
+		data.dailyStep = math.floor(math.clamp(dailyStep, 0, #Config.Daily.Rewards))
+	end
+	local dailyLast = raw.dailyLast
+	if typeof(dailyLast) == "number" and dailyLast == dailyLast then
+		data.dailyLast = math.floor(math.clamp(dailyLast, 0, 1e7))
+	end
 	return data
 end
 
@@ -234,6 +246,8 @@ local function snapshot(data: Data): Data
 		referralPaid = data.referralPaid == true,
 		playTime = math.floor(data.playTime),
 		invites = math.floor(data.invites),
+		dailyStep = math.floor(data.dailyStep),
+		dailyLast = math.floor(data.dailyLast),
 	}
 end
 

@@ -93,6 +93,8 @@ type State = {
 	playTime: number, -- 초대받은 사람이 논 시간(초, 저장됨)
 	invites: number, -- 인정된 친구 초대 수 (저장됨)
 	referralBusy: boolean, -- 초대 보상을 가져오는 중 (겹쳐서 가져가지 않게)
+	dailyStep: number, -- 마지막으로 받은 매일 보상 날짜 1~7 (저장됨)
+	dailyLast: number, -- 마지막으로 받은 날 번호 (저장됨)
 }
 
 local bases: { Base } = {}
@@ -1230,7 +1232,7 @@ local function snapshot(state: State): JunkyardSave.Data
 			money += Config.robotValue(carry.robotId)
 		end
 	end
-	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades), empCharges = state.empCharges, rebirth = state.rebirth, variantCatalog = table.clone(state.variantCatalog), totalEarned = math.floor(state.totalEarned), tutorial = state.tutorial, expand = state.expand, titles = table.clone(state.titles), selectedTitle = state.selectedTitle, batLevel = state.batLevel, batXp = state.batXp, batSkin = state.batSkin, referredBy = state.referredBy, referralPaid = state.referralPaid, playTime = state.playTime, invites = state.invites }
+	return { money = money, catalog = table.clone(state.catalog), pads = pads, upgrades = table.clone(state.upgrades), empCharges = state.empCharges, rebirth = state.rebirth, variantCatalog = table.clone(state.variantCatalog), totalEarned = math.floor(state.totalEarned), tutorial = state.tutorial, expand = state.expand, titles = table.clone(state.titles), selectedTitle = state.selectedTitle, batLevel = state.batLevel, batXp = state.batXp, batSkin = state.batSkin, referredBy = state.referredBy, referralPaid = state.referralPaid, playTime = state.playTime, invites = state.invites, dailyStep = state.dailyStep, dailyLast = state.dailyLast }
 end
 
 -- 첫 접속 안내 (튜토리얼) ------------------------------------------------------------
@@ -2156,6 +2158,68 @@ local function payReferral(state: State)
 	end)
 end
 
+-- 매일 접속 보상 (B-51) ------------------------------------------------------------
+-- 하루(한국 시간 자정 기준)에 한 번 "Daily" 요청으로 받는다. 어제 받았으면 다음 날짜, 아니면 1일부터. 7일 다음은 다시 1일.
+local function dailyToday(): number
+	return (os.time() + Config.Daily.UtcOffset) // 86400
+end
+
+local function syncDaily(state: State)
+	state.player:SetAttribute("DailyStep", state.dailyStep)
+	state.player:SetAttribute("DailyLast", state.dailyLast)
+end
+
+local function claimDaily(state: State)
+	local player = state.player
+	local base = state.base
+	if state.loading or not base then
+		return
+	end
+	if player:GetAttribute("SaveOff") ~= false then
+		notify(player, "Alert", "이번 접속은 저장이 꺼져 있어서 매일 보상을 받을 수 없어요.")
+		return
+	end
+	local today = dailyToday()
+	if state.dailyLast == today then
+		notify(player, "Alert", "오늘 보상은 이미 받았어요. 내일 또 와요!")
+		return
+	end
+	local rewards = Config.Daily.Rewards
+	local step = if state.dailyLast == today - 1 then state.dailyStep % #rewards + 1 else 1
+	local reward = rewards[step]
+	state.dailyStep = step
+	state.dailyLast = today
+	syncDaily(state)
+	if reward.kind == "Money" then
+		local amount = math.max(reward.min or 0, math.floor(baseIncome(base, state) * 60 * (reward.minutes or 0)))
+		setMoney(state, state.money + amount)
+		notify(player, "Money", ("📅 %d일째 보상: +%s"):format(step, Config.formatMoney(amount)))
+	elseif reward.kind == "Emp" then
+		state.empCharges += reward.count or 1
+		syncPasses(state)
+		notify(player, "Info", ("📅 %d일째 보상: 무료 EMP %d개! (남은 %d개)"):format(step, reward.count or 1, state.empCharges))
+	else
+		giveGiftRobot(state, Config.pickRobot(reward.rarity or "Rare"), ("📅 %d일째 보상"):format(step))
+	end
+	JunkyardSave.saveNow(player)
+end
+
+local dailyRequestAt: { [Player]: number } = {}
+actionRemote.OnServerEvent:Connect(function(player: Player, action: unknown)
+	if action ~= "Daily" then
+		return
+	end
+	local state = states[player]
+	if not state or os.clock() - (dailyRequestAt[player] or -math.huge) < 1 then
+		return
+	end
+	dailyRequestAt[player] = os.clock()
+	claimDaily(state)
+end)
+Players.PlayerRemoving:Connect(function(player)
+	dailyRequestAt[player] = nil
+end)
+
 -- 저장된 기지 불러오기 ------------------------------------------------------------
 local function setCatalog(state: State, catalog: { [string]: boolean }, variantCatalog: { [string]: boolean })
 	state.catalog = catalog
@@ -2190,6 +2254,9 @@ local function loadPlayer(state: State)
 		state.playTime = data.playTime
 		state.invites = data.invites
 		player:SetAttribute("Invites", state.invites)
+		state.dailyStep = data.dailyStep
+		state.dailyLast = data.dailyLast
+		syncDaily(state)
 		syncBat(state)
 		setMoney(state, data.money)
 		state.totalEarned = data.totalEarned
@@ -2309,6 +2376,8 @@ local function onPlayerAdded(player: Player)
 		playTime = 0,
 		invites = 0,
 		referralBusy = false,
+		dailyStep = 0,
+		dailyLast = 0,
 	}
 	player:SetAttribute("Expand", 0)
 	for _, id in Config.UpgradeOrder do
@@ -2520,6 +2589,21 @@ if game:GetService("RunService"):IsStudio() then
 			state.referralPaid = false
 			state.playTime = Config.Referral.PlaySeconds - 5
 			giveGiftRobot(state, Config.pickRobot(Config.Referral.WelcomeRarity), "친구 초대 환영 선물")
+		end
+	end)
+	-- 매일 보상 시험: 대상(음수 계정)의 마지막으로 받은 날을 n일 앞당긴다 (1 = 어제 받은 것처럼 → 다음 날짜, 2 이상 = 하루 빠뜨림 → 1일부터)
+	workspace:GetAttributeChangedSignal("DebugDailyBack"):Connect(function()
+		local days = workspace:GetAttribute("DebugDailyBack")
+		local userId = workspace:GetAttribute("DebugMoneyUserId")
+		workspace:SetAttribute("DebugDailyBack", nil)
+		if typeof(userId) ~= "number" or userId >= 0 or typeof(days) ~= "number" or days < 1 or days > 30 or days ~= math.floor(days) then
+			return
+		end
+		local player = Players:GetPlayerByUserId(userId)
+		local state = player and states[player]
+		if state and not state.loading and state.dailyLast > 0 then
+			state.dailyLast -= days
+			syncDaily(state)
 		end
 	end)
 	-- 첫 접속 안내 시험: 안내 단계를 정한다 (0~5). Studio에서만, DebugMoneyUserId 대상

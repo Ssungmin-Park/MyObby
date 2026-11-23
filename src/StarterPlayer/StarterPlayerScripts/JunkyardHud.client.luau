@@ -1885,7 +1885,7 @@ render()
 
 -- 칭호 모음: 획득 여부와 선택은 서버 속성으로 표시하고, 선택 요청만 보낸다.
 do
-	local open = button(panel, "🏅 칭호 모음", UDim2.fromOffset(12, 152), UDim2.fromOffset(146, 28), Color3.fromRGB(80, 66, 110))
+	local open = button(panel, "🏅 칭호 모음", UDim2.fromOffset(12, 152), UDim2.fromOffset(104, 28), Color3.fromRGB(80, 66, 110))
 	open.Name = "TitlesButton"
 	open.TextSize = 12
 	-- 친구 초대 (B-50): Roblox 초대 창을 연다. 보상은 서버가 초대 기록(ReferredByPlayerId)으로 판정한다
@@ -1948,7 +1948,7 @@ do
 		end
 		local selected = player:GetAttribute("SelectedTitle")
 		local bonus = math.round(((player:GetAttribute("TitleBonus") or 0) :: number) * 100)
-		open.Text = ("🏅 칭호 모음 · 영구 수입 +%d%%"):format(bonus)
+		open.Text = ("🏅 칭호 +%d%%"):format(bonus)
 		info.Text = ("획득한 칭호마다 영구 수입 +1%% · 현재 +%d%% / 최대 +%d%%\n표시할 칭호 하나를 고르세요. 숨겨도 혜택은 유지돼요."):format(bonus, #Config.TitleOrder)
 		for _, child in list:GetChildren() do
 			if child:IsA("TextButton") then
@@ -1998,4 +1998,164 @@ do
 		player:GetAttributeChangedSignal(attribute):Connect(updateTitles)
 	end
 	updateTitles()
+end
+
+-- 매일 접속 보상 (B-51): 7일 달력. 몇째 날인지·받을 수 있는지는 서버 속성(DailyStep·DailyLast)과 서버 시간으로 계산해 보여 주기만 한다
+do
+	local rewards = Config.Daily.Rewards
+	local dailyButton = button(panel, "📅", UDim2.fromOffset(120, 152), UDim2.fromOffset(38, 28), Color3.fromRGB(60, 100, 150))
+	dailyButton.Name = "DailyButton"
+	local dot = Instance.new("Frame")
+	dot.Name = "Dot"
+	dot.AnchorPoint = Vector2.new(0.5, 0.5)
+	dot.Position = UDim2.new(1, -3, 0, 3)
+	dot.Size = UDim2.fromOffset(11, 11)
+	dot.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
+	dot.Visible = false
+	dot.Parent = dailyButton
+	corner(dot, 6)
+	local window = Instance.new("Frame")
+	window.Name = "DailyWindow"
+	window.AnchorPoint = Vector2.new(0.5, 0.5)
+	window.Position = UDim2.fromScale(0.5, 0.5)
+	window.Size = UDim2.fromScale(0.94, 0.7)
+	window.BackgroundColor3 = dark
+	window.Visible = false
+	window.Parent = gui
+	corner(window, 12)
+	local limit = Instance.new("UISizeConstraint")
+	limit.MaxSize = Vector2.new(580, 300)
+	limit.Parent = window
+	local heading = label(window, UDim2.fromOffset(14, 8), UDim2.new(1, -70, 0, 28), 20, white)
+	heading.Text = "📅 매일 접속 보상"
+	local close = button(window, "X", UDim2.new(1, -46, 0, 8), UDim2.fromOffset(32, 28), Color3.fromRGB(120, 60, 60))
+	local info = label(window, UDim2.fromOffset(14, 40), UDim2.new(1, -28, 0, 34), 13, muted)
+	info.Text = "매일 들어와서 받으세요! 하루라도 빠지면 1일부터 다시 시작해요. (돈 보상은 지금 내 초당 수입 기준, 한국 시간 자정에 날이 바뀌어요)"
+	local row = Instance.new("Frame")
+	row.BackgroundTransparency = 1
+	row.Position = UDim2.fromOffset(10, 80)
+	row.Size = UDim2.new(1, -14, 1, -140)
+	row.Parent = window
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.Padding = UDim.new(0, 5)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = row
+	local tiles: { { frame: Frame, status: TextLabel } } = {}
+	for day, reward in rewards do
+		local tile = Instance.new("Frame")
+		tile.Size = UDim2.new(1 / #rewards, -5, 1, 0)
+		tile.LayoutOrder = day
+		tile.BackgroundColor3 = Color3.fromRGB(43, 49, 58)
+		tile.Parent = row
+		corner(tile, 8)
+		local dayLabel = label(tile, UDim2.fromOffset(0, 4), UDim2.new(1, 0, 0, 18), 13, white)
+		dayLabel.Text = ("%d일"):format(day)
+		dayLabel.TextXAlignment = Enum.TextXAlignment.Center
+		local icon = label(tile, UDim2.fromOffset(0, 22), UDim2.new(1, 0, 0, 30), 24, white)
+		icon.Text = reward.icon
+		icon.TextXAlignment = Enum.TextXAlignment.Center
+		local text = label(tile, UDim2.fromOffset(2, 54), UDim2.new(1, -4, 1, -76), 11, muted)
+		text.Text = reward.short
+		text.TextXAlignment = Enum.TextXAlignment.Center
+		text.TextYAlignment = Enum.TextYAlignment.Top
+		local status = label(tile, UDim2.new(0, 0, 1, -20), UDim2.new(1, 0, 0, 18), 12, Color3.fromRGB(255, 220, 100))
+		status.TextXAlignment = Enum.TextXAlignment.Center
+		tiles[day] = { frame = tile, status = status }
+	end
+	local claim = button(window, "", UDim2.new(0.5, -110, 1, -50), UDim2.fromOffset(220, 40), Color3.fromRGB(60, 140, 80))
+	claim.Name = "ClaimButton"
+
+	local function serverDay(): (number, number)
+		local seconds = math.floor(workspace:GetServerTimeNow()) + Config.Daily.UtcOffset
+		return seconds // 86400, 86400 - seconds % 86400 -- 오늘 번호, 자정까지 남은 초
+	end
+	-- 받을 수 있는지, 오늘(또는 오늘 받은) 날짜
+	local function dailyStatus(): (boolean, number)
+		local last = (player:GetAttribute("DailyLast") or 0) :: number
+		local step = (player:GetAttribute("DailyStep") or 0) :: number
+		local today = serverDay()
+		if last == today then
+			return false, math.max(step, 1)
+		elseif last == today - 1 then
+			return true, step % #rewards + 1
+		end
+		return true, 1
+	end
+	local function render()
+		local loaded = player:GetAttribute("Loading") == false and player:GetAttribute("DailyLast") ~= nil
+		local ready, current = dailyStatus()
+		ready = ready and loaded
+		for day, tile in tiles do
+			local done = day < current or (not ready and day == current)
+			tile.frame.BackgroundColor3 = if day == current and ready then Color3.fromRGB(150, 110, 30)
+				elseif done then Color3.fromRGB(50, 95, 70)
+				else Color3.fromRGB(43, 49, 58)
+			tile.status.Text = if done then "✓ 받음" elseif day == current and ready then "오늘!" else ""
+		end
+		if ready then
+			claim.Text = ("🎁 %d일째 보상 받기"):format(current)
+			claim.BackgroundColor3 = Color3.fromRGB(60, 140, 80)
+		else
+			local _, left = serverDay()
+			claim.Text = ("내일 또 와요 (%d시간 %d분 뒤)"):format(left // 3600, left % 3600 // 60)
+			claim.BackgroundColor3 = Color3.fromRGB(65, 75, 88)
+		end
+		dot.Visible = ready
+	end
+	claim.Activated:Connect(function()
+		local ready = dailyStatus()
+		if ready and player:GetAttribute("Loading") == false then
+			actionRemote:FireServer("Daily")
+		end
+	end)
+	local function openWindow()
+		window.Visible = true
+		catalog.Visible = false
+		shop.Visible = false
+		donateWindow.Visible = false
+		local titlesWindow = gui:FindFirstChild("TitlesWindow")
+		if titlesWindow and titlesWindow:IsA("GuiObject") then
+			titlesWindow.Visible = false
+		end
+		render()
+	end
+	dailyButton.Activated:Connect(function()
+		if window.Visible then
+			window.Visible = false
+		else
+			openWindow()
+		end
+	end)
+	close.Activated:Connect(function()
+		window.Visible = false
+	end)
+	for _, other in { catalog, shop, donateWindow } do
+		other:GetPropertyChangedSignal("Visible"):Connect(function()
+			if other.Visible then
+				window.Visible = false
+			end
+		end)
+	end
+	for _, attribute in { "DailyStep", "DailyLast", "Loading" } do
+		player:GetAttributeChangedSignal(attribute):Connect(render)
+	end
+	-- 접속해서 불러오기가 끝났을 때 받을 수 있으면 한 번 자동으로 연다 (첫 접속 안내 중에는 열지 않고 빨간 점만)
+	task.spawn(function()
+		while player:GetAttribute("Loading") ~= false or player:GetAttribute("DailyLast") == nil do
+			task.wait(0.5)
+		end
+		task.wait(2)
+		local ready = dailyStatus()
+		if ready and (player:GetAttribute("TutorialStep") or 0) == 0 and player:GetAttribute("Mode") == "Junkyard" then
+			openWindow()
+		end
+	end)
+	-- 30초마다 다시 그린다 (자정이 지나면 받을 수 있게, 남은 시간 표시)
+	task.spawn(function()
+		while true do
+			render()
+			task.wait(30)
+		end
+	end)
 end
